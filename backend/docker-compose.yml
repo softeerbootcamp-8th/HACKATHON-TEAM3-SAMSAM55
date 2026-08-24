@@ -3,6 +3,9 @@
 # .env 를 새로 써서(heredoc) pull/up 까지 자동으로 수행한다. (이미지에는 시크릿이 들어있지
 # 않다 — jar 만 들어있음. .env 는 CI 가 매 배포마다 덮어쓰므로 서버에 수동으로 둘 필요 없음)
 #
+# 이 파일은 EC2 인스턴스의 /home/ec2-user/app/docker-compose.yml 에 미리 배치돼 있어야 한다
+# (Amazon Linux 인스턴스라 홈이 /home/ubuntu 가 아니라 /home/ec2-user 다).
+#
 # 수동으로 재기동해야 할 때 (서버에서 직접):
 #   1) docker compose pull   # 최신 이미지 받기
 #   2) docker compose up -d   # 백그라운드 기동
