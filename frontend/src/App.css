@@ -1,0 +1,43 @@
+#echo-test {
+  max-width: 480px;
+  margin: 80px auto;
+  padding: 24px;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+}
+
+#echo-test form {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+#echo-test input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 16px;
+}
+
+#echo-test button {
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#echo-test button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#echo-test .result {
+  margin-top: 16px;
+  font-size: 16px;
+}
+
+#echo-test .result.ok {
+  color: #16a34a;
+}
+
+#echo-test .result.error {
+  color: #dc2626;
+}
