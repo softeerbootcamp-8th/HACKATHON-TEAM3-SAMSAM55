@@ -1,0 +1,3 @@
+samsam55.duckdns.org {
+	reverse_proxy backend:8080
+}

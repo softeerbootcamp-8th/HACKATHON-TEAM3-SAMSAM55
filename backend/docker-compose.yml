@@ -62,3 +62,24 @@ services:
       # 힙덤프 보존용. 마운트가 없으면 컨테이너 안에 쓰였다가 재기동 때 사라지고,
       # /dump 디렉토리가 없으면 덤프 생성 자체가 실패한다.
       - ./dump:/dump
+
+  # 프론트(CloudFront, https)에서 이 백엔드(http)로 바로 요청하면 브라우저가
+  # mixed content 로 차단한다. Caddy 가 samsam55.duckdns.org 앞단에서 Let's Encrypt
+  # 인증서를 자동 발급/갱신하고 backend:8080 으로 리버스 프록시한다.
+  caddy:
+    image: caddy:2-alpine
+    container_name: trip-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
+volumes:
+  caddy_data:
+  caddy_config:
