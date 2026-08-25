@@ -52,8 +52,8 @@ public class ItineraryItemService {
     @Transactional
     public ItineraryItemCreateResponseDto createItineraryItem(
             Long loginUserId, Long tripDayId, ItineraryItemCreateRequestDto request, List<MultipartFile> optionImages) {
-        // 일차 조회 및 방장 권한 검증
-        TripDay tripDay = tripDayRepository.findById(tripDayId)
+        // 같은 일차에 동시에 생성 요청이 오면 sortOrder가 겹칠 수 있어 TripDay row를 잠그고 진행
+        TripDay tripDay = tripDayRepository.findByIdForUpdate(tripDayId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.TRIP_DAY_NOT_FOUND));
 
         if (!tripDay.getTrip().getHostUser().getId().equals(loginUserId)) {

@@ -96,4 +96,29 @@ class TripEntityMappingTest {
             entityManager.flush();
         });
     }
+
+    @Test
+    @DisplayName("같은 일차 안에서 sortOrder는 중복될 수 없다")
+    @Transactional
+    void 같은_일차_안에서_sortOrder는_중복될_수_없다() {
+        User user = new User("sort-order-host", "hashed-password");
+        entityManager.persist(user);
+
+        Trip trip = new Trip(user, "제주 여행",
+                LocalDateTime.of(2026, 9, 1, 9, 0), LocalDateTime.of(2026, 9, 3, 18, 0), 3, "invite-code");
+        entityManager.persist(trip);
+
+        TripDay tripDay = new TripDay(trip, 1, LocalDate.of(2026, 9, 1));
+        entityManager.persist(tripDay);
+
+        entityManager.persist(new ItineraryItem(
+                tripDay, "오전 관광지", "TOURIST_SPOT", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null));
+        entityManager.flush();
+
+        assertThrows(PersistenceException.class, () -> {
+            entityManager.persist(new ItineraryItem(
+                    tripDay, "점심 식사", "MEAL", ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.PENDING, 1, null));
+            entityManager.flush();
+        });
+    }
 }

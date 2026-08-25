@@ -73,7 +73,7 @@ class ItineraryItemServiceTest {
     @Test
     @DisplayName("VOTE 방식이면 선택지별로 AI 설명을 생성해 함께 저장한다")
     void VOTE_방식이면_선택지별로_AI_설명을_생성해_함께_저장한다() {
-        when(tripDayRepository.findById(10L)).thenReturn(Optional.of(tripDay));
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
         when(itineraryItemRepository.findMaxSortOrderByTripDayId(10L)).thenReturn(3);
         when(itineraryItemRepository.save(any(ItineraryItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(voteOptionRepository.save(any(VoteOption.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -96,7 +96,7 @@ class ItineraryItemServiceTest {
     @Test
     @DisplayName("선택지에 이미지가 있으면 바이트와 콘텐츠 타입을 함께 저장한다")
     void 선택지에_이미지가_있으면_바이트와_콘텐츠_타입을_함께_저장한다() {
-        when(tripDayRepository.findById(10L)).thenReturn(Optional.of(tripDay));
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
         when(itineraryItemRepository.findMaxSortOrderByTripDayId(10L)).thenReturn(0);
         when(itineraryItemRepository.save(any(ItineraryItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(voteOptionRepository.save(any(VoteOption.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -124,7 +124,7 @@ class ItineraryItemServiceTest {
     @Test
     @DisplayName("HOST_PICK 방식이면 선택지를 무시하고 옵션 없이 생성한다")
     void HOST_PICK_방식이면_선택지를_무시하고_옵션_없이_생성한다() {
-        when(tripDayRepository.findById(10L)).thenReturn(Optional.of(tripDay));
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
         when(itineraryItemRepository.findMaxSortOrderByTripDayId(10L)).thenReturn(0);
         when(itineraryItemRepository.save(any(ItineraryItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -140,7 +140,7 @@ class ItineraryItemServiceTest {
     @Test
     @DisplayName("일차를 찾을 수 없으면 예외가 발생한다")
     void 일차를_찾을_수_없으면_예외가_발생한다() {
-        when(tripDayRepository.findById(10L)).thenReturn(Optional.empty());
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> itineraryItemService.createItineraryItem(
                 1L, 10L, new ItineraryItemCreateRequestDto("점심 메뉴", "식사", "VOTE", List.of()), null))
@@ -151,7 +151,7 @@ class ItineraryItemServiceTest {
     @Test
     @DisplayName("요청자가 여행 방장이 아니면 예외가 발생한다")
     void 요청자가_여행_방장이_아니면_예외가_발생한다() {
-        when(tripDayRepository.findById(10L)).thenReturn(Optional.of(tripDay));
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
 
         assertThatThrownBy(() -> itineraryItemService.createItineraryItem(
                 999L, 10L, new ItineraryItemCreateRequestDto("점심 메뉴", "식사", "VOTE", List.of()), null))
@@ -162,7 +162,7 @@ class ItineraryItemServiceTest {
     @Test
     @DisplayName("VOTE 선택지가 4개를 초과하면 예외가 발생한다")
     void VOTE_선택지가_4개를_초과하면_예외가_발생한다() {
-        when(tripDayRepository.findById(10L)).thenReturn(Optional.of(tripDay));
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
 
         assertThatThrownBy(() -> itineraryItemService.createItineraryItem(
                 1L, 10L,
