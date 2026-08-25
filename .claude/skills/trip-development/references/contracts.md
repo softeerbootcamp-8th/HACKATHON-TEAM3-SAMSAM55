@@ -41,14 +41,19 @@
 - 구현 쪽 규칙(`ApplicationException`, `GlobalExceptionHandler`, `ErrorType`)은
   [backend.md](backend.md)를 본다.
 
+## 확정된 사항
+
+- 인증 방식: Session Cookie
+- 페이지네이션: 사용하지 않는다. 목록 조회 API는 전체 목록을 한 번에 반환한다
+  (`data.items` 배열, `nextCursor`/`hasNext` 등 페이지네이션 필드 없음)
+
 ## 미확정 사항
 
 다음은 팀 합의 없이 임의로 결정하지 않는다.
 
-- API prefix (`/api/v1` 등 버전 규칙)와 인증 방식
+- API prefix (`/api/v1` 등 버전 규칙)
 - validation 실패처럼 필드별 에러가 여러 개일 때의 표현 방식
   (현재 `error`는 `code`/`message` 단일 객체만 정의됨)
-- 페이지네이션 방식 (offset vs cursor)
 - 영속성 스택(JPA·MySQL) 도입 시점 — 현재 `build.gradle`에는 아직 없음
 
 ## 계약 변경
