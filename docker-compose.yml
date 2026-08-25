@@ -1,0 +1,34 @@
+# 로컬 개발용 MySQL. 배포 서버용 compose(backend/docker-compose.yml)와는 별개다 —
+# 배포 환경 DB는 별도 EC2 인스턴스에 이미 떠 있고, 이 파일은 각자 로컬에서
+# 백엔드를 띄울 때 붙일 MySQL만 담당한다.
+#
+# 사용법:
+#   1) .env.example 을 .env 로 복사하고 값 확인 (기본값 그대로 써도 됨)
+#   2) docker compose up -d
+#   3) 백엔드 실행 시 같은 .env 의 DB_HOST=localhost, DB_PORT=3306 등을 환경변수로 넘겨준다
+#      (예: IntelliJ Run Configuration에 EnvFile 플러그인으로 .env 지정,
+#       또는 터미널에서 `export $(grep -v '^#' .env | xargs) && ./gradlew bootRun`)
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: samsam55-mysql-local
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    environment:
+      TZ: Asia/Seoul
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-samsam55}
+      MYSQL_USER: ${DB_USERNAME:-samsam55}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-samsam55}
+    volumes:
+      - samsam55-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  samsam55-mysql-data:

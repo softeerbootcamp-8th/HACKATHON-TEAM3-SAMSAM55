@@ -39,7 +39,7 @@ function App() {
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="아무 값이나 입력하세요"
+          placeholder="아무 값이나 입력"
           required
         />
         <button type="submit" disabled={loading}>

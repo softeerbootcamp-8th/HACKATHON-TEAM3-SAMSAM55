@@ -3,6 +3,9 @@
 # .env 를 새로 써서(heredoc) pull/up 까지 자동으로 수행한다. (이미지에는 시크릿이 들어있지
 # 않다 — jar 만 들어있음. .env 는 CI 가 매 배포마다 덮어쓰므로 서버에 수동으로 둘 필요 없음)
 #
+# 이 파일은 EC2 인스턴스의 /home/ec2-user/app/docker-compose.yml 에 미리 배치돼 있어야 한다
+# (Amazon Linux 인스턴스라 홈이 /home/ubuntu 가 아니라 /home/ec2-user 다).
+#
 # 수동으로 재기동해야 할 때 (서버에서 직접):
 #   1) docker compose pull   # 최신 이미지 받기
 #   2) docker compose up -d   # 백그라운드 기동
@@ -59,3 +62,32 @@ services:
       # 힙덤프 보존용. 마운트가 없으면 컨테이너 안에 쓰였다가 재기동 때 사라지고,
       # /dump 디렉토리가 없으면 덤프 생성 자체가 실패한다.
       - ./dump:/dump
+
+  # 프론트(CloudFront, https)에서 이 백엔드(http)로 바로 요청하면 브라우저가
+  # mixed content 로 차단한다. nginx 가 samsam55.duckdns.org 앞단에서 Let's Encrypt
+  # 인증서로 HTTPS 를 종료하고 backend:8080 으로 리버스 프록시한다.
+  # 최초 1회는 인증서가 없어 nginx 가 그냥 못 뜨므로 init-letsencrypt.sh 로 먼저
+  # 더미 인증서 생성 → nginx 기동 → 실제 인증서 발급 순서를 거쳐야 한다.
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: trip-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+
+  # 12시간마다 인증서 갱신 시도 (certbot이 만료 30일 이내일 때만 실제로 갱신함)
+  certbot:
+    image: certbot/certbot
+    container_name: trip-certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: >-
+      /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h & wait $${!}; done;"
