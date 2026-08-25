@@ -1,9 +1,10 @@
 package com.samsam55.trip.trip.controller;
 
-import com.samsam55.trip.auth.annotation.CurrentActor;
 import com.samsam55.trip.auth.dto.ActorPrincipal;
+import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.trip.dto.VoteOptionImageDto;
 import com.samsam55.trip.trip.service.VoteOptionService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,11 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class VoteOptionController {
 
     private final VoteOptionService voteOptionService;
+    private final AuthService authService;
 
     /**
      * 선택지에 등록된 이미지를 원본 바이트로 반환한다.
      *
-     * @param actor 현재 인증 주체
+     * @param request 현재 HTTP 요청
      * @param voteOptionId 조회할 선택지의 식별자
      * @return 이미지 바이트가 담긴 200 응답
      * @throws com.samsam55.trip.global.exception.ApplicationException 선택지가 없거나 권한이 없을 때(VOTE_OPTION_NOT_FOUND)
@@ -30,9 +32,10 @@ public class VoteOptionController {
      */
     @GetMapping("/{voteOptionId}/image")
     public ResponseEntity<byte[]> getImage(
-            @CurrentActor ActorPrincipal actor,
+            HttpServletRequest request,
             @PathVariable Long voteOptionId
     ) {
+        ActorPrincipal actor = authService.resolveActor(request);
         VoteOptionImageDto image = voteOptionService.getImage(actor, voteOptionId);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(image.contentType()))

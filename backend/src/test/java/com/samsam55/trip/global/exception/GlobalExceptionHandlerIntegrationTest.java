@@ -1,6 +1,5 @@
 package com.samsam55.trip.global.exception;
 
-import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.auth.service.ParticipantSessionResolver;
 import com.samsam55.trip.global.exception.support.GlobalExceptionTestController;
 import org.junit.jupiter.api.DisplayName;
@@ -25,10 +24,7 @@ class GlobalExceptionHandlerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    // ArgumentResolver들은 @WebMvcTest 슬라이스에 포함되지만, 의존 서비스는 슬라이스 밖이라 목으로 채워준다.
-    @MockitoBean
-    private AuthService authService;
-
+    // ParticipantArgumentResolver는 @WebMvcTest 슬라이스에 포함되지만, 의존 서비스는 슬라이스 밖이라 목으로 채워준다.
     @MockitoBean
     private ParticipantSessionResolver participantSessionResolver;
 

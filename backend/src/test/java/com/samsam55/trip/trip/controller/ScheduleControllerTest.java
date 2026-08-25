@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.samsam55.trip.auth.argumentresolver.CurrentActorArgumentResolver;
 import com.samsam55.trip.auth.dto.ActorPrincipal;
 import com.samsam55.trip.auth.exception.AuthErrorType;
 import com.samsam55.trip.auth.service.AuthService;
@@ -42,9 +41,8 @@ class ScheduleControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new ScheduleController(scheduleService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new ScheduleController(scheduleService, authService))
                 .setControllerAdvice(new GlobalExceptionHandler())
-                .setCustomArgumentResolvers(new CurrentActorArgumentResolver(authService))
                 .build();
     }
 

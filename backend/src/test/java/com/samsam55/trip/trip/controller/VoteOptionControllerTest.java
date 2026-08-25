@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.samsam55.trip.auth.argumentresolver.CurrentActorArgumentResolver;
 import com.samsam55.trip.auth.dto.ActorPrincipal;
 import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.global.exception.ApplicationException;
@@ -41,9 +40,8 @@ class VoteOptionControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new VoteOptionController(voteOptionService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new VoteOptionController(voteOptionService, authService))
                 .setControllerAdvice(new GlobalExceptionHandler())
-                .setCustomArgumentResolvers(new CurrentActorArgumentResolver(authService))
                 .build();
     }
 
