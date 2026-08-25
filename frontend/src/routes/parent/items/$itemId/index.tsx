@@ -1,6 +1,7 @@
 import { Users } from 'lucide-react'
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
 
+import { useFindVoteResult } from '@/api/generated/vote-result-controller/vote-result-controller'
 import { OptionCard } from '@/components/trip/option-card'
 import { VoteStatusRow } from '@/components/trip/vote-status-row'
 import { AppBar } from '@/components/ui/app-bar'
@@ -11,42 +12,39 @@ export const Route = createFileRoute('/parent/items/$itemId/')({
   component: ParentItemDetailPage,
 })
 
-type MockOption = {
-  id: string
-  title: string
-  voteCount: number
-  voters: string[]
-}
-
-// TODO(일정 항목 상세 조회 담당자): 이 화면 전체(상태·선택지·득표수)가
-// 일정 항목 상세 조회 API에 의존한다. GET 엔드포인트가 생기면 mock을 걷어내고
-// 실제 데이터로 교체한다. "투표하러 가기" 버튼 자체는 단순 이동이라 API 연동이
-// 필요 없다 (실제 제출은 /vote 화면의 PUT /api/itinerary-items/my-votes가 담당).
-const MOCK_ITEM_STATUS: Record<string, 'voting' | 'confirmed'> = {
-  '102': 'confirmed',
-}
-
-const MOCK_OPTIONS: MockOption[] = [
-  {
-    id: 'opt-1',
-    title: '스시 오마카세 긴자점',
-    voteCount: 2,
-    voters: ['엄', '첫'],
-  },
-  { id: 'opt-2', title: '라멘 이치란 신주쿠점', voteCount: 0, voters: [] },
-]
-
-const VOTERS = [
-  { initial: '엄', voted: true },
-  { initial: '아', voted: false },
-  { initial: '첫', voted: true },
-]
-
 function ParentItemDetailPage() {
   const navigate = useNavigate()
   const { itemId } = useParams({ from: '/parent/items/$itemId/' })
-  const status = MOCK_ITEM_STATUS[itemId] ?? 'voting'
-  const winner = [...MOCK_OPTIONS].sort((a, b) => b.voteCount - a.voteCount)[0]
+  const itemIdNumber = Number(itemId)
+
+  const { data: response, isLoading } = useFindVoteResult(itemIdNumber)
+  const result = response?.data
+
+  if (isLoading || !result) {
+    return (
+      <MobileScreen>
+        <AppBar
+          type="back"
+          title="일정 상세"
+          onBack={() => navigate({ to: '/parent' })}
+        />
+      </MobileScreen>
+    )
+  }
+
+  const isConfirmed = result.status === 'CONFIRMED'
+  const confirmedOption = result.options?.find((option) => option.isConfirmed)
+
+  const voters = [
+    ...(result.participants ?? []).map((p) => ({
+      initial: p.roleName?.charAt(0) ?? '?',
+      voted: true,
+    })),
+    ...(result.pendingParticipants ?? []).map((p) => ({
+      initial: p.roleName?.charAt(0) ?? '?',
+      voted: false,
+    })),
+  ]
 
   return (
     <MobileScreen>
@@ -57,44 +55,51 @@ function ParentItemDetailPage() {
       />
 
       <div className="flex flex-col gap-2 px-5 pt-4">
-        <p className="text-[24px] font-bold text-foreground">점심 식사</p>
+        <p className="text-[24px] font-bold text-foreground">{result.name}</p>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Users className="size-4 text-primary-deep" />
             <span className="text-card-title text-primary-deep">투표</span>
           </div>
-          {status === 'voting' ? (
-            <span className="rounded-chip bg-primary-tint px-2.5 py-1 text-[12px] leading-none font-medium text-primary-deep">
-              투표 중
-            </span>
-          ) : (
+          {isConfirmed ? (
             <span className="rounded-chip bg-[#e6f6e9] px-2.5 py-1 text-[12px] leading-none font-medium text-[#37b24d]">
               확정
             </span>
+          ) : (
+            <span className="rounded-chip bg-primary-tint px-2.5 py-1 text-[12px] leading-none font-medium text-primary-deep">
+              투표 중
+            </span>
           )}
         </div>
-        <p className="text-caption text-muted-foreground">1일차 · 식사</p>
+        <p className="text-caption text-muted-foreground">
+          {result.dayNumber}일차 · {result.category}
+        </p>
       </div>
 
-      {status === 'voting' ? (
+      {!isConfirmed ? (
         <div className="flex flex-col gap-5 px-5 pt-4">
           <VoteStatusRow
-            votedCount={VOTERS.filter((v) => v.voted).length}
-            totalCount={VOTERS.length}
-            voters={VOTERS}
+            votedCount={result.votedCount ?? 0}
+            totalCount={result.totalParticipants ?? 0}
+            voters={voters}
           />
 
           <p className="text-subtitle text-foreground">
-            선택지 {MOCK_OPTIONS.length}개
+            선택지 {result.optionCount ?? 0}개
           </p>
           <div className="flex flex-col gap-3">
-            {MOCK_OPTIONS.map((option) => (
+            {result.options?.map((option) => (
               <OptionCard
-                key={option.id}
-                title={option.title}
+                key={option.optionId}
+                title={option.name ?? ''}
                 voteCount={option.voteCount}
-                voters={option.voters}
-                leading={option.voteCount > 0}
+                voters={option.voters?.map((v) => v.roleName?.charAt(0) ?? '?')}
+                leading={(option.voteCount ?? 0) > 0}
+                imageSrc={
+                  option.hasImage
+                    ? `/api/vote-options/${option.optionId}/image`
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -111,55 +116,67 @@ function ParentItemDetailPage() {
       ) : (
         <div className="flex flex-col gap-4 px-5 pt-4">
           <div className="flex flex-col overflow-hidden rounded-[18px] border border-border">
-            <div className="h-[233px] w-full bg-muted" />
+            {confirmedOption?.hasImage ? (
+              <img
+                src={`/api/vote-options/${confirmedOption.optionId}/image`}
+                alt=""
+                className="h-[233px] w-full object-cover"
+              />
+            ) : (
+              <div className="h-[233px] w-full bg-muted" />
+            )}
             <div className="flex flex-col gap-2.5 p-4">
-              <p className="text-title-2 text-foreground">{winner.title}</p>
-              <p className="text-caption text-muted-foreground">
-                신선한 제철 재료로 만든 프리미엄 스시 코스
+              <p className="text-title-2 text-foreground">
+                {confirmedOption?.name}
               </p>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center -space-x-1.5">
-                  {winner.voters.map((initial, index) => (
-                    <span
-                      key={index}
-                      className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-medium text-foreground"
-                    >
-                      {initial}
-                    </span>
-                  ))}
+              <p className="text-caption text-muted-foreground">
+                {confirmedOption?.description}
+              </p>
+              {confirmedOption?.voters && confirmedOption.voters.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center -space-x-1.5">
+                    {confirmedOption.voters.map((voter) => (
+                      <span
+                        key={voter.participantId}
+                        className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-medium text-foreground"
+                      >
+                        {voter.roleName?.charAt(0) ?? '?'}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[14px] font-medium text-primary-deep">
+                    {confirmedOption.voters.length}명이 골랐어요
+                  </p>
                 </div>
-                <p className="text-[14px] font-medium text-primary-deep">
-                  엄마, 첫째가 골랐어요
-                </p>
-              </div>
+              )}
             </div>
           </div>
-
           <p className="text-subtitle text-foreground">최종 투표 결과</p>
           <div className="flex flex-col gap-2">
-            {MOCK_OPTIONS.map((option) => (
+            {result.options?.map((option) => (
               <div
-                key={option.id}
+                key={option.optionId}
                 className={
-                  option.id === winner.id
+                  option.isConfirmed
                     ? 'flex h-[50px] items-center justify-between rounded-thumb border-2 border-primary-deep bg-primary-tint px-3.5'
                     : 'flex h-[50px] items-center justify-between rounded-thumb bg-muted px-3.5'
                 }
               >
                 <p
                   className={
-                    option.id === winner.id
+                    option.isConfirmed
                       ? 'text-[14px] font-medium text-foreground'
                       : 'text-[14px] text-muted-foreground'
                   }
                 >
-                  {option.title}
+                  {option.name}
                 </p>
                 <p
                   className={
-                    option.id === winner.id
-                      ? 'text-[14px] font-bold text-primary-deep'
-                      : 'text-[14px] font-bold text-muted-foreground'
+                    'text-[14px] font-bold ' +
+                    (option.isConfirmed
+                      ? 'text-primary-deep'
+                      : 'text-muted-foreground')
                   }
                 >
                   {option.voteCount}표
