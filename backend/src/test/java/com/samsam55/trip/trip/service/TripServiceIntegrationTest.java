@@ -87,32 +87,41 @@ class TripServiceIntegrationTest {
     }
 
     @Test
-    @DisplayName("여행 목록을 시작일이 빠른 순서로 조회한다")
-    void 여행_목록을_시작일이_빠른_순서로_조회한다() {
+    @DisplayName("진행 중인 여행 중 가장 임박한 여행을 먼저 조회한다")
+    void 진행_중인_여행_중_가장_임박한_여행을_먼저_조회한다() {
+        LocalDate today = LocalDate.now();
         User host = userRepository.saveAndFlush(new User("list-host", "hashed-password"));
         tripRepository.saveAndFlush(new Trip(
                 host,
-                "늦은 여행",
-                LocalDateTime.of(2026, 9, 12, 0, 0),
-                LocalDateTime.of(2026, 9, 14, 0, 0),
+                "지난 여행",
+                today.minusDays(10).atStartOfDay(),
+                today.minusDays(7).atStartOfDay(),
                 3,
-                "late-invite-code"
+                "ended-invite-code"
         ));
         tripRepository.saveAndFlush(new Trip(
                 host,
-                "임박한 여행",
-                LocalDateTime.of(2026, 8, 24, 0, 0),
-                LocalDateTime.of(2026, 8, 27, 0, 0),
+                "다른 진행 중 여행",
+                today.plusDays(30).atStartOfDay(),
+                today.plusDays(33).atStartOfDay(),
                 4,
-                "early-invite-code"
+                "later-invite-code"
+        ));
+        tripRepository.saveAndFlush(new Trip(
+                host,
+                "가장 임박한 여행",
+                today.plusDays(18).atStartOfDay(),
+                today.plusDays(21).atStartOfDay(),
+                4,
+                "nearest-invite-code"
         ));
 
         TripListResponseDto response = tripService.findTrips(host.getId());
 
         assertThat(response.items()).extracting("title")
-                .containsExactly("임박한 여행", "늦은 여행");
+                .containsExactly("가장 임박한 여행", "다른 진행 중 여행", "지난 여행");
         assertThat(response.items()).extracting("startDate")
-                .containsExactly(LocalDate.of(2026, 8, 24), LocalDate.of(2026, 9, 12));
+                .containsExactly(today.plusDays(18), today.plusDays(30), today.minusDays(10));
     }
 
     @Test
