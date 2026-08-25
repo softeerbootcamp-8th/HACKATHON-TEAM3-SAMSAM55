@@ -24,14 +24,18 @@ function TripMoreSheet({
         <p className="text-caption text-muted-foreground">{tripPeriod}</p>
       </div>
       <div className="flex flex-col">
-        <button
-          type="button"
-          onClick={onEditTrip}
-          className="flex h-14 w-full items-center text-body-strong text-foreground"
-        >
-          여행 정보 수정
-        </button>
-        <div className="h-px w-full bg-border" />
+        {onEditTrip && (
+          <>
+            <button
+              type="button"
+              onClick={onEditTrip}
+              className="flex h-14 w-full items-center text-body-strong text-foreground"
+            >
+              여행 정보 수정
+            </button>
+            <div className="h-px w-full bg-border" />
+          </>
+        )}
         <button
           type="button"
           onClick={onDeleteTrip}
