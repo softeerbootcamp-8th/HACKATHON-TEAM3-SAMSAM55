@@ -6,6 +6,7 @@ import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
+import com.samsam55.trip.trip.dto.VoteStatusResponseDto;
 import com.samsam55.trip.trip.service.ItineraryItemService;
 import com.samsam55.trip.trip.service.VoteOptionService;
 import jakarta.validation.Valid;
@@ -62,6 +63,21 @@ public class ItineraryItemController {
             @PathVariable Long itemId
     ) {
         return CommonResponse.success(itineraryItemService.getItineraryItem(loginUserId, itemId));
+    }
+
+    /**
+     * 일정 항목의 투표 진행 현황을 조회한다. 여행 방장만 호출할 수 있다.
+     *
+     * @param loginUserId 로그인한 회원의 식별자
+     * @param itemId 조회할 일정 항목의 식별자
+     * @return 참여자별 투표 여부와 선택지별 득표 현황이 담긴 200 응답
+     */
+    @GetMapping("/api/itinerary-items/{itemId}/vote-status")
+    public CommonResponse<VoteStatusResponseDto> getVoteStatus(
+            @Login Long loginUserId,
+            @PathVariable Long itemId
+    ) {
+        return CommonResponse.success(itineraryItemService.getVoteStatus(loginUserId, itemId));
     }
 
     /**

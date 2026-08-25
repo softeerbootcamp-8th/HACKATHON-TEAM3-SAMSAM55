@@ -16,6 +16,9 @@ import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
+import com.samsam55.trip.trip.dto.VoteStatusOptionResponseDto;
+import com.samsam55.trip.trip.dto.VoteStatusParticipantResponseDto;
+import com.samsam55.trip.trip.dto.VoteStatusResponseDto;
 import com.samsam55.trip.trip.exception.TripErrorType;
 import com.samsam55.trip.trip.service.ItineraryItemService;
 import com.samsam55.trip.trip.service.VoteOptionService;
@@ -133,6 +136,25 @@ class ItineraryItemControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(100))
                 .andExpect(jsonPath("$.error").isEmpty());
+    }
+
+    @Test
+    @DisplayName("투표 현황 조회는 200과 공통 응답 형식으로 반환한다")
+    void 투표_현황_조회는_200과_공통_응답_형식으로_반환한다() throws Exception {
+        when(itineraryItemService.getVoteStatus(anyLong(), anyLong()))
+                .thenReturn(new VoteStatusResponseDto(
+                        1, 2,
+                        List.of(new VoteStatusParticipantResponseDto(10L, "엄마", true),
+                                new VoteStatusParticipantResponseDto(11L, "아빠", false)),
+                        List.of(new VoteStatusOptionResponseDto(1L, 1, List.of()))));
+
+        mockMvc.perform(get("/api/itinerary-items/100/vote-status")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.votedCount").value(1))
+                .andExpect(jsonPath("$.data.totalParticipants").value(2))
+                .andExpect(jsonPath("$.data.options[0].voteCount").value(1));
     }
 
     @Test
