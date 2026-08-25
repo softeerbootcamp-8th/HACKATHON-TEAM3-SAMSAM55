@@ -103,7 +103,7 @@ class TripServiceIntegrationTest {
         TripDay secondDay = tripDayRepository.saveAndFlush(
                 new TripDay(trip, 2, LocalDate.of(2026, 9, 2))
         );
-        itineraryItemRepository.saveAndFlush(new ItineraryItem(
+        ItineraryItem secondDayItem = itineraryItemRepository.saveAndFlush(new ItineraryItem(
                 secondDay,
                 "숙소 체크인",
                 "숙소",
@@ -112,7 +112,7 @@ class TripServiceIntegrationTest {
                 1,
                 null
         ));
-        itineraryItemRepository.saveAndFlush(new ItineraryItem(
+        ItineraryItem firstDayItem = itineraryItemRepository.saveAndFlush(new ItineraryItem(
                 firstDay,
                 "점심 식사",
                 "식사",
@@ -124,14 +124,22 @@ class TripServiceIntegrationTest {
 
         TripDetailResponseDto response = tripService.findTrip(host.getId(), trip.getId());
 
+        assertThat(response.id()).isEqualTo(trip.getId());
+        assertThat(response.title()).isEqualTo("도쿄 가족여행");
+        assertThat(response.startDate()).isEqualTo(LocalDate.of(2026, 9, 1));
+        assertThat(response.endDate()).isEqualTo(LocalDate.of(2026, 9, 4));
+        assertThat(response.companionCount()).isEqualTo(2);
         assertThat(response.days()).hasSize(2);
         assertThat(response.days().get(0).dayNumber()).isEqualTo(1);
         assertThat(response.days().get(0).date()).isEqualTo(LocalDate.of(2026, 9, 1));
         assertThat(response.days().get(0).items()).extracting("name")
                 .containsExactly("점심 식사");
+        assertThat(response.days().get(0).items().getFirst().id()).isEqualTo(firstDayItem.getId());
         assertThat(response.days().get(0).items().getFirst().category()).isEqualTo("식사");
         assertThat(response.days().get(0).items().getFirst().status()).isEqualTo("VOTING");
+        assertThat(response.days().get(1).date()).isEqualTo(LocalDate.of(2026, 9, 2));
         assertThat(response.days().get(1).items()).extracting("name")
                 .containsExactly("숙소 체크인");
+        assertThat(response.days().get(1).items().getFirst().id()).isEqualTo(secondDayItem.getId());
     }
 }
