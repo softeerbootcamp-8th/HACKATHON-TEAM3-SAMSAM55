@@ -13,6 +13,7 @@ import { MobileScreen } from '@/components/layout/mobile-screen'
 import { StepIndicator } from '@/components/ui/step-indicator'
 import { TextInput } from '@/components/ui/text-input'
 import { getApiError } from '@/features/auth/auth'
+import { getMemberEmoji } from '@/lib/member-emoji'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/trips/new/members')({
@@ -32,18 +33,6 @@ const FAMILY_GROUPS = [
   },
   { label: '형제자매', members: ['첫째', '둘째', '셋째'] },
 ]
-
-const MEMBER_EMOJI: Record<string, string> = {
-  엄마: '👩🏻',
-  아빠: '👨🏻',
-  친할머니: '👵🏻',
-  친할아버지: '👴🏻',
-  외할머니: '👵🏻',
-  외할아버지: '👴🏻',
-  첫째: '🧑🏻',
-  둘째: '🧒🏻',
-  셋째: '👶🏻',
-}
 
 function NewTripMembersPage() {
   const navigate = useNavigate()
@@ -179,7 +168,7 @@ function NewTripMembersPage() {
                           : 'bg-muted text-foreground',
                       )}
                     >
-                      {MEMBER_EMOJI[member]} {member}
+                      {getMemberEmoji(member)} {member}
                     </button>
                   )
                 })}
