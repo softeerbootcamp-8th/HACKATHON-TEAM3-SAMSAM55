@@ -5,6 +5,7 @@ import { useFindSchedule } from '@/api/generated/schedule-controller/schedule-co
 import { Button } from '@/components/ui/button'
 import { ItemCard } from '@/components/trip/item-card'
 import { MobileScreen } from '@/components/layout/mobile-screen'
+import { getApiError } from '@/features/auth/auth'
 import { formatDateRange } from '@/lib/date'
 import { toItemStatus } from '@/lib/itinerary-item-status'
 import { cn } from '@/lib/utils'
@@ -18,20 +19,37 @@ function ParentHomePage() {
   const { tripId } = Route.useRouteContext()
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null)
 
-  const { data: response, isLoading } = useFindSchedule(tripId ?? 0, {
-    query: { enabled: tripId !== undefined },
+  const scheduleQuery = useFindSchedule(tripId ?? 0, {
+    query: { enabled: tripId !== undefined, retry: false },
   })
-  const schedule = response?.data
+  const schedule = scheduleQuery.data?.success
+    ? scheduleQuery.data.data
+    : undefined
   const days = schedule?.days ?? []
   const day = days.find((d) => d.id === selectedDayId) ?? days[0]
   const items = day?.items ?? []
-  const pendingCount = items.filter((item) => item.status === 'VOTING').length
+  const votingCount = schedule?.votingCount ?? 0
+  const firstVotingItem = days
+    .flatMap((scheduleDay) => scheduleDay.items ?? [])
+    .find((item) => item.status === 'VOTING')
 
-  if (isLoading || !schedule) {
+  if (scheduleQuery.isLoading) {
     return (
       <MobileScreen>
         <p className="px-5 pt-4 text-[14px] text-muted-foreground">
           불러오는 중...
+        </p>
+      </MobileScreen>
+    )
+  }
+
+  if (scheduleQuery.isError || !schedule) {
+    return (
+      <MobileScreen>
+        <p className="px-5 pt-4 text-[14px] text-destructive">
+          {getApiError(scheduleQuery.error)?.message ??
+            scheduleQuery.data?.error?.message ??
+            '일정을 불러오지 못했습니다.'}
         </p>
       </MobileScreen>
     )
@@ -43,9 +61,8 @@ function ParentHomePage() {
         <div className="border-t border-border px-5 pt-3 pb-7">
           <Button
             size="cta"
-            disabled={pendingCount === 0}
+            disabled={votingCount === 0 || firstVotingItem?.id === undefined}
             onClick={() => {
-              const firstVotingItem = items.find((i) => i.status === 'VOTING')
               if (!firstVotingItem?.id) return
               navigate({
                 to: '/parent/items/$itemId/vote',
@@ -53,8 +70,8 @@ function ParentHomePage() {
               })
             }}
           >
-            {pendingCount > 0
-              ? `투표 시작하기 (남은 ${pendingCount}개)`
+            {votingCount > 0
+              ? `투표 시작하기 (남은 ${votingCount}개)`
               : '투표할 일정 없음'}
           </Button>
         </div>
@@ -84,9 +101,6 @@ function ParentHomePage() {
               )}
             >
               {d.dayNumber}일차
-              {d.items?.some((item) => item.status === 'VOTING') && (
-                <span className="absolute top-1 right-2 size-1.5 rounded-full bg-status-voting" />
-              )}
             </button>
           ))}
         </div>
@@ -99,7 +113,7 @@ function ParentHomePage() {
           {items.map((item) => {
             const status = toItemStatus(item.status)
             const meta =
-              item.status === 'VOTING' || item.status === 'VOTED'
+              item.status === 'VOTING'
                 ? `${item.votedCount ?? 0}/${item.totalParticipants ?? 0}표 완료`
                 : undefined
 
