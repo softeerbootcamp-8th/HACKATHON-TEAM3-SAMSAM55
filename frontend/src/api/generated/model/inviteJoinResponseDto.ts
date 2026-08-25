@@ -5,7 +5,8 @@
  * OpenAPI spec version: v0
  */
 
-export interface AuthSignupResponseDto {
-  id?: number;
-  loginId?: string;
+export interface InviteJoinResponseDto {
+  participantId?: number;
+  tripId?: number;
+  roleName?: string;
 }

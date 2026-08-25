@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
+import { useStartVote } from '@/api/generated/vote-controller/vote-controller'
 import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -10,14 +11,17 @@ import { EditRow } from '@/components/trip/edit-row'
 import { ItemCard } from '@/components/trip/item-card'
 import { TripMoreSheet } from '@/components/trip/trip-more-sheet'
 import { MobileScreen } from '@/components/layout/mobile-screen'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { toItemStatus } from '@/lib/itinerary-item-status'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/trips/$tripId/')({
   component: TripHomePage,
 })
 
+// TODO: 일정 목록 조회 API가 붙으면 이 mock을 걷어내고 실제 데이터로 교체한다 (별도 이슈).
 type MockItem = {
-  id: string
+  id: number
   title: string
   category: string
   status: 'draft' | 'voting' | 'confirmed' | 'voteDone'
@@ -31,32 +35,32 @@ type MockDay = {
   items: MockItem[]
 }
 
-const MOCK_DAYS: MockDay[] = [
+const INITIAL_DAYS: MockDay[] = [
   {
     id: 1,
     label: '1일차',
     items: [
       {
-        id: 'item-lunch',
+        id: 101,
         title: '점심 식사',
         category: '식사',
         status: 'voting',
         voteMeta: '2/3표 완료',
       },
       {
-        id: 'item-checkin',
+        id: 102,
         title: '숙소 체크인',
         category: '숙소',
         status: 'draft',
       },
       {
-        id: 'item-move',
+        id: 103,
         title: '관광지 이동',
         category: '이동',
         status: 'voteDone',
       },
       {
-        id: 'item-1',
+        id: 104,
         title: '1일차 관광지',
         category: '관광',
         status: 'confirmed',
@@ -72,32 +76,77 @@ function TripHomePage() {
   const { tripId } = Route.useParams()
   const navigate = useNavigate()
 
-  const [selectedDay, setSelectedDay] = useState(MOCK_DAYS[0].id)
+  const [days, setDays] = useState(INITIAL_DAYS)
+  const [selectedDay, setSelectedDay] = useState(INITIAL_DAYS[0].id)
   const [isEditing, setIsEditing] = useState(false)
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false)
-  const [deleteItemId, setDeleteItemId] = useState<string | null>(null)
+  const [deleteItemId, setDeleteItemId] = useState<number | null>(null)
   const [isDeleteTripOpen, setIsDeleteTripOpen] = useState(false)
 
-  const day = MOCK_DAYS.find((d) => d.id === selectedDay) ?? MOCK_DAYS[0]
-  const draftCount = MOCK_DAYS.flatMap((d) => d.items).filter(
-    (item) => item.status === 'draft',
-  ).length
+  const startVoteMutation = useStartVote({
+    mutation: {
+      onSuccess: (response) => {
+        const updatedItems = response.data?.items ?? []
+        setDays((prev) =>
+          prev.map((d) => ({
+            ...d,
+            items: d.items.map((item) => {
+              const updated = updatedItems.find((u) => u.itemId === item.id)
+              const nextStatus = toItemStatus(updated?.status)
+              return nextStatus ? { ...item, status: nextStatus } : item
+            }),
+          })),
+        )
+      },
+    },
+  })
+
+  const day = days.find((d) => d.id === selectedDay) ?? days[0]
+  const draftItems = days
+    .flatMap((d) => d.items)
+    .filter((item) => item.status === 'draft')
+  const draftCount = draftItems.length
   const hasItems = day.items.length > 0
+
+  const handleStartVote = () => {
+    if (draftItems.length === 0) {
+      return
+    }
+    startVoteMutation.mutate({
+      data: { itemIds: draftItems.map((item) => item.id) },
+    })
+  }
+
+  const draftSummary = days
+    .filter((d) => d.items.some((item) => item.status === 'draft'))
+    .map(
+      (d) =>
+        `${d.label} ${d.items.filter((item) => item.status === 'draft').length}개`,
+    )
+    .join(' · ')
 
   return (
     <MobileScreen
       bottomBar={
         !isEditing && (
           <div className="flex flex-col gap-2 border-t border-border px-5 pt-3 pb-7">
-            <Button size="cta" disabled={draftCount === 0}>
-              {draftCount > 0
-                ? `준비 중인 일정 투표 올리기 (${draftCount}개)`
-                : '투표 올리기'}
+            <Button
+              size="cta"
+              disabled={draftCount === 0 || startVoteMutation.isPending}
+              onClick={handleStartVote}
+            >
+              {startVoteMutation.isPending
+                ? '투표 올리는 중...'
+                : draftCount > 0
+                  ? `준비 중인 일정 투표 올리기 (${draftCount}개)`
+                  : '투표 올리기'}
             </Button>
             <p className="text-center text-caption-sm text-muted-foreground">
-              {draftCount > 0
-                ? '1일차 1개 · 3일차 4개'
-                : '일정을 추가하면 부모님께 보낼 수 있어요'}
+              {startVoteMutation.isError
+                ? getApiErrorMessage(startVoteMutation.error)
+                : draftCount > 0
+                  ? draftSummary
+                  : '일정을 추가하면 부모님께 보낼 수 있어요'}
             </p>
           </div>
         )
@@ -112,7 +161,7 @@ function TripHomePage() {
         <p className="text-display text-foreground">도쿄 가족여행</p>
 
         <div className="mt-5 flex gap-2 overflow-x-auto">
-          {MOCK_DAYS.map((d) => (
+          {days.map((d) => (
             <DayTab
               key={d.id}
               label={d.label}
@@ -173,7 +222,7 @@ function TripHomePage() {
                   onClick={() =>
                     navigate({
                       to: '/trips/$tripId/items/$itemId',
-                      params: { tripId, itemId: item.id },
+                      params: { tripId, itemId: String(item.id) },
                     })
                   }
                 />

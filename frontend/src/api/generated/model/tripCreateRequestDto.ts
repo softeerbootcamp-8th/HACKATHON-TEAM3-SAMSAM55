@@ -5,16 +5,17 @@
  * OpenAPI spec version: v0
  */
 
-export interface AuthSignupRequestDto {
+export interface TripCreateRequestDto {
   /**
      * @minLength 0
      * @maxLength 100
      */
-  loginId: string;
+  title: string;
+  startDate: string;
+  endDate: string;
   /**
-     * @minLength 0
-     * @maxLength 72
-     * @pattern ^[\x21-\x7E]+$
+     * @items.minLength 0
+     * @items.maxLength 50
      */
-  password: string;
+  companions: string[];
 }

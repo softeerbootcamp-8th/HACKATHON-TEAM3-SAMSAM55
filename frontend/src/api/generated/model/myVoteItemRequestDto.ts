@@ -5,7 +5,7 @@
  * OpenAPI spec version: v0
  */
 
-export interface AuthSignupResponseDto {
-  id?: number;
-  loginId?: string;
+export interface MyVoteItemRequestDto {
+  itemId: number;
+  voteOptionId: number;
 }

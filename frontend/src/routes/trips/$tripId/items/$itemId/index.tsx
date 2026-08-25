@@ -274,6 +274,8 @@ function ItemDetailPage() {
 
       <div className="flex flex-col gap-2 border-t border-border px-5 pt-3 pb-7">
         {item.status === 'confirmed' ? (
+          // TODO(일정 확정/해제 담당자): DELETE /api/itinerary-items/{itemId}/confirmation
+          // 연동 필요 (백엔드 구현 완료, VoteController.unconfirm). 응답 {itemId, status:"VOTING"}.
           <Button variant="dangerOutline" size="cta">
             확정 해제하기
           </Button>
@@ -281,6 +283,12 @@ function ItemDetailPage() {
           <Button
             size="cta"
             onClick={() =>
+              // TODO: isVote === true인 "이 일정만 투표 올리기"는 아직 실제 API를 안 붙였다.
+              // 여행 홈 화면(trips/$tripId/index.tsx)의 useStartVote와 동일하게
+              // POST /api/itinerary-items/vote/start (itemIds: [Number(itemId)])로 연동하면 된다.
+              // isVote === false("~로 확정하기")는 담당자가 다름:
+              // TODO(일정 확정/해제 담당자): PUT /api/itinerary-items/{itemId}/confirmation
+              // (body: { voteOptionId }) 연동 필요 (백엔드 구현 완료, VoteController.confirm).
               navigate({
                 to: '/trips/$tripId/items/$itemId/edit',
                 params: { tripId, itemId },
