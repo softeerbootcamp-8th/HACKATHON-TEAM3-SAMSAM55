@@ -4,6 +4,8 @@ import com.samsam55.trip.auth.annotation.CurrentParticipant;
 import com.samsam55.trip.auth.annotation.Login;
 import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.global.common.CommonResponse;
+import com.samsam55.trip.trip.dto.ItineraryItemConfirmRequestDto;
+import com.samsam55.trip.trip.dto.ItineraryItemConfirmationResponseDto;
 import com.samsam55.trip.trip.dto.MyVoteBatchRequestDto;
 import com.samsam55.trip.trip.dto.MyVoteBatchResponseDto;
 import com.samsam55.trip.trip.dto.VoteStartRequestDto;
@@ -12,6 +14,7 @@ import com.samsam55.trip.trip.service.VoteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -55,5 +58,22 @@ public class VoteController {
             @Valid @RequestBody MyVoteBatchRequestDto request
     ) {
         return ResponseEntity.ok(CommonResponse.success(voteService.castVotes(principal, request.votes())));
+    }
+
+    /**
+     * 여행 방장이 선택지를 직접 골라 일정 항목을 확정한다.
+     *
+     * @param loginUserId 로그인한 회원의 식별자
+     * @param itemId 확정할 일정 항목의 식별자
+     * @param request 확정할 선택지 식별자
+     * @return 확정된 일정 항목의 상태가 담긴 200 응답
+     */
+    @PutMapping("/{itemId}/confirmation")
+    public ResponseEntity<CommonResponse<ItineraryItemConfirmationResponseDto>> confirm(
+            @Login Long loginUserId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody ItineraryItemConfirmRequestDto request
+    ) {
+        return ResponseEntity.ok(CommonResponse.success(voteService.confirm(loginUserId, itemId, request.voteOptionId())));
     }
 }

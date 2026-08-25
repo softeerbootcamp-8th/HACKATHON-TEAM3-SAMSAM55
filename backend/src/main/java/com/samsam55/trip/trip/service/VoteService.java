@@ -2,6 +2,7 @@ package com.samsam55.trip.trip.service;
 
 import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.global.exception.ApplicationException;
+import com.samsam55.trip.trip.dto.ItineraryItemConfirmationResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemStatusDto;
 import com.samsam55.trip.trip.dto.MyVoteBatchResponseDto;
 import com.samsam55.trip.trip.dto.MyVoteItemRequestDto;
@@ -141,5 +142,39 @@ public class VoteService {
                 .orElse(null);
 
         return new MyVoteBatchResponseDto(results, nextItemId);
+    }
+
+    /**
+     * 여행 방장이 선택지를 직접 골라 일정 항목을 확정한다. 최다 득표 선택지가 아니어도
+     * 방장이 임의로 고를 수 있고, 전원 투표가 끝나지 않은 VOTING 상태에서도 확정할 수 있다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param itemId 확정할 일정 항목의 식별자
+     * @param voteOptionId 확정할 선택지의 식별자
+     * @return 확정된 일정 항목의 상태
+     * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     * @throws ApplicationException 투표 중이거나 투표가 끝난 상태가 아닐 때(ITINERARY_ITEM_NOT_VOTABLE)
+     * @throws ApplicationException 옵션이 해당 일정 항목의 선택지가 아닐 때(VOTE_OPTION_NOT_FOUND)
+     */
+    @Transactional
+    public ItineraryItemConfirmationResponseDto confirm(Long loginUserId, Long itemId, Long voteOptionId) {
+        ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+
+        if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
+            throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+        }
+        if (itineraryItem.getStatus() != ItineraryItemStatus.VOTING
+                && itineraryItem.getStatus() != ItineraryItemStatus.VOTED) {
+            throw new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_VOTABLE);
+        }
+
+        VoteOption voteOption = voteOptionRepository.findByIdAndItineraryItemId(voteOptionId, itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.VOTE_OPTION_NOT_FOUND));
+
+        itineraryItem.confirm(voteOption);
+
+        return ItineraryItemConfirmationResponseDto.from(itineraryItem);
     }
 }
