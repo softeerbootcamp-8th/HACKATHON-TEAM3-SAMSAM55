@@ -6,19 +6,30 @@ import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionSummaryDto;
+import com.samsam55.trip.trip.dto.VoteResultParticipantResponseDto;
+import com.samsam55.trip.trip.dto.VoteStatusOptionResponseDto;
+import com.samsam55.trip.trip.dto.VoteStatusParticipantResponseDto;
+import com.samsam55.trip.trip.dto.VoteStatusResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
+import com.samsam55.trip.trip.entity.Participant;
+import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
+import com.samsam55.trip.trip.entity.Vote;
 import com.samsam55.trip.trip.entity.VoteOption;
 import com.samsam55.trip.trip.exception.TripErrorType;
 import com.samsam55.trip.trip.repository.ItineraryItemRepository;
+import com.samsam55.trip.trip.repository.ParticipantRepository;
 import com.samsam55.trip.trip.repository.TripDayRepository;
 import com.samsam55.trip.trip.repository.VoteOptionRepository;
+import com.samsam55.trip.trip.repository.VoteRepository;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,6 +46,8 @@ public class ItineraryItemService {
     private final ItineraryItemRepository itineraryItemRepository;
     private final VoteOptionRepository voteOptionRepository;
     private final VoteOptionDescriptionGenerator descriptionGenerator;
+    private final ParticipantRepository participantRepository;
+    private final VoteRepository voteRepository;
 
     /**
      * 일차에 새 일정 항목을 생성한다. 결정 방식이 VOTE이고 선택지가 있으면
@@ -121,6 +134,51 @@ public class ItineraryItemService {
                 .toList();
 
         return ItineraryItemDetailResponseDto.from(itineraryItem, voteOptions);
+    }
+
+    /**
+     * 일정 항목의 투표 진행 현황(참여자별 투표 여부, 선택지별 득표수)을 조회한다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param itemId 조회할 일정 항목의 식별자
+     * @return 참여자별 투표 여부와 선택지별 득표 현황
+     * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     */
+    @Transactional(readOnly = true)
+    public VoteStatusResponseDto getVoteStatus(Long loginUserId, Long itemId) {
+        ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+
+        Trip trip = itineraryItem.getTripDay().getTrip();
+        if (!trip.getHostUser().getId().equals(loginUserId)) {
+            throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+        }
+
+        List<Participant> participants = participantRepository.findAllByTripOrderById(trip);
+        List<Vote> votes = voteRepository.findAllByItineraryItemIdWithOptionAndParticipant(itemId);
+        Map<Long, Participant> votedParticipantsById = votes.stream()
+                .collect(Collectors.toMap(vote -> vote.getParticipant().getId(), Vote::getParticipant, (a, b) -> a));
+
+        List<VoteStatusParticipantResponseDto> participantStatuses = participants.stream()
+                .map(participant -> VoteStatusParticipantResponseDto.of(
+                        participant, votedParticipantsById.containsKey(participant.getId())))
+                .toList();
+
+        List<VoteOption> options = voteOptionRepository.findByItineraryItem(itineraryItem);
+        Map<Long, List<VoteResultParticipantResponseDto>> votersByOptionId = votes.stream()
+                .collect(Collectors.groupingBy(
+                        vote -> vote.getOption().getId(),
+                        Collectors.mapping(
+                                vote -> VoteResultParticipantResponseDto.from(vote.getParticipant()),
+                                Collectors.toList())));
+        List<VoteStatusOptionResponseDto> optionStatuses = options.stream()
+                .map(option -> VoteStatusOptionResponseDto.of(
+                        option, votersByOptionId.getOrDefault(option.getId(), List.of())))
+                .toList();
+
+        return new VoteStatusResponseDto(
+                votedParticipantsById.size(), participants.size(), participantStatuses, optionStatuses);
     }
 
     private boolean hasContent(MultipartFile file) {

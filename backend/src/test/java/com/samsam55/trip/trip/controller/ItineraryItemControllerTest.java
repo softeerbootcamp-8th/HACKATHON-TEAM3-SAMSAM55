@@ -16,6 +16,9 @@ import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
+import com.samsam55.trip.trip.dto.VoteStatusOptionResponseDto;
+import com.samsam55.trip.trip.dto.VoteStatusParticipantResponseDto;
+import com.samsam55.trip.trip.dto.VoteStatusResponseDto;
 import com.samsam55.trip.trip.exception.TripErrorType;
 import com.samsam55.trip.trip.service.ItineraryItemService;
 import com.samsam55.trip.trip.service.VoteOptionService;
@@ -47,15 +50,13 @@ class ItineraryItemControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new ItineraryItemController(itineraryItemService, voteOptionService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new ItineraryItemController(
+                        itineraryItemService, voteOptionService,
+                        Validation.buildDefaultValidatorFactory().getValidator()))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new LoginUserArgumentResolver())
                 .setValidator(new SpringValidatorAdapter(Validation.buildDefaultValidatorFactory().getValidator()))
                 .build();
-    }
-
-    private MockMultipartFile requestPart(String json) {
-        return new MockMultipartFile("request", "", "application/json", json.getBytes(StandardCharsets.UTF_8));
     }
 
     @Test
@@ -70,10 +71,10 @@ class ItineraryItemControllerTest {
                 "optionImages", "sushi.jpg", "image/jpeg", "image-bytes".getBytes(StandardCharsets.UTF_8));
 
         mockMvc.perform(multipart("/api/trip-days/12/itinerary-items")
-                        .file(requestPart("""
-                                {"name":"점심 메뉴","category":"식사","decisionType":"VOTE","options":["스시","라멘"]}
-                                """))
                         .file(image)
+                        .param("request", """
+                                {"name":"점심 메뉴","category":"식사","decisionType":"VOTE","options":["스시","라멘"]}
+                                """)
                         .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
@@ -86,9 +87,9 @@ class ItineraryItemControllerTest {
     @DisplayName("로그인하지 않은 요청은 401 공통 에러 응답으로 반환한다")
     void 로그인하지_않은_요청은_401_공통_에러_응답으로_반환한다() throws Exception {
         mockMvc.perform(multipart("/api/trip-days/12/itinerary-items")
-                        .file(requestPart("""
+                        .param("request", """
                                 {"name":"점심 메뉴","category":"식사","decisionType":"VOTE","options":[]}
-                                """)))
+                                """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false));
     }
@@ -97,9 +98,19 @@ class ItineraryItemControllerTest {
     @DisplayName("빈 이름으로 요청하면 400 공통 에러 응답으로 반환한다")
     void 빈_이름으로_요청하면_400_공통_에러_응답으로_반환한다() throws Exception {
         mockMvc.perform(multipart("/api/trip-days/12/itinerary-items")
-                        .file(requestPart("""
+                        .param("request", """
                                 {"name":"","category":"식사","decisionType":"VOTE","options":[]}
-                                """))
+                                """)
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"));
+    }
+
+    @Test
+    @DisplayName("요청 JSON이 올바르지 않으면 400 공통 에러 응답으로 반환한다")
+    void 요청_JSON이_올바르지_않으면_400_공통_에러_응답으로_반환한다() throws Exception {
+        mockMvc.perform(multipart("/api/trip-days/12/itinerary-items")
+                        .param("request", "{올바르지-않은-JSON}")
                         .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"));
@@ -112,9 +123,9 @@ class ItineraryItemControllerTest {
                 .thenThrow(new ApplicationException(TripErrorType.TRIP_DAY_NOT_FOUND));
 
         mockMvc.perform(multipart("/api/trip-days/12/itinerary-items")
-                        .file(requestPart("""
+                        .param("request", """
                                 {"name":"점심 메뉴","category":"식사","decisionType":"VOTE","options":[]}
-                                """))
+                                """)
                         .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("TRIP_DAY_NOT_FOUND"));
@@ -133,6 +144,25 @@ class ItineraryItemControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(100))
                 .andExpect(jsonPath("$.error").isEmpty());
+    }
+
+    @Test
+    @DisplayName("투표 현황 조회는 200과 공통 응답 형식으로 반환한다")
+    void 투표_현황_조회는_200과_공통_응답_형식으로_반환한다() throws Exception {
+        when(itineraryItemService.getVoteStatus(anyLong(), anyLong()))
+                .thenReturn(new VoteStatusResponseDto(
+                        1, 2,
+                        List.of(new VoteStatusParticipantResponseDto(10L, "엄마", true),
+                                new VoteStatusParticipantResponseDto(11L, "아빠", false)),
+                        List.of(new VoteStatusOptionResponseDto(1L, 1, List.of()))));
+
+        mockMvc.perform(get("/api/itinerary-items/100/vote-status")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.votedCount").value(1))
+                .andExpect(jsonPath("$.data.totalParticipants").value(2))
+                .andExpect(jsonPath("$.data.options[0].voteCount").value(1));
     }
 
     @Test

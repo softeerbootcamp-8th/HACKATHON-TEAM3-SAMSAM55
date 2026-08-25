@@ -14,16 +14,21 @@ import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
+import com.samsam55.trip.trip.dto.VoteStatusResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
+import com.samsam55.trip.trip.entity.Participant;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
+import com.samsam55.trip.trip.entity.Vote;
 import com.samsam55.trip.trip.entity.VoteOption;
 import com.samsam55.trip.trip.exception.TripErrorType;
 import com.samsam55.trip.trip.repository.ItineraryItemRepository;
+import com.samsam55.trip.trip.repository.ParticipantRepository;
 import com.samsam55.trip.trip.repository.TripDayRepository;
 import com.samsam55.trip.trip.repository.VoteOptionRepository;
+import com.samsam55.trip.trip.repository.VoteRepository;
 import com.samsam55.trip.global.exception.ApplicationException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -55,6 +60,12 @@ class ItineraryItemServiceTest {
     @Mock
     private VoteOptionDescriptionGenerator descriptionGenerator;
 
+    @Mock
+    private ParticipantRepository participantRepository;
+
+    @Mock
+    private VoteRepository voteRepository;
+
     private ItineraryItemService itineraryItemService;
 
     private User hostUser;
@@ -63,7 +74,8 @@ class ItineraryItemServiceTest {
     @BeforeEach
     void setUp() {
         itineraryItemService = new ItineraryItemService(
-                tripDayRepository, itineraryItemRepository, voteOptionRepository, descriptionGenerator);
+                tripDayRepository, itineraryItemRepository, voteOptionRepository, descriptionGenerator,
+                participantRepository, voteRepository);
 
         hostUser = new User("host", "hashed-password");
         ReflectionTestUtils.setField(hostUser, "id", 1L);
@@ -203,6 +215,64 @@ class ItineraryItemServiceTest {
         when(itineraryItemRepository.findById(100L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> itineraryItemService.getItineraryItem(1L, 100L))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("투표 현황을 조회하면 참여자별 투표 여부와 선택지별 득표수를 반환한다")
+    void 투표_현황을_조회하면_참여자별_투표_여부와_선택지별_득표수를_반환한다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        ReflectionTestUtils.setField(sushi, "id", 1L);
+        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null, null);
+        ReflectionTestUtils.setField(ramen, "id", 2L);
+
+        Participant mom = new Participant(tripDay.getTrip(), "엄마", LocalDateTime.now());
+        ReflectionTestUtils.setField(mom, "id", 10L);
+        Participant dad = new Participant(tripDay.getTrip(), "아빠", LocalDateTime.now());
+        ReflectionTestUtils.setField(dad, "id", 11L);
+        Vote vote = new Vote(sushi, itineraryItem, mom);
+
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+        when(participantRepository.findAllByTripOrderById(tripDay.getTrip())).thenReturn(List.of(mom, dad));
+        when(voteRepository.findAllByItineraryItemIdWithOptionAndParticipant(100L)).thenReturn(List.of(vote));
+        when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of(sushi, ramen));
+
+        VoteStatusResponseDto response = itineraryItemService.getVoteStatus(1L, 100L);
+
+        assertThat(response.votedCount()).isEqualTo(1);
+        assertThat(response.totalParticipants()).isEqualTo(2);
+        assertThat(response.participants()).hasSize(2);
+        assertThat(response.participants().get(0).voted()).isTrue();
+        assertThat(response.participants().get(1).voted()).isFalse();
+        assertThat(response.options()).hasSize(2);
+        assertThat(response.options().get(0).voteCount()).isEqualTo(1);
+        assertThat(response.options().get(0).voters()).extracting("roleName").containsExactly("엄마");
+        assertThat(response.options().get(1).voteCount()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("투표 현황 조회 시 방장이 아니면 예외가 발생한다")
+    void 투표_현황_조회_시_방장이_아니면_예외가_발생한다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+
+        assertThatThrownBy(() -> itineraryItemService.getVoteStatus(999L, 100L))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.NOT_TRIP_HOST));
+    }
+
+    @Test
+    @DisplayName("투표 현황 조회 시 항목을 찾을 수 없으면 예외가 발생한다")
+    void 투표_현황_조회_시_항목을_찾을_수_없으면_예외가_발생한다() {
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> itineraryItemService.getVoteStatus(1L, 100L))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
     }
