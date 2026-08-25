@@ -8,6 +8,7 @@ import com.samsam55.trip.auth.dto.AuthSignupResponseDto;
 import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.global.common.CommonResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -44,14 +45,16 @@ public class AuthController {
      *
      * @param request 로그인 아이디와 비밀번호
      * @param servletRequest 세션을 생성할 현재 HTTP 요청
+     * @param servletResponse 참여자 복구 쿠키를 제거할 현재 HTTP 응답
      * @return 로그인한 회원 정보가 담긴 200 응답
      */
     @PostMapping("/login")
     public CommonResponse<AuthLoginResponseDto> login(
             @Valid @RequestBody AuthLoginRequestDto request,
-            HttpServletRequest servletRequest
+            HttpServletRequest servletRequest,
+            HttpServletResponse servletResponse
     ) {
-        return CommonResponse.success(authService.login(request, servletRequest));
+        return CommonResponse.success(authService.login(request, servletRequest, servletResponse));
     }
 
     /**

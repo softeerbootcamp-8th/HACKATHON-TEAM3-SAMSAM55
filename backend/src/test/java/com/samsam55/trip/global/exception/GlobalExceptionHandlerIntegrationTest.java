@@ -24,8 +24,7 @@ class GlobalExceptionHandlerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    // ParticipantArgumentResolver(HandlerMethodArgumentResolver)는 @WebMvcTest 슬라이스에 포함되지만,
-    // 그 의존성인 ParticipantSessionResolver는 일반 @Component라 슬라이스 밖이라 목으로 채워준다.
+    // ParticipantArgumentResolver는 @WebMvcTest 슬라이스에 포함되지만, 의존 서비스는 슬라이스 밖이라 목으로 채워준다.
     @MockitoBean
     private ParticipantSessionResolver participantSessionResolver;
 

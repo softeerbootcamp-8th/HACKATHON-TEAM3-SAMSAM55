@@ -2,6 +2,7 @@ package com.samsam55.trip.trip.repository;
 
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -16,10 +17,22 @@ public interface ItineraryItemRepository extends JpaRepository<ItineraryItem, Lo
             select item
             from ItineraryItem item
             join fetch item.tripDay tripDay
+            left join fetch item.confirmedOption
             where tripDay.trip.id = :tripId
             order by tripDay.dayNumber asc, item.sortOrder asc
             """)
     List<ItineraryItem> findAllByTripIdOrderByDayAndSortOrder(@Param("tripId") Long tripId);
+
+    @Query("""
+            select item
+            from ItineraryItem item
+            join fetch item.tripDay tripDay
+            join fetch tripDay.trip trip
+            join fetch trip.hostUser
+            left join fetch item.confirmedOption
+            where item.id = :itemId
+            """)
+    Optional<ItineraryItem> findByIdWithTripAndConfirmedOption(@Param("itemId") Long itemId);
 
     @Modifying(flushAutomatically = true)
     @Query("""

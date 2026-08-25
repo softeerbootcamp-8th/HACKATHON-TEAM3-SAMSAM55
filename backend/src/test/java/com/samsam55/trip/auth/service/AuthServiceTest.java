@@ -1,5 +1,6 @@
 package com.samsam55.trip.auth.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -13,13 +14,17 @@ import com.samsam55.trip.auth.exception.AuthErrorType;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.member.entity.User;
 import com.samsam55.trip.member.repository.UserRepository;
+import com.samsam55.trip.trip.service.InviteService;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -35,6 +40,9 @@ class AuthServiceTest {
 
     @Mock
     private HttpServletRequest servletRequest;
+
+    @Mock
+    private HttpServletResponse servletResponse;
 
     @Mock
     private HttpSession session;
@@ -66,17 +74,32 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("로그인 성공 전에 세션 ID를 변경한다")
-    void 로그인_성공_전에_세션_ID를_변경한다() {
+    @DisplayName("로그인 성공 시 참여자 인증을 제거하고 HOST 세션을 설정한다")
+    void 로그인_성공_시_참여자_인증을_제거하고_HOST_세션을_설정한다() {
         User user = new User("login-user", "hashed-password");
         when(userRepository.findByLoginId("login-user")).thenReturn(Optional.of(user));
         when(passwordHasher.matches("password", "hashed-password")).thenReturn(true);
         when(servletRequest.getSession(true)).thenReturn(session);
 
-        authService.login(new AuthLoginRequestDto("login-user", "password"), servletRequest);
+        authService.login(
+                new AuthLoginRequestDto("login-user", "password"),
+                servletRequest,
+                servletResponse
+        );
 
         verify(servletRequest).changeSessionId();
+        verify(session).removeAttribute(InviteService.PARTICIPANT_ID_SESSION_ATTRIBUTE);
+        verify(session).removeAttribute(InviteService.TRIP_ID_SESSION_ATTRIBUTE);
         verify(session).setAttribute(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, user.getId());
+
+        ArgumentCaptor<Cookie> cookieCaptor = ArgumentCaptor.forClass(Cookie.class);
+        verify(servletResponse).addCookie(cookieCaptor.capture());
+        Cookie cookie = cookieCaptor.getValue();
+        assertThat(cookie.getName()).isEqualTo(InviteService.RECOVERY_COOKIE_NAME);
+        assertThat(cookie.getValue()).isEmpty();
+        assertThat(cookie.getPath()).isEqualTo("/");
+        assertThat(cookie.isHttpOnly()).isTrue();
+        assertThat(cookie.getMaxAge()).isZero();
     }
 
     @Test
@@ -111,7 +134,6 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.me(servletRequest))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
-                        org.assertj.core.api.Assertions.assertThat(exception.getErrorType())
-                                .isEqualTo(AuthErrorType.UNAUTHENTICATED));
+                        assertThat(exception.getErrorType()).isEqualTo(AuthErrorType.UNAUTHENTICATED));
     }
 }
