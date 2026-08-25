@@ -74,4 +74,9 @@ public class ItineraryItem extends BaseEntity {
     public void startVoting() {
         this.status = ItineraryItemStatus.VOTING;
     }
+
+    public void confirm(VoteOption confirmedOption) {
+        this.confirmedOption = confirmedOption;
+        this.status = ItineraryItemStatus.CONFIRMED;
+    }
 }

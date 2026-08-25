@@ -1,21 +1,33 @@
 package com.samsam55.trip.trip.service;
 
 import com.samsam55.trip.global.exception.ApplicationException;
+import com.samsam55.trip.global.exception.GlobalErrorType;
+import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
+import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionImageDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
+import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
 import com.samsam55.trip.trip.entity.VoteOption;
 import com.samsam55.trip.trip.exception.TripErrorType;
+import com.samsam55.trip.trip.repository.ItineraryItemRepository;
 import com.samsam55.trip.trip.repository.VoteOptionRepository;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
 public class VoteOptionService {
 
+    private static final int MAX_VOTE_OPTION_COUNT = 4;
+
     private final VoteOptionRepository voteOptionRepository;
+    private final ItineraryItemRepository itineraryItemRepository;
+    private final VoteOptionDescriptionGenerator descriptionGenerator;
 
     /**
      * 선택지에 등록된 이미지를 조회한다.
@@ -60,5 +72,69 @@ public class VoteOptionService {
         }
 
         voteOptionRepository.delete(voteOption);
+    }
+
+    /**
+     * 일정 항목에 투표 선택지를 추가한다. {@code decisionType}이 HOST_PICK이면
+     * 추가된 선택지가 즉시 확정되어 일정 항목 상태가 CONFIRMED로 전환된다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param itemId 선택지를 추가할 일정 항목의 식별자
+     * @param name 선택지 이름
+     * @param image 선택지 이미지(선택)
+     * @return 생성된 선택지
+     * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     * @throws ApplicationException 이름이 비어 있을 때(INVALID_INPUT_VALUE)
+     * @throws ApplicationException 투표가 이미 시작된 일정 항목일 때(VOTE_ALREADY_STARTED)
+     * @throws ApplicationException 선택지가 이미 4개일 때(VOTE_OPTION_COUNT_EXCEEDED)
+     */
+    @Transactional
+    public VoteOptionCreateResponseDto createVoteOption(
+            Long loginUserId, Long itemId, String name, MultipartFile image) {
+        if (name == null || name.isBlank()) {
+            throw new ApplicationException(GlobalErrorType.INVALID_INPUT_VALUE);
+        }
+
+        ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+
+        if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
+            throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+        }
+        if (itineraryItem.getStatus() != ItineraryItemStatus.PENDING) {
+            throw new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED);
+        }
+        if (voteOptionRepository.countByItineraryItem(itineraryItem) >= MAX_VOTE_OPTION_COUNT) {
+            throw new ApplicationException(TripErrorType.VOTE_OPTION_COUNT_EXCEEDED);
+        }
+
+        boolean hasImage = hasContent(image);
+        VoteOption voteOption = voteOptionRepository.save(new VoteOption(
+                itineraryItem,
+                name,
+                descriptionGenerator.generate(name),
+                VoteOptionDescriptionGenerator.SOURCE,
+                hasImage ? readBytes(image) : null,
+                hasImage ? image.getContentType() : null
+        ));
+
+        if (itineraryItem.getDecisionType() == ItineraryItemDecisionType.HOST_PICK) {
+            itineraryItem.confirm(voteOption);
+        }
+
+        return VoteOptionCreateResponseDto.from(voteOption);
+    }
+
+    private boolean hasContent(MultipartFile file) {
+        return file != null && !file.isEmpty();
+    }
+
+    private byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

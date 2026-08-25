@@ -5,9 +5,11 @@ import com.samsam55.trip.global.common.CommonResponse;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
+import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
 import com.samsam55.trip.trip.dto.VoteStartRequestDto;
 import com.samsam55.trip.trip.dto.VoteStartResponseDto;
 import com.samsam55.trip.trip.service.ItineraryItemService;
+import com.samsam55.trip.trip.service.VoteOptionService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ItineraryItemController {
 
     private final ItineraryItemService itineraryItemService;
+    private final VoteOptionService voteOptionService;
 
     /**
      * 일차에 새 일정 항목을 생성한다. 여행 방장만 호출할 수 있다.
@@ -76,5 +80,27 @@ public class ItineraryItemController {
             @Valid @RequestBody VoteStartRequestDto request
     ) {
         return CommonResponse.success(itineraryItemService.startVote(loginUserId, request.itemIds()));
+    }
+
+    /**
+     * 일정 항목에 투표 선택지를 추가한다. 여행 방장만 호출할 수 있다.
+     * decisionType이 HOST_PICK이면 추가된 선택지가 즉시 확정된다.
+     *
+     * @param loginUserId 로그인한 회원의 식별자
+     * @param itemId 선택지를 추가할 일정 항목의 식별자
+     * @param name 선택지 이름
+     * @param image 선택지 이미지(선택)
+     * @return 생성된 선택지가 담긴 201 응답
+     */
+    @PostMapping(value = "/api/itinerary-items/{itemId}/vote-options", consumes = "multipart/form-data")
+    public ResponseEntity<CommonResponse<VoteOptionCreateResponseDto>> createVoteOption(
+            @Login Long loginUserId,
+            @PathVariable Long itemId,
+            @RequestParam String name,
+            @RequestParam(value = "image", required = false) MultipartFile image
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(CommonResponse.success(
+                        voteOptionService.createVoteOption(loginUserId, itemId, name, image)));
     }
 }
