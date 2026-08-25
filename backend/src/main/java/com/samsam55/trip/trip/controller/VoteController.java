@@ -6,6 +6,7 @@ import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.global.common.CommonResponse;
 import com.samsam55.trip.trip.dto.ItineraryItemConfirmRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemConfirmationResponseDto;
+import com.samsam55.trip.trip.dto.ItineraryItemStatusDto;
 import com.samsam55.trip.trip.dto.MyVoteBatchRequestDto;
 import com.samsam55.trip.trip.dto.MyVoteBatchResponseDto;
 import com.samsam55.trip.trip.dto.VoteStartRequestDto;
@@ -14,6 +15,7 @@ import com.samsam55.trip.trip.service.VoteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -75,5 +77,20 @@ public class VoteController {
             @Valid @RequestBody ItineraryItemConfirmRequestDto request
     ) {
         return ResponseEntity.ok(CommonResponse.success(voteService.confirm(loginUserId, itemId, request.voteOptionId())));
+    }
+
+    /**
+     * 확정된 일정 항목을 다시 투표 상태로 되돌린다.
+     *
+     * @param loginUserId 로그인한 회원의 식별자
+     * @param itemId 확정을 해제할 일정 항목의 식별자
+     * @return 되돌려진 일정 항목의 상태가 담긴 200 응답
+     */
+    @DeleteMapping("/{itemId}/confirmation")
+    public ResponseEntity<CommonResponse<ItineraryItemStatusDto>> unconfirm(
+            @Login Long loginUserId,
+            @PathVariable Long itemId
+    ) {
+        return ResponseEntity.ok(CommonResponse.success(voteService.unconfirm(loginUserId, itemId)));
     }
 }

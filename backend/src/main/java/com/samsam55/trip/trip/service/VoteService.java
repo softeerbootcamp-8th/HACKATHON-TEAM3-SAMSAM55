@@ -177,4 +177,32 @@ public class VoteService {
 
         return ItineraryItemConfirmationResponseDto.from(itineraryItem);
     }
+
+    /**
+     * 확정된 일정 항목을 다시 투표 상태로 되돌린다. 기존에 쌓인 투표는 그대로 유지되고
+     * 확정된 선택지만 지워진다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param itemId 확정을 해제할 일정 항목의 식별자
+     * @return 되돌려진 일정 항목의 상태
+     * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     * @throws ApplicationException 확정된 일정이 아닐 때(ITINERARY_ITEM_NOT_CONFIRMED)
+     */
+    @Transactional
+    public ItineraryItemStatusDto unconfirm(Long loginUserId, Long itemId) {
+        ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+
+        if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
+            throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+        }
+        if (itineraryItem.getStatus() != ItineraryItemStatus.CONFIRMED) {
+            throw new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_CONFIRMED);
+        }
+
+        itineraryItem.unconfirm();
+
+        return ItineraryItemStatusDto.from(itineraryItem);
+    }
 }
