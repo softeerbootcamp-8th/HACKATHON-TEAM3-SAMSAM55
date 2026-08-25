@@ -57,6 +57,27 @@ Repository는 영속성 접근만 담당한다.
   - `code`는 enum 상수 이름을 그대로 쓴다 (예: `TRIP_NOT_FOUND`)
   - 응답 바디 형식은 [contracts.md](contracts.md)를 따른다
 
+## Javadoc
+
+Controller·Service의 public 메서드(주요 기능)에는 Javadoc을 작성한다.
+한 줄 요약 + `@param`/`@return`/`@throws`. `@throws`에는 예외 클래스와 함께
+어떤 상황에 어떤 `ErrorType`이 발생하는지 괄호로 적는다.
+
+```java
+/**
+ * 로그인한 판매자의 상품을 등록한다.
+ *
+ * @param userId  등록을 요청한 회원의 ID
+ * @param request 등록할 상품 정보
+ * @return 등록된 상품
+ * @throws ApplicationException 판매자 프로필이 없을 때(SELLER_PROFILE_NOT_FOUND)
+ */
+```
+
+- 여러 `ErrorType`이 발생할 수 있으면 `@throws` 줄을 여러 개 쓴다.
+- 단순 위임(getter, DTO 변환만 하는 메서드)이나 private 메서드는 생략해도 된다.
+- Repository, DTO, Entity에는 강제하지 않는다 — 필요할 때만 작성한다.
+
 ## Swagger
 
 - 도메인 API를 컨트롤러에 바로 쓰지 않고, `<도메인>Api` 인터페이스로 분리해서 작성한다

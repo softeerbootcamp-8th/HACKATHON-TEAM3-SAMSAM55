@@ -20,6 +20,12 @@
 
 .DS_Store
 
+### Env ###
+# 실제 값은 절대 커밋하지 않는다. .env.example 만 공유한다.
+.env
+**/.env
+!.env.example
+
 ### AI coding agents ###
 # 개인 전용 지침·설정은 커밋하지 않는다. 공용 규칙만 저장소에 둔다.
 CLAUDE.local.md

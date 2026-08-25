@@ -57,6 +57,11 @@ jobs:
             cat > .env <<'EOF'
             IMAGE_TAG='${{ github.base_ref }}'
             DOCKERHUB_USERNAME='${{ secrets.DOCKERHUB_USERNAME }}'
+            DB_HOST='${{ secrets.DB_HOST }}'
+            DB_PORT='${{ secrets.DB_PORT }}'
+            DB_NAME='${{ secrets.DB_NAME }}'
+            DB_USERNAME='${{ secrets.DB_USERNAME }}'
+            DB_PASSWORD='${{ secrets.DB_PASSWORD }}'
             EOF
             docker compose pull backend
             docker compose up -d
