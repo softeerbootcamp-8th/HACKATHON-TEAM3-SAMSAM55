@@ -83,6 +83,12 @@ function NewTripPeriodPage() {
       return
     }
 
+    if (value < startDate) {
+      setStartDate(value)
+      setEndDate(undefined)
+      return
+    }
+
     setEndDate(value)
   }
 
