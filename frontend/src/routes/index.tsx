@@ -1,13 +1,53 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
+import { useMe } from '@/api/generated/auth-controller/auth-controller'
 import { SamsamLogo } from '@/components/auth/samsam-logo'
 import { MobileScreen } from '@/components/layout/mobile-screen'
+import { getApiError } from '@/features/auth/auth'
 
 export const Route = createFileRoute('/')({
   component: SplashPage,
 })
 
 function SplashPage() {
+  const navigate = useNavigate()
+  const { data: response, error } = useMe({ query: { retry: false } })
+
+  useEffect(() => {
+    const navigateAfterDelay = (to: '/login' | '/parent' | '/trips') => {
+      const timeoutId = window.setTimeout(() => {
+        void navigate({ to, replace: true })
+      }, 1000)
+
+      return () => window.clearTimeout(timeoutId)
+    }
+
+    if (response?.success && response.data) {
+      if (response.data.actorType === 'HOST') {
+        return navigateAfterDelay('/trips')
+      } else if (response.data.actorType === 'PARTICIPANT') {
+        return navigateAfterDelay('/parent')
+      }
+      return
+    }
+
+    if (
+      response?.error?.code === 'UNAUTHENTICATED' ||
+      getApiError(error)?.code === 'UNAUTHENTICATED'
+    ) {
+      return navigateAfterDelay('/login')
+    }
+  }, [error, navigate, response])
+
+  const hasUnexpectedError =
+    (!!error && getApiError(error)?.code !== 'UNAUTHENTICATED') ||
+    (response?.success === false &&
+      response.error?.code !== 'UNAUTHENTICATED') ||
+    (response?.success === true &&
+      response.data?.actorType !== 'HOST' &&
+      response.data?.actorType !== 'PARTICIPANT')
+
   return (
     <MobileScreen className="items-center bg-primary">
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6">
@@ -34,7 +74,9 @@ function SplashPage() {
           <circle cx="34" cy="4" r="4" fill="white" fillOpacity="0.3" />
         </svg>
         <p className="text-center text-[13px] text-foreground/80">
-          잠시만 기다려주세요
+          {hasUnexpectedError
+            ? '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.'
+            : '잠시만 기다려주세요'}
         </p>
       </div>
     </MobileScreen>
