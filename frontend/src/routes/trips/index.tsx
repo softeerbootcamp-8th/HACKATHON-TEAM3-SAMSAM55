@@ -11,7 +11,11 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Fab } from '@/components/ui/fab'
 import { MobileScreen } from '@/components/layout/mobile-screen'
 import { getApiError } from '@/features/auth/auth'
-import { formatDDay, formatTripPeriod } from '@/features/trip/trip-format'
+import {
+  formatDDay,
+  formatTripPeriod,
+  isActiveTrip,
+} from '@/features/trip/trip-format'
 
 export const Route = createFileRoute('/trips/')({
   component: TripListPage,
@@ -39,7 +43,14 @@ function TripListPage() {
       trip.startDate !== undefined &&
       trip.endDate !== undefined,
   )
-  const [heroTrip, ...otherTrips] = trips
+  const today = new Date()
+  const activeTrips = trips.filter((trip) => isActiveTrip(trip.endDate, today))
+  const pastTrips = trips.filter((trip) => !isActiveTrip(trip.endDate, today))
+  const [heroTrip, ...otherActiveTrips] = activeTrips
+  const tripSections = [
+    { label: '다른 여행', items: otherActiveTrips },
+    { label: '지난 여행', items: pastTrips },
+  ].filter((section) => section.items.length > 0)
   const hasTrips = trips.length > 0
 
   const handleLogout = async () => {
@@ -91,7 +102,7 @@ function TripListPage() {
               getApiError(tripsQuery.error)?.message ??
               '여행 목록을 불러오지 못했습니다.'}
           </div>
-        ) : hasTrips && heroTrip ? (
+        ) : hasTrips ? (
           <>
             <div className="flex items-center gap-2">
               <div className="flex flex-1 flex-col gap-1">
@@ -99,7 +110,7 @@ function TripListPage() {
                   내 여행
                 </p>
                 <p className="text-[13px] leading-[1.5] text-muted-foreground">
-                  준비 중인 여행 {trips.length}개
+                  준비 중인 여행 {activeTrips.length}개
                 </p>
               </div>
               <Button
@@ -118,67 +129,71 @@ function TripListPage() {
               </p>
             )}
 
-            <div className="flex flex-col gap-3">
-              <p className="text-[14px] leading-[1.5] font-medium text-muted-foreground">
-                다가오는 여행
-              </p>
-              <div className="flex flex-col gap-4 rounded-btn border-2 border-primary-deep p-5">
-                <div className="flex w-fit items-start rounded-card bg-primary px-3 py-[5px]">
-                  <span className="text-[13px] leading-[1.5] font-medium text-foreground">
-                    {formatDDay(heroTrip.startDate)}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <p className="text-[20px] leading-[1.45] font-bold text-foreground">
-                    {heroTrip.title}
-                  </p>
-                  <p className="text-[13px] leading-[1.5] text-muted-foreground">
-                    {formatTripPeriod(
-                      heroTrip.startDate,
-                      heroTrip.endDate,
-                      heroTrip.companionCount ?? 0,
-                    )}
-                  </p>
-                </div>
-                <Link
-                  to="/trips/$tripId"
-                  params={{ tripId: String(heroTrip.id) }}
-                >
-                  <Button size="cta">일정 보러가기</Button>
-                </Link>
-              </div>
-            </div>
-
-            <div className="flex flex-col">
-              <p className="pb-3 text-[14px] leading-[1.5] font-medium text-muted-foreground">
-                다른 여행
-              </p>
-              {otherTrips.map((trip) => (
-                <Link
-                  key={trip.id}
-                  to="/trips/$tripId"
-                  params={{ tripId: String(trip.id) }}
-                  className="flex items-center gap-3 py-3.5"
-                >
-                  <div className="flex flex-1 flex-col gap-0.5">
-                    <p className="text-body-strong text-foreground">
-                      {trip.title}
+            {heroTrip && (
+              <div className="flex flex-col gap-3">
+                <p className="text-[14px] leading-[1.5] font-medium text-muted-foreground">
+                  다가오는 여행
+                </p>
+                <div className="flex flex-col gap-4 rounded-btn border-2 border-primary-deep p-5">
+                  <div className="flex w-fit items-start rounded-card bg-primary px-3 py-[5px]">
+                    <span className="text-[13px] leading-[1.5] font-medium text-foreground">
+                      {formatDDay(heroTrip.startDate)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[20px] leading-[1.45] font-bold text-foreground">
+                      {heroTrip.title}
                     </p>
-                    <p className="text-caption-sm text-muted-foreground">
+                    <p className="text-[13px] leading-[1.5] text-muted-foreground">
                       {formatTripPeriod(
-                        trip.startDate,
-                        trip.endDate,
-                        trip.companionCount ?? 0,
+                        heroTrip.startDate,
+                        heroTrip.endDate,
+                        heroTrip.companionCount ?? 0,
                       )}
                     </p>
                   </div>
-                  <span className="text-caption text-primary-deep">
-                    {formatDDay(trip.startDate)}
-                  </span>
-                  <ChevronRight className="size-[18px] text-[#afb4b4]" />
-                </Link>
-              ))}
-            </div>
+                  <Link
+                    to="/trips/$tripId"
+                    params={{ tripId: String(heroTrip.id) }}
+                  >
+                    <Button size="cta">일정 보러가기</Button>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {tripSections.map((section) => (
+              <div key={section.label} className="flex flex-col">
+                <p className="pb-3 text-[14px] leading-[1.5] font-medium text-muted-foreground">
+                  {section.label}
+                </p>
+                {section.items.map((trip) => (
+                  <Link
+                    key={trip.id}
+                    to="/trips/$tripId"
+                    params={{ tripId: String(trip.id) }}
+                    className="flex items-center gap-3 py-3.5"
+                  >
+                    <div className="flex flex-1 flex-col gap-0.5">
+                      <p className="text-body-strong text-foreground">
+                        {trip.title}
+                      </p>
+                      <p className="text-caption-sm text-muted-foreground">
+                        {formatTripPeriod(
+                          trip.startDate,
+                          trip.endDate,
+                          trip.companionCount ?? 0,
+                        )}
+                      </p>
+                    </div>
+                    <span className="text-caption text-primary-deep">
+                      {formatDDay(trip.startDate)}
+                    </span>
+                    <ChevronRight className="size-[18px] text-[#afb4b4]" />
+                  </Link>
+                ))}
+              </div>
+            ))}
           </>
         ) : (
           <>
