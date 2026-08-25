@@ -12,8 +12,11 @@ import com.samsam55.trip.trip.dto.TripCreateRequestDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.repository.ParticipantRepository;
+import com.samsam55.trip.trip.repository.ItineraryItemRepository;
 import com.samsam55.trip.trip.repository.TripDayRepository;
 import com.samsam55.trip.trip.repository.TripRepository;
+import com.samsam55.trip.trip.repository.VoteOptionRepository;
+import com.samsam55.trip.trip.repository.VoteRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,6 +40,15 @@ class TripServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ItineraryItemRepository itineraryItemRepository;
+
+    @Mock
+    private VoteOptionRepository voteOptionRepository;
+
+    @Mock
+    private VoteRepository voteRepository;
 
     @Mock
     private Trip trip;
@@ -85,10 +97,68 @@ class TripServiceTest {
         assertThatThrownBy(() -> service().createTrip(1L, request))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType().getCode()).isEqualTo("INVALID_TRIP_PERIOD"));
-        verifyNoInteractions(userRepository, tripRepository, tripDayRepository, participantRepository);
+        verifyNoInteractions(
+                userRepository,
+                tripRepository,
+                tripDayRepository,
+                participantRepository,
+                itineraryItemRepository,
+                voteOptionRepository,
+                voteRepository
+        );
+    }
+
+    @Test
+    @DisplayName("방장이 여행을 삭제하면 하위 데이터를 정해진 순서로 삭제한다")
+    void 방장이_여행을_삭제하면_하위_데이터를_정해진_순서로_삭제한다() {
+        when(tripRepository.findByIdAndHostUserId(1L, 1L)).thenReturn(java.util.Optional.of(trip));
+
+        service().deleteTrip(1L, 1L);
+
+        var inOrder = org.mockito.Mockito.inOrder(
+                voteRepository,
+                itineraryItemRepository,
+                voteOptionRepository,
+                participantRepository,
+                tripDayRepository,
+                tripRepository
+        );
+        inOrder.verify(voteRepository).deleteAllByTripId(1L);
+        inOrder.verify(itineraryItemRepository).clearConfirmedOptionByTripId(1L);
+        inOrder.verify(voteOptionRepository).deleteAllByTripId(1L);
+        inOrder.verify(itineraryItemRepository).deleteAllByTripId(1L);
+        inOrder.verify(participantRepository).deleteAllByTripId(1L);
+        inOrder.verify(tripDayRepository).deleteAllByTripId(1L);
+        inOrder.verify(tripRepository).delete(trip);
+        inOrder.verify(tripRepository).flush();
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 여행은 존재하지 않는 것처럼 삭제할 수 없다")
+    void 다른_사용자의_여행은_존재하지_않는_것처럼_삭제할_수_없다() {
+        when(tripRepository.findByIdAndHostUserId(1L, 2L)).thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> service().deleteTrip(2L, 1L))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType().getCode()).isEqualTo("TRIP_NOT_FOUND"));
+        verifyNoInteractions(
+                itineraryItemRepository,
+                voteOptionRepository,
+                voteRepository,
+                participantRepository,
+                tripDayRepository
+        );
     }
 
     private TripService service() {
-        return new TripService(tripRepository, tripDayRepository, participantRepository, userRepository);
+        return new TripService(
+                tripRepository,
+                tripDayRepository,
+                participantRepository,
+                userRepository,
+                itineraryItemRepository,
+                voteOptionRepository,
+                voteRepository
+        );
     }
 }

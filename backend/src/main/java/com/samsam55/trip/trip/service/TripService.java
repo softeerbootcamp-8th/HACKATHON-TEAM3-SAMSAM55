@@ -12,8 +12,11 @@ import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
 import com.samsam55.trip.trip.exception.TripErrorType;
 import com.samsam55.trip.trip.repository.TripRepository;
+import com.samsam55.trip.trip.repository.ItineraryItemRepository;
 import com.samsam55.trip.trip.repository.ParticipantRepository;
 import com.samsam55.trip.trip.repository.TripDayRepository;
+import com.samsam55.trip.trip.repository.VoteOptionRepository;
+import com.samsam55.trip.trip.repository.VoteRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -32,6 +35,9 @@ public class TripService {
     private final TripDayRepository tripDayRepository;
     private final ParticipantRepository participantRepository;
     private final UserRepository userRepository;
+    private final ItineraryItemRepository itineraryItemRepository;
+    private final VoteOptionRepository voteOptionRepository;
+    private final VoteRepository voteRepository;
 
     /**
      * 로그인한 사용자가 방장인 여행 목록을 조회한다.
@@ -76,6 +82,28 @@ public class TripService {
                 .toList();
         List<Participant> savedParticipants = participantRepository.saveAllAndFlush(participants);
         return TripCreateResponseDto.from(trip, savedParticipants);
+    }
+
+    /**
+     * 방장이 소유한 여행과 모든 하위 데이터를 하나의 트랜잭션으로 삭제한다.
+     *
+     * @param userId 삭제를 요청한 로그인 사용자의 ID
+     * @param tripId 삭제할 여행의 ID
+     * @throws ApplicationException 여행이 없거나 방장이 아닐 때(TRIP_NOT_FOUND)
+     */
+    @Transactional
+    public void deleteTrip(Long userId, Long tripId) {
+        Trip trip = tripRepository.findByIdAndHostUserId(tripId, userId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.TRIP_NOT_FOUND));
+
+        voteRepository.deleteAllByTripId(tripId);
+        itineraryItemRepository.clearConfirmedOptionByTripId(tripId);
+        voteOptionRepository.deleteAllByTripId(tripId);
+        itineraryItemRepository.deleteAllByTripId(tripId);
+        participantRepository.deleteAllByTripId(tripId);
+        tripDayRepository.deleteAllByTripId(tripId);
+        tripRepository.delete(trip);
+        tripRepository.flush();
     }
 
     private void validateTripPeriod(LocalDate startDate, LocalDate endDate) {

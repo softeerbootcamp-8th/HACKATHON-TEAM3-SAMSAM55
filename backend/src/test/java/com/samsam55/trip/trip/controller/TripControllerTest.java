@@ -4,8 +4,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -177,6 +179,42 @@ class TripControllerTest {
                 .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"));
 
         verifyNoInteractions(tripService);
+    }
+
+    @Test
+    @DisplayName("방장의 여행 삭제는 200 공통 성공 응답을 반환한다")
+    void 방장의_여행_삭제는_200_공통_성공_응답을_반환한다() throws Exception {
+        mockMvc.perform(delete("/api/trips/1").session(loginSession()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isEmpty())
+                .andExpect(jsonPath("$.error").isEmpty());
+
+        verify(tripService).deleteTrip(1L, 1L);
+    }
+
+    @Test
+    @DisplayName("로그인하지 않은 여행 삭제 요청은 LOGIN_REQUIRED를 반환한다")
+    void 로그인하지_않은_여행_삭제_요청은_LOGIN_REQUIRED를_반환한다() throws Exception {
+        mockMvc.perform(delete("/api/trips/1"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("LOGIN_REQUIRED"));
+
+        verifyNoInteractions(tripService);
+    }
+
+    @Test
+    @DisplayName("방장이 아닌 사용자의 여행 삭제 요청은 TRIP_NOT_FOUND를 반환한다")
+    void 방장이_아닌_사용자의_여행_삭제_요청은_TRIP_NOT_FOUND를_반환한다() throws Exception {
+        doThrow(new ApplicationException(TripErrorType.TRIP_NOT_FOUND))
+                .when(tripService)
+                .deleteTrip(1L, 1L);
+
+        mockMvc.perform(delete("/api/trips/1").session(loginSession()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.data").isEmpty())
+                .andExpect(jsonPath("$.error.code").value("TRIP_NOT_FOUND"));
     }
 
     private MockHttpSession loginSession() {
