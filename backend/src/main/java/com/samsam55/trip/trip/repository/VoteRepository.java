@@ -10,15 +10,21 @@ import org.springframework.data.repository.query.Param;
 public interface VoteRepository extends JpaRepository<Vote, Long> {
 
     @Query("""
-            select vote
+            select vote.itineraryItem.id as itemId,
+                   count(distinct vote.participant.id) as votedCount
             from Vote vote
-            join fetch vote.itineraryItem
-            join fetch vote.option
-            join fetch vote.participant
             where vote.itineraryItem.tripDay.trip.id = :tripId
-            order by vote.id asc
+              and vote.participant.trip.id = :tripId
+            group by vote.itineraryItem.id
             """)
-    List<Vote> findAllByTripIdWithOptionAndParticipant(@Param("tripId") Long tripId);
+    List<ItineraryItemVoteCount> countDistinctParticipantsByTripId(@Param("tripId") Long tripId);
+
+    interface ItineraryItemVoteCount {
+
+        Long getItemId();
+
+        long getVotedCount();
+    }
 
     @Query("""
             select vote

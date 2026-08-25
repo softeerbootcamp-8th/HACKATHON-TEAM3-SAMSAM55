@@ -58,13 +58,12 @@ public class ScheduleService {
                 .filter(item -> item.getStatus() != ItineraryItemStatus.PENDING)
                 .toList();
         List<Participant> participants = participantRepository.findAllByTripOrderById(trip);
-        Set<Long> participantIds = participants.stream()
-                .map(Participant::getId)
-                .collect(Collectors.toSet());
-        Map<Long, Integer> votedCounts = countVotersByItem(
-                voteRepository.findAllByTripIdWithOptionAndParticipant(tripId),
-                participantIds
-        );
+        Map<Long, Integer> votedCounts = voteRepository.countDistinctParticipantsByTripId(tripId)
+                .stream()
+                .collect(Collectors.toMap(
+                        VoteRepository.ItineraryItemVoteCount::getItemId,
+                        voteCount -> Math.toIntExact(voteCount.getVotedCount())
+                ));
         long totalParticipants = participants.size();
         Map<Long, List<ScheduleItemResponseDto>> itemsByDayId = items.stream()
                 .collect(Collectors.groupingBy(
@@ -163,21 +162,6 @@ public class ScheduleService {
         }
         participantRepository.findByIdAndTrip(participant.participantId(), trip)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
-    }
-
-    private Map<Long, Integer> countVotersByItem(List<Vote> votes, Set<Long> participantIds) {
-        return votes.stream()
-                .filter(vote -> participantIds.contains(vote.getParticipant().getId()))
-                .collect(Collectors.groupingBy(
-                        vote -> vote.getItineraryItem().getId(),
-                        Collectors.collectingAndThen(
-                                Collectors.mapping(
-                                        vote -> vote.getParticipant().getId(),
-                                        Collectors.toSet()
-                                ),
-                                Set::size
-                        )
-                ));
     }
 
     private List<Participant> findVoters(

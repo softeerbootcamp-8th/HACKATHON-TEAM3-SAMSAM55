@@ -101,23 +101,19 @@ class ScheduleServiceTest {
     }
 
     @Test
-    @DisplayName("일정 목록의 투표 수는 같은 참여자의 중복 투표와 다른 여행 투표를 중복 집계하지 않는다")
-    void 일정_목록의_투표_수는_같은_참여자의_중복_투표와_다른_여행_투표를_중복_집계하지_않는다() {
+    @DisplayName("일정 목록은 DB에서 집계한 일정별 투표 참여자 수를 반환한다")
+    void 일정_목록은_DB에서_집계한_일정별_투표_참여자_수를_반환한다() {
         ScheduleFixture fixture = fixture();
-        Participant outsider = participant(999L, trip(2L, user(20L)), "다른 여행 참여자");
-        List<Vote> votes = List.of(
-                vote(401L, fixture.votingOptionA, fixture.votingItem, fixture.firstParticipant),
-                vote(402L, fixture.votingOptionB, fixture.votingItem, fixture.firstParticipant),
-                vote(403L, fixture.votingOptionB, fixture.votingItem, fixture.secondParticipant),
-                vote(404L, fixture.votingOptionA, fixture.votingItem, outsider)
+        List<VoteRepository.ItineraryItemVoteCount> voteCounts = List.of(
+                voteCount(fixture.votingItem.getId(), 2)
         );
-        stubParticipantSchedule(fixture, 101L, List.of(fixture.votingItem), votes);
+        stubParticipantSchedule(fixture, 101L, List.of(fixture.votingItem), voteCounts);
 
         ScheduleResponseDto response = scheduleService.findSchedule(participantActor(101L, 1L), 1L);
 
         assertThat(response.days().getFirst().items().getFirst().votedCount()).isEqualTo(2);
         assertThat(response.days().getFirst().items().getFirst().totalParticipants()).isEqualTo(3);
-        verify(voteRepository).findAllByTripIdWithOptionAndParticipant(1L);
+        verify(voteRepository).countDistinctParticipantsByTripId(1L);
     }
 
     @Test
@@ -258,23 +254,37 @@ class ScheduleServiceTest {
             ScheduleFixture fixture,
             Long participantId,
             List<ItineraryItem> items,
-            List<Vote> votes
+            List<VoteRepository.ItineraryItemVoteCount> voteCounts
     ) {
         when(tripRepository.findById(1L)).thenReturn(Optional.of(fixture.trip));
         when(participantRepository.findByIdAndTrip(participantId, fixture.trip))
                 .thenReturn(Optional.of(participantById(fixture, participantId)));
-        stubScheduleData(fixture, items, votes);
+        stubScheduleData(fixture, items, voteCounts);
     }
 
     private void stubScheduleData(
             ScheduleFixture fixture,
             List<ItineraryItem> items,
-            List<Vote> votes
+            List<VoteRepository.ItineraryItemVoteCount> voteCounts
     ) {
         when(itineraryItemRepository.findAllByTripIdOrderByDayAndSortOrder(1L)).thenReturn(items);
         when(participantRepository.findAllByTripOrderById(fixture.trip)).thenReturn(fixture.participants);
-        when(voteRepository.findAllByTripIdWithOptionAndParticipant(1L)).thenReturn(votes);
+        when(voteRepository.countDistinctParticipantsByTripId(1L)).thenReturn(voteCounts);
         when(tripDayRepository.findAllByTripIdOrderByDayNumberAsc(1L)).thenReturn(List.of(fixture.day));
+    }
+
+    private VoteRepository.ItineraryItemVoteCount voteCount(Long itemId, long votedCount) {
+        return new VoteRepository.ItineraryItemVoteCount() {
+            @Override
+            public Long getItemId() {
+                return itemId;
+            }
+
+            @Override
+            public long getVotedCount() {
+                return votedCount;
+            }
+        };
     }
 
     private void stubParticipantVoteResult(

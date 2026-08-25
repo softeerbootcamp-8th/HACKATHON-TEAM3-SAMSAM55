@@ -103,6 +103,7 @@ class ScheduleServiceIntegrationTest extends AbstractMySqlContainerTest {
         itineraryItemRepository.flush();
 
         voteRepository.saveAndFlush(new Vote(votingOption, voting, mother));
+        voteRepository.saveAndFlush(new Vote(votingOption, voting, mother));
         voteRepository.saveAndFlush(new Vote(confirmedOption, confirmed, mother));
         voteRepository.saveAndFlush(new Vote(confirmedOption, confirmed, father));
 
