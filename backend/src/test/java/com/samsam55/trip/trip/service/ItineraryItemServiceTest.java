@@ -13,7 +13,11 @@ import com.samsam55.trip.member.entity.User;
 import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
+import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
+import com.samsam55.trip.trip.dto.VoteStartResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
+import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
+import com.samsam55.trip.trip.entity.ItineraryItemStatus;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
 import com.samsam55.trip.trip.entity.VoteOption;
@@ -173,5 +177,78 @@ class ItineraryItemServiceTest {
                 null))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_OPTION_COUNT_EXCEEDED));
+    }
+
+    @Test
+    @DisplayName("일정 항목 상세를 조회하면 선택지 목록도 함께 반환한다")
+    void 일정_항목_상세를_조회하면_선택지_목록도_함께_반환한다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        VoteOption voteOption = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+        when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of(voteOption));
+
+        ItineraryItemDetailResponseDto response = itineraryItemService.getItineraryItem(1L, 100L);
+
+        assertThat(response.id()).isEqualTo(100L);
+        assertThat(response.name()).isEqualTo("점심 메뉴");
+        assertThat(response.status()).isEqualTo("PENDING");
+        assertThat(response.voteOptions()).hasSize(1);
+        assertThat(response.voteOptions().get(0).name()).isEqualTo("스시");
+    }
+
+    @Test
+    @DisplayName("일정 항목 상세 조회 시 항목을 찾을 수 없으면 예외가 발생한다")
+    void 일정_항목_상세_조회_시_항목을_찾을_수_없으면_예외가_발생한다() {
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> itineraryItemService.getItineraryItem(1L, 100L))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("선택지가 2개 이상인 PENDING VOTE 항목은 투표를 시작할 수 있다")
+    void 선택지가_2개_이상인_PENDING_VOTE_항목은_투표를_시작할_수_있다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+        when(voteOptionRepository.countByItineraryItem(itineraryItem)).thenReturn(2L);
+
+        VoteStartResponseDto response = itineraryItemService.startVote(1L, List.of(100L));
+
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.items().get(0).itemId()).isEqualTo(100L);
+        assertThat(response.items().get(0).status()).isEqualTo("VOTING");
+        assertThat(itineraryItem.getStatus()).isEqualTo(ItineraryItemStatus.VOTING);
+    }
+
+    @Test
+    @DisplayName("선택지가 2개 미만이면 투표를 시작할 수 없다")
+    void 선택지가_2개_미만이면_투표를_시작할_수_없다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+        when(voteOptionRepository.countByItineraryItem(itineraryItem)).thenReturn(1L);
+
+        assertThatThrownBy(() -> itineraryItemService.startVote(1L, List.of(100L)))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_OPTION_COUNT_INSUFFICIENT));
+    }
+
+    @Test
+    @DisplayName("이미 투표가 시작된 항목은 다시 투표를 시작할 수 없다")
+    void 이미_투표가_시작된_항목은_다시_투표를_시작할_수_없다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+
+        assertThatThrownBy(() -> itineraryItemService.startVote(1L, List.of(100L)))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_ALREADY_STARTED));
     }
 }

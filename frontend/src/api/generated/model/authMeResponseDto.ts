@@ -6,8 +6,8 @@
  */
 
 export interface AuthMeResponseDto {
-  actorType?: string
-  userId?: number
-  participantId?: number
-  tripId?: number
+  actorType?: string;
+  userId?: number;
+  participantId?: number;
+  tripId?: number;
 }

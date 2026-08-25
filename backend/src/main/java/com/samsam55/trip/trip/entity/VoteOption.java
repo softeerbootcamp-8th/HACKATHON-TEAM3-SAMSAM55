@@ -40,7 +40,7 @@ public class VoteOption extends BaseEntity {
     private String descriptionSource;
 
     @Lob
-    @Column(name = "image")
+    @Column(name = "image", columnDefinition = "LONGBLOB")
     private byte[] image;
 
     @Column(name = "image_content_type", length = 100)
