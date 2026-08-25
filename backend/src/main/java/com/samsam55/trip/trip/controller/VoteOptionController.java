@@ -1,6 +1,6 @@
 package com.samsam55.trip.trip.controller;
 
-import com.samsam55.trip.auth.dto.ActorPrincipal;
+import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.trip.dto.VoteOptionImageDto;
 import com.samsam55.trip.trip.service.VoteOptionService;
@@ -35,7 +35,7 @@ public class VoteOptionController {
             HttpServletRequest request,
             @PathVariable Long voteOptionId
     ) {
-        ActorPrincipal actor = authService.resolveActor(request);
+        AuthMeResponseDto actor = authService.me(request);
         VoteOptionImageDto image = voteOptionService.getImage(actor, voteOptionId);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(image.contentType()))

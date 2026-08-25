@@ -1,6 +1,6 @@
 package com.samsam55.trip.trip.service;
 
-import com.samsam55.trip.auth.dto.ActorPrincipal;
+import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.trip.dto.ScheduleDayResponseDto;
 import com.samsam55.trip.trip.dto.ScheduleItemResponseDto;
@@ -42,21 +42,20 @@ public class ScheduleService {
     private final VoteOptionRepository voteOptionRepository;
 
     /**
-     * 인증 주체의 권한에 맞춰 여행의 날짜별 일정 목록을 조회한다.
+     * 현재 참여자가 속한 여행의 날짜별 일정 목록을 조회한다.
      *
-     * @param actor 현재 인증 주체
+     * @param participant 현재 참여자
      * @param tripId 조회할 여행의 식별자
      * @return 날짜별 일정과 투표 진행 현황
      * @throws ApplicationException 여행이 없거나 조회 권한이 없을 때(TRIP_NOT_FOUND)
      */
     @Transactional(readOnly = true)
-    public ScheduleResponseDto findSchedule(ActorPrincipal actor, Long tripId) {
-        Trip trip = findAccessibleTrip(actor, tripId);
-        boolean isParticipant = actor.actorType() == ActorPrincipal.ActorType.PARTICIPANT;
+    public ScheduleResponseDto findSchedule(ParticipantPrincipal participant, Long tripId) {
+        Trip trip = findAccessibleTrip(participant, tripId);
         List<ItineraryItem> items = itineraryItemRepository
                 .findAllByTripIdOrderByDayAndSortOrder(tripId)
                 .stream()
-                .filter(item -> !isParticipant || item.getStatus() != ItineraryItemStatus.PENDING)
+                .filter(item -> item.getStatus() != ItineraryItemStatus.PENDING)
                 .toList();
         List<Participant> participants = participantRepository.findAllByTripOrderById(trip);
         Set<Long> participantIds = participants.stream()
@@ -98,23 +97,23 @@ public class ScheduleService {
     /**
      * 일정 항목의 참여자별 투표 현황과 선택지별 결과를 조회한다.
      *
-     * @param actor 현재 인증 주체
+     * @param participant 현재 참여자
      * @param itemId 조회할 일정 항목의 식별자
      * @return 일정 정보와 투표 결과
      * @throws ApplicationException 일정이 없거나 조회 권한이 없을 때(ITINERARY_ITEM_NOT_FOUND)
      */
     @Transactional(readOnly = true)
-    public VoteResultResponseDto findVoteResult(ActorPrincipal actor, Long itemId) {
+    public VoteResultResponseDto findVoteResult(ParticipantPrincipal participant, Long itemId) {
         ItineraryItem item = itineraryItemRepository.findByIdWithTripAndConfirmedOption(itemId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
-        validateItemAccess(actor, item);
+        validateItemAccess(participant, item);
 
         Trip trip = item.getTripDay().getTrip();
         List<Participant> participants = participantRepository.findAllByTripOrderById(trip);
         Map<Long, Participant> participantsById = participants.stream()
                 .collect(Collectors.toMap(
                         Participant::getId,
-                        participant -> participant,
+                        tripParticipant -> tripParticipant,
                         (left, right) -> left,
                         LinkedHashMap::new
                 ));
@@ -129,7 +128,7 @@ public class ScheduleService {
                 .forEach(vote -> votesByParticipantId.putIfAbsent(vote.getParticipant().getId(), vote));
 
         List<Participant> pendingParticipants = participants.stream()
-                .filter(participant -> !votesByParticipantId.containsKey(participant.getId()))
+                .filter(tripParticipant -> !votesByParticipantId.containsKey(tripParticipant.getId()))
                 .toList();
         Long confirmedOptionId = item.getConfirmedOption() == null
                 ? null
@@ -145,35 +144,24 @@ public class ScheduleService {
         return VoteResultResponseDto.of(item, participants, pendingParticipants, optionResults);
     }
 
-    private Trip findAccessibleTrip(ActorPrincipal actor, Long tripId) {
-        if (actor.actorType() == ActorPrincipal.ActorType.HOST) {
-            return tripRepository.findByIdAndHostUserId(tripId, actor.userId())
-                    .orElseThrow(() -> new ApplicationException(TripErrorType.TRIP_NOT_FOUND));
-        }
-
-        if (!tripId.equals(actor.tripId())) {
+    private Trip findAccessibleTrip(ParticipantPrincipal participant, Long tripId) {
+        if (!tripId.equals(participant.tripId())) {
             throw new ApplicationException(TripErrorType.TRIP_NOT_FOUND);
         }
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.TRIP_NOT_FOUND));
-        participantRepository.findByIdAndTrip(actor.participantId(), trip)
+        participantRepository.findByIdAndTrip(participant.participantId(), trip)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.TRIP_NOT_FOUND));
         return trip;
     }
 
-    private void validateItemAccess(ActorPrincipal actor, ItineraryItem item) {
+    private void validateItemAccess(ParticipantPrincipal participant, ItineraryItem item) {
         Trip trip = item.getTripDay().getTrip();
-        if (actor.actorType() == ActorPrincipal.ActorType.HOST) {
-            if (!trip.getHostUser().getId().equals(actor.userId())) {
-                throw new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND);
-            }
-            return;
-        }
-
-        if (item.getStatus() == ItineraryItemStatus.PENDING || !trip.getId().equals(actor.tripId())) {
+        if (item.getStatus() == ItineraryItemStatus.PENDING
+                || !trip.getId().equals(participant.tripId())) {
             throw new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND);
         }
-        participantRepository.findByIdAndTrip(actor.participantId(), trip)
+        participantRepository.findByIdAndTrip(participant.participantId(), trip)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
     }
 

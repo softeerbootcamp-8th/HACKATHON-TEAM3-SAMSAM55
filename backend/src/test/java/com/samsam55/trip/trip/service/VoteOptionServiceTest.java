@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.samsam55.trip.auth.dto.ActorPrincipal;
+import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.member.entity.User;
@@ -66,7 +66,7 @@ class VoteOptionServiceTest {
         VoteOption voteOption = hostVoteOption(bytes, "image/jpeg");
         when(voteOptionRepository.findByIdWithTrip(1L)).thenReturn(Optional.of(voteOption));
 
-        VoteOptionImageDto image = voteOptionService.getImage(ActorPrincipal.ofHost(1L), 1L);
+        VoteOptionImageDto image = voteOptionService.getImage(AuthMeResponseDto.ofHost(1L), 1L);
 
         assertThat(image.data()).isEqualTo(bytes);
         assertThat(image.contentType()).isEqualTo("image/jpeg");
@@ -78,7 +78,7 @@ class VoteOptionServiceTest {
     void 선택지를_찾을_수_없으면_예외가_발생한다() {
         when(voteOptionRepository.findByIdWithTrip(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> voteOptionService.getImage(ActorPrincipal.ofHost(1L), 1L))
+        assertThatThrownBy(() -> voteOptionService.getImage(AuthMeResponseDto.ofHost(1L), 1L))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_OPTION_NOT_FOUND));
     }
@@ -89,7 +89,7 @@ class VoteOptionServiceTest {
         VoteOption voteOption = hostVoteOption(null, null);
         when(voteOptionRepository.findByIdWithTrip(1L)).thenReturn(Optional.of(voteOption));
 
-        assertThatThrownBy(() -> voteOptionService.getImage(ActorPrincipal.ofHost(1L), 1L))
+        assertThatThrownBy(() -> voteOptionService.getImage(AuthMeResponseDto.ofHost(1L), 1L))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_OPTION_IMAGE_NOT_FOUND));
     }
@@ -100,7 +100,7 @@ class VoteOptionServiceTest {
         VoteOption voteOption = hostVoteOption(new byte[]{1}, "image/png");
         when(voteOptionRepository.findByIdWithTrip(1L)).thenReturn(Optional.of(voteOption));
 
-        assertThatThrownBy(() -> voteOptionService.getImage(ActorPrincipal.ofHost(99L), 1L))
+        assertThatThrownBy(() -> voteOptionService.getImage(AuthMeResponseDto.ofHost(99L), 1L))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_OPTION_NOT_FOUND));
         verifyNoInteractions(participantRepository);
@@ -114,7 +114,7 @@ class VoteOptionServiceTest {
         when(participantRepository.findByIdAndTrip(12L, trip)).thenReturn(Optional.of(participant));
 
         VoteOptionImageDto image = voteOptionService.getImage(
-                ActorPrincipal.ofParticipant(new ParticipantPrincipal(12L, 10L)), 1L);
+                AuthMeResponseDto.ofParticipant(new ParticipantPrincipal(12L, 10L)), 1L);
 
         assertThat(image.data()).containsExactly(1);
     }
@@ -126,7 +126,7 @@ class VoteOptionServiceTest {
         when(voteOptionRepository.findByIdWithTrip(1L)).thenReturn(Optional.of(voteOption));
 
         assertThatThrownBy(() -> voteOptionService.getImage(
-                ActorPrincipal.ofParticipant(new ParticipantPrincipal(12L, 99L)), 1L))
+                AuthMeResponseDto.ofParticipant(new ParticipantPrincipal(12L, 99L)), 1L))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_OPTION_NOT_FOUND));
         verifyNoInteractions(participantRepository);
@@ -139,7 +139,7 @@ class VoteOptionServiceTest {
         when(voteOptionRepository.findByIdWithTrip(1L)).thenReturn(Optional.of(voteOption));
 
         assertThatThrownBy(() -> voteOptionService.getImage(
-                ActorPrincipal.ofParticipant(new ParticipantPrincipal(12L, 10L)), 1L))
+                AuthMeResponseDto.ofParticipant(new ParticipantPrincipal(12L, 10L)), 1L))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_OPTION_NOT_FOUND));
         verifyNoInteractions(participantRepository);

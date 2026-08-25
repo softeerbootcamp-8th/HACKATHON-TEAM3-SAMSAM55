@@ -8,10 +8,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.samsam55.trip.auth.dto.ActorPrincipal;
-import com.samsam55.trip.auth.exception.AuthErrorType;
-import com.samsam55.trip.auth.service.AuthService;
-import com.samsam55.trip.global.exception.ApplicationException;
+import com.samsam55.trip.auth.argumentresolver.ParticipantArgumentResolver;
+import com.samsam55.trip.auth.dto.ParticipantPrincipal;
+import com.samsam55.trip.auth.service.ParticipantSessionResolver;
 import com.samsam55.trip.global.exception.GlobalExceptionHandler;
 import com.samsam55.trip.trip.dto.VoteResultOptionResponseDto;
 import com.samsam55.trip.trip.dto.VoteResultParticipantResponseDto;
@@ -19,6 +18,7 @@ import com.samsam55.trip.trip.dto.VoteResultResponseDto;
 import com.samsam55.trip.trip.service.ScheduleService;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,23 +35,24 @@ class VoteResultControllerTest {
     private ScheduleService scheduleService;
 
     @Mock
-    private AuthService authService;
+    private ParticipantSessionResolver participantSessionResolver;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new VoteResultController(scheduleService, authService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new VoteResultController(scheduleService))
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(new ParticipantArgumentResolver(participantSessionResolver))
                 .build();
     }
 
     @Test
-    @DisplayName("방장의 투표 결과 조회는 공통 성공 응답으로 반환하고 서비스를 위임한다")
-    void 방장의_투표_결과_조회는_공통_성공_응답으로_반환하고_서비스를_위임한다() throws Exception {
-        ActorPrincipal host = ActorPrincipal.ofHost(7L);
-        when(authService.resolveActor(any())).thenReturn(host);
-        when(scheduleService.findVoteResult(host, 100L)).thenReturn(voteResultResponse());
+    @DisplayName("참여자의 투표 결과 조회는 공통 성공 응답으로 반환하고 서비스를 위임한다")
+    void 참여자의_투표_결과_조회는_공통_성공_응답으로_반환하고_서비스를_위임한다() throws Exception {
+        ParticipantPrincipal participant = new ParticipantPrincipal(12L, 1L);
+        when(participantSessionResolver.resolve(any())).thenReturn(Optional.of(participant));
+        when(scheduleService.findVoteResult(participant, 100L)).thenReturn(voteResultResponse());
 
         mockMvc.perform(get("/api/itinerary-items/100/vote-results"))
                 .andExpect(status().isOk())
@@ -65,20 +66,19 @@ class VoteResultControllerTest {
                 .andExpect(jsonPath("$.data.options[0].voters[0].roleName").value("엄마"))
                 .andExpect(jsonPath("$.error").isEmpty());
 
-        verify(scheduleService).findVoteResult(host, 100L);
+        verify(scheduleService).findVoteResult(participant, 100L);
     }
 
     @Test
     @DisplayName("인증되지 않은 투표 결과 조회는 401 공통 에러 응답을 반환한다")
     void 인증되지_않은_투표_결과_조회는_401_공통_에러_응답을_반환한다() throws Exception {
-        when(authService.resolveActor(any()))
-                .thenThrow(new ApplicationException(AuthErrorType.UNAUTHENTICATED));
+        when(participantSessionResolver.resolve(any())).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/itinerary-items/100/vote-results"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.data").isEmpty())
-                .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
+                .andExpect(jsonPath("$.error.code").value("PARTICIPANT_LOGIN_REQUIRED"));
 
         verifyNoInteractions(scheduleService);
     }

@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.samsam55.trip.auth.dto.ActorPrincipal;
 import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.member.entity.User;
@@ -79,32 +78,6 @@ class ScheduleServiceTest {
     }
 
     @Test
-    @DisplayName("HOST는 PENDING을 포함한 전체 일정 상태와 VOTING 일정 수를 반환한다")
-    void HOST는_PENDING을_포함한_전체_일정_상태와_VOTING_일정_수를_반환한다() {
-        ScheduleFixture fixture = fixture();
-        List<ItineraryItem> items = List.of(
-                fixture.pendingItem,
-                fixture.votingItem,
-                fixture.votedItem,
-                fixture.confirmedItem
-        );
-        stubHostSchedule(fixture, items, List.of());
-
-        ScheduleResponseDto response = scheduleService.findSchedule(ActorPrincipal.ofHost(10L), 1L);
-
-        assertThat(response.votingCount()).isEqualTo(1);
-        assertThat(response.days()).hasSize(1);
-        assertThat(response.days().getFirst().items())
-                .extracting("status")
-                .containsExactly("PENDING", "VOTING", "VOTED", "CONFIRMED");
-        assertThat(response.days().getFirst().items())
-                .extracting("totalParticipants")
-                .containsOnly(3L);
-        assertThat(response.days().getFirst().items().getLast().confirmedOption().id())
-                .isEqualTo(fixture.confirmedOption.getId());
-    }
-
-    @Test
     @DisplayName("PARTICIPANT는 PENDING 일정을 제외하고 VOTING 일정 수만 반환한다")
     void PARTICIPANT는_PENDING_일정을_제외하고_VOTING_일정_수만_반환한다() {
         ScheduleFixture fixture = fixture();
@@ -172,18 +145,6 @@ class ScheduleServiceTest {
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.TRIP_NOT_FOUND));
 
         verifyNoInteractions(tripDayRepository, itineraryItemRepository, voteRepository);
-    }
-
-    @Test
-    @DisplayName("HOST가 소유하지 않은 여행의 일정 목록을 조회하면 TRIP_NOT_FOUND를 반환한다")
-    void HOST가_소유하지_않은_여행의_일정_목록을_조회하면_TRIP_NOT_FOUND를_반환한다() {
-        when(tripRepository.findByIdAndHostUserId(1L, 20L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> scheduleService.findSchedule(ActorPrincipal.ofHost(20L), 1L))
-                .isInstanceOfSatisfying(ApplicationException.class, exception ->
-                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.TRIP_NOT_FOUND));
-
-        verifyNoInteractions(tripDayRepository, itineraryItemRepository, participantRepository, voteRepository);
     }
 
     @Test
@@ -293,30 +254,6 @@ class ScheduleServiceTest {
         verifyNoInteractions(voteRepository, voteOptionRepository);
     }
 
-    @Test
-    @DisplayName("HOST가 소유하지 않은 일정 상세를 조회할 수 없다")
-    void HOST가_소유하지_않은_일정_상세를_조회할_수_없다() {
-        ScheduleFixture fixture = fixture();
-        when(itineraryItemRepository.findByIdWithTripAndConfirmedOption(fixture.votingItem.getId()))
-                .thenReturn(Optional.of(fixture.votingItem));
-
-        assertThatThrownBy(() -> scheduleService.findVoteResult(
-                ActorPrincipal.ofHost(20L), fixture.votingItem.getId()))
-                .isInstanceOfSatisfying(ApplicationException.class, exception ->
-                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
-
-        verifyNoInteractions(participantRepository, voteRepository, voteOptionRepository);
-    }
-
-    private void stubHostSchedule(
-            ScheduleFixture fixture,
-            List<ItineraryItem> items,
-            List<Vote> votes
-    ) {
-        when(tripRepository.findByIdAndHostUserId(1L, 10L)).thenReturn(Optional.of(fixture.trip));
-        stubScheduleData(fixture, items, votes);
-    }
-
     private void stubParticipantSchedule(
             ScheduleFixture fixture,
             Long participantId,
@@ -356,8 +293,8 @@ class ScheduleServiceTest {
         when(voteRepository.findAllByItineraryItemIdWithOptionAndParticipant(item.getId())).thenReturn(votes);
     }
 
-    private ActorPrincipal participantActor(Long participantId, Long tripId) {
-        return ActorPrincipal.ofParticipant(new ParticipantPrincipal(participantId, tripId));
+    private ParticipantPrincipal participantActor(Long participantId, Long tripId) {
+        return new ParticipantPrincipal(participantId, tripId);
     }
 
     private Participant participantById(ScheduleFixture fixture, Long participantId) {

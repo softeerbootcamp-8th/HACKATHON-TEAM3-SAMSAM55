@@ -2,7 +2,6 @@ package com.samsam55.trip.trip.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.samsam55.trip.auth.dto.ActorPrincipal;
 import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.global.support.AbstractMySqlContainerTest;
 import com.samsam55.trip.member.entity.User;
@@ -107,11 +106,9 @@ class ScheduleServiceIntegrationTest extends AbstractMySqlContainerTest {
         voteRepository.saveAndFlush(new Vote(confirmedOption, confirmed, mother));
         voteRepository.saveAndFlush(new Vote(confirmedOption, confirmed, father));
 
-        ActorPrincipal actor = ActorPrincipal.ofParticipant(
-                new ParticipantPrincipal(mother.getId(), trip.getId())
-        );
-        ScheduleResponseDto schedule = scheduleService.findSchedule(actor, trip.getId());
-        VoteResultResponseDto result = scheduleService.findVoteResult(actor, confirmed.getId());
+        ParticipantPrincipal participant = new ParticipantPrincipal(mother.getId(), trip.getId());
+        ScheduleResponseDto schedule = scheduleService.findSchedule(participant, trip.getId());
+        VoteResultResponseDto result = scheduleService.findVoteResult(participant, confirmed.getId());
 
         assertThat(schedule.days()).extracting("dayNumber").containsExactly(1, 2);
         assertThat(schedule.days().getFirst().items()).extracting("id")

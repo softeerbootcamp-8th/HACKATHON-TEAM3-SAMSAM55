@@ -1,6 +1,6 @@
 package com.samsam55.trip.trip.service;
 
-import com.samsam55.trip.auth.dto.ActorPrincipal;
+import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.trip.dto.VoteOptionImageDto;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
@@ -30,7 +30,7 @@ public class VoteOptionService {
      * @throws ApplicationException 선택지에 등록된 이미지가 없을 때(VOTE_OPTION_IMAGE_NOT_FOUND)
      */
     @Transactional(readOnly = true)
-    public VoteOptionImageDto getImage(ActorPrincipal actor, Long voteOptionId) {
+    public VoteOptionImageDto getImage(AuthMeResponseDto actor, Long voteOptionId) {
         VoteOption voteOption = voteOptionRepository.findByIdWithTrip(voteOptionId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.VOTE_OPTION_NOT_FOUND));
         validateAccess(actor, voteOption);
@@ -42,9 +42,9 @@ public class VoteOptionService {
         return VoteOptionImageDto.from(voteOption);
     }
 
-    private void validateAccess(ActorPrincipal actor, VoteOption voteOption) {
+    private void validateAccess(AuthMeResponseDto actor, VoteOption voteOption) {
         Trip trip = voteOption.getItineraryItem().getTripDay().getTrip();
-        if (actor.actorType() == ActorPrincipal.ActorType.HOST) {
+        if ("HOST".equals(actor.actorType())) {
             if (!trip.getHostUser().getId().equals(actor.userId())) {
                 throw new ApplicationException(TripErrorType.VOTE_OPTION_NOT_FOUND);
             }

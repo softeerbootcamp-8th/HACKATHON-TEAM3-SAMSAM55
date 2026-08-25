@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.samsam55.trip.auth.dto.ActorPrincipal;
+import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.global.exception.GlobalExceptionHandler;
@@ -49,8 +49,8 @@ class VoteOptionControllerTest {
     @DisplayName("선택지 이미지 요청은 이미지 바이트를 그대로 반환한다")
     void 선택지_이미지_요청은_이미지_바이트를_그대로_반환한다() throws Exception {
         byte[] bytes = "image-bytes".getBytes(StandardCharsets.UTF_8);
-        ActorPrincipal actor = ActorPrincipal.ofHost(1L);
-        when(authService.resolveActor(any(HttpServletRequest.class))).thenReturn(actor);
+        AuthMeResponseDto actor = AuthMeResponseDto.ofHost(1L);
+        when(authService.me(any(HttpServletRequest.class))).thenReturn(actor);
         when(voteOptionService.getImage(eq(actor), eq(1L)))
                 .thenReturn(new VoteOptionImageDto(bytes, "image/jpeg"));
 
@@ -65,8 +65,8 @@ class VoteOptionControllerTest {
     @Test
     @DisplayName("이미지가 없는 선택지는 404 공통 에러 응답으로 반환한다")
     void 이미지가_없는_선택지는_404_공통_에러_응답으로_반환한다() throws Exception {
-        ActorPrincipal actor = ActorPrincipal.ofHost(1L);
-        when(authService.resolveActor(any(HttpServletRequest.class))).thenReturn(actor);
+        AuthMeResponseDto actor = AuthMeResponseDto.ofHost(1L);
+        when(authService.me(any(HttpServletRequest.class))).thenReturn(actor);
         when(voteOptionService.getImage(eq(actor), eq(1L)))
                 .thenThrow(new ApplicationException(TripErrorType.VOTE_OPTION_IMAGE_NOT_FOUND));
 
@@ -77,7 +77,7 @@ class VoteOptionControllerTest {
     @Test
     @DisplayName("인증하지 않은 요청은 401로 반환한다")
     void 인증하지_않은_요청은_401로_반환한다() throws Exception {
-        when(authService.resolveActor(any(HttpServletRequest.class)))
+        when(authService.me(any(HttpServletRequest.class)))
                 .thenThrow(new ApplicationException(com.samsam55.trip.auth.exception.AuthErrorType.UNAUTHENTICATED));
 
         mockMvc.perform(get("/api/vote-options/1/image"))
