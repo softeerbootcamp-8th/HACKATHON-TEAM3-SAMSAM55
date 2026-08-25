@@ -5,6 +5,7 @@ import com.samsam55.trip.global.common.CommonResponse;
 import com.samsam55.trip.trip.dto.TripCreateRequestDto;
 import com.samsam55.trip.trip.dto.TripCreateResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
+import com.samsam55.trip.trip.dto.TripSummaryResponseDto;
 import com.samsam55.trip.trip.service.TripService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,22 @@ public class TripController {
     @GetMapping
     public CommonResponse<TripListResponseDto> findTrips(@Login Long userId) {
         return CommonResponse.success(tripService.findTrips(userId));
+    }
+
+    /**
+     * 현재 로그인한 사용자가 방장인 여행의 상세 정보를 조회한다.
+     *
+     * @param userId 세션에서 해석한 로그인 사용자의 ID
+     * @param tripId 조회할 여행의 ID
+     * @return 여행 상세 정보를 담은 공통 응답
+     * @throws com.samsam55.trip.global.exception.ApplicationException 여행이 없거나 방장이 아닐 때(TRIP_NOT_FOUND)
+     */
+    @GetMapping("/{tripId}")
+    public CommonResponse<TripSummaryResponseDto> findTrip(
+            @Login Long userId,
+            @PathVariable Long tripId
+    ) {
+        return CommonResponse.success(tripService.findTrip(userId, tripId));
     }
 
     /**

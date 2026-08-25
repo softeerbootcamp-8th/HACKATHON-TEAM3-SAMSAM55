@@ -217,6 +217,53 @@ class TripControllerTest {
                 .andExpect(jsonPath("$.error.code").value("TRIP_NOT_FOUND"));
     }
 
+    @Test
+    @DisplayName("방장의 여행 상세 조회는 200 공통 응답으로 반환한다")
+    void 방장의_여행_상세_조회는_200_공통_응답으로_반환한다() throws Exception {
+        when(tripService.findTrip(1L, 1L)).thenReturn(new TripSummaryResponseDto(
+                1L,
+                "제주 가족 여행",
+                LocalDate.of(2026, 9, 1),
+                LocalDate.of(2026, 9, 3),
+                2
+        ));
+
+        mockMvc.perform(get("/api/trips/1").session(loginSession()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.title").value("제주 가족 여행"))
+                .andExpect(jsonPath("$.data.startDate").value("2026-09-01"))
+                .andExpect(jsonPath("$.data.endDate").value("2026-09-03"))
+                .andExpect(jsonPath("$.data.companionCount").value(2))
+                .andExpect(jsonPath("$.error").isEmpty());
+
+        verify(tripService).findTrip(1L, 1L);
+    }
+
+    @Test
+    @DisplayName("로그인하지 않은 여행 상세 요청은 LOGIN_REQUIRED를 반환한다")
+    void 로그인하지_않은_여행_상세_요청은_LOGIN_REQUIRED를_반환한다() throws Exception {
+        mockMvc.perform(get("/api/trips/1"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("LOGIN_REQUIRED"));
+
+        verifyNoInteractions(tripService);
+    }
+
+    @Test
+    @DisplayName("방장이 아닌 사용자의 여행 상세 요청은 TRIP_NOT_FOUND를 반환한다")
+    void 방장이_아닌_사용자의_여행_상세_요청은_TRIP_NOT_FOUND를_반환한다() throws Exception {
+        when(tripService.findTrip(1L, 1L))
+                .thenThrow(new ApplicationException(TripErrorType.TRIP_NOT_FOUND));
+
+        mockMvc.perform(get("/api/trips/1").session(loginSession()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.data").isEmpty())
+                .andExpect(jsonPath("$.error.code").value("TRIP_NOT_FOUND"));
+    }
+
     private MockHttpSession loginSession() {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L);
