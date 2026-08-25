@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -195,79 +194,6 @@ class TripControllerTest {
                 .andExpect(jsonPath("$.error").isEmpty());
 
         verify(tripService).deleteTrip(1L, 1L);
-    }
-
-    @Test
-    @DisplayName("방장의 여행 전체 수정은 200 공통 응답으로 반환한다")
-    void 방장의_여행_전체_수정은_200_공통_응답으로_반환한다() throws Exception {
-        when(tripService.updateTrip(eq(1L), eq(1L), any())).thenReturn(new TripSummaryResponseDto(
-                1L,
-                "제주 효도 여행",
-                LocalDate.of(2026, 9, 1),
-                LocalDate.of(2026, 9, 4),
-                2
-        ));
-
-        mockMvc.perform(put("/api/trips/1")
-                        .session(loginSession())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "title": "제주 효도 여행",
-                                  "startDate": "2026-09-01",
-                                  "endDate": "2026-09-04"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").value(1))
-                .andExpect(jsonPath("$.data.title").value("제주 효도 여행"))
-                .andExpect(jsonPath("$.data.startDate").value("2026-09-01"))
-                .andExpect(jsonPath("$.data.endDate").value("2026-09-04"))
-                .andExpect(jsonPath("$.data.companionCount").value(2))
-                .andExpect(jsonPath("$.error").isEmpty());
-
-        verify(tripService).updateTrip(eq(1L), eq(1L), any());
-    }
-
-    @Test
-    @DisplayName("로그인하지 않은 여행 전체 수정 요청은 LOGIN_REQUIRED를 반환한다")
-    void 로그인하지_않은_여행_전체_수정_요청은_LOGIN_REQUIRED를_반환한다() throws Exception {
-        mockMvc.perform(put("/api/trips/1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "title": "제주 효도 여행",
-                                  "startDate": "2026-09-01",
-                                  "endDate": "2026-09-04"
-                                }
-                                """))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error.code").value("LOGIN_REQUIRED"));
-
-        verifyNoInteractions(tripService);
-    }
-
-    @Test
-    @DisplayName("방장이 아닌 사용자의 여행 전체 수정 요청은 TRIP_NOT_FOUND를 반환한다")
-    void 방장이_아닌_사용자의_여행_전체_수정_요청은_TRIP_NOT_FOUND를_반환한다() throws Exception {
-        when(tripService.updateTrip(eq(1L), eq(1L), any()))
-                .thenThrow(new ApplicationException(TripErrorType.TRIP_NOT_FOUND));
-
-        mockMvc.perform(put("/api/trips/1")
-                        .session(loginSession())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "title": "제주 효도 여행",
-                                  "startDate": "2026-09-01",
-                                  "endDate": "2026-09-04"
-                                }
-                                """))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.data").isEmpty())
-                .andExpect(jsonPath("$.error.code").value("TRIP_NOT_FOUND"));
     }
 
     @Test

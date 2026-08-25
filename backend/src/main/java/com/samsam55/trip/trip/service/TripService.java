@@ -8,8 +8,6 @@ import com.samsam55.trip.trip.dto.TripCreateRequestDto;
 import com.samsam55.trip.trip.dto.TripCreateResponseDto;
 import com.samsam55.trip.trip.dto.TripDetailResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
-import com.samsam55.trip.trip.dto.TripSummaryResponseDto;
-import com.samsam55.trip.trip.dto.TripUpdateRequestDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.Participant;
 import com.samsam55.trip.trip.entity.Trip;
@@ -25,15 +23,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 여행 수정 기능은 일정 변경 정책 확정 후 추후 적용한다.
+ */
 @Service
 @RequiredArgsConstructor
 public class TripService {
@@ -111,31 +110,6 @@ public class TripService {
     }
 
     /**
-     * 방장이 소유한 여행 정보를 전체 교체하고 여행 일차를 새 기간에 맞춘다.
-     *
-     * @param userId 수정 요청을 한 로그인 사용자의 ID
-     * @param tripId 수정할 여행의 ID
-     * @param request 여행 제목과 새 여행 기간
-     * @return 수정된 여행 요약 정보
-     * @throws ApplicationException 여행이 없거나 방장이 아닐 때(TRIP_NOT_FOUND)
-     * @throws ApplicationException 시작일이 종료일보다 늦을 때(INVALID_TRIP_PERIOD)
-     */
-    @Transactional
-    public TripSummaryResponseDto updateTrip(Long userId, Long tripId, TripUpdateRequestDto request) {
-        validateTripPeriod(request.startDate(), request.endDate());
-        Trip trip = tripRepository.findByIdAndHostUserId(tripId, userId)
-                .orElseThrow(() -> new ApplicationException(TripErrorType.TRIP_NOT_FOUND));
-
-        synchronizeTripDays(trip, request.startDate(), request.endDate());
-        trip.update(
-                request.title(),
-                request.startDate().atStartOfDay(),
-                request.endDate().atStartOfDay()
-        );
-        return TripSummaryResponseDto.from(trip);
-    }
-
-    /**
      * 방장이 소유한 여행과 모든 하위 데이터를 하나의 트랜잭션으로 삭제한다.
      *
      * @param userId 삭제를 요청한 로그인 사용자의 ID
@@ -161,47 +135,6 @@ public class TripService {
         if (startDate.isAfter(endDate)) {
             throw new ApplicationException(TripErrorType.INVALID_TRIP_PERIOD);
         }
-    }
-
-    private void synchronizeTripDays(Trip trip, LocalDate startDate, LocalDate endDate) {
-        List<TripDay> existingTripDays = tripDayRepository.findAllByTripIdOrderByDayNumberAsc(trip.getId());
-        Map<LocalDate, TripDay> tripDaysByDate = new HashMap<>();
-        existingTripDays.forEach(tripDay -> tripDaysByDate.put(tripDay.getTripDate(), tripDay));
-
-        List<TripDay> removedTripDays = existingTripDays.stream()
-                .filter(tripDay -> tripDay.getTripDate().isBefore(startDate)
-                        || tripDay.getTripDate().isAfter(endDate))
-                .toList();
-        deleteTripDays(removedTripDays);
-
-        List<TripDay> newTripDays = new ArrayList<>();
-        long tripLength = ChronoUnit.DAYS.between(startDate, endDate) + 1;
-        for (int dayNumber = 1; dayNumber <= tripLength; dayNumber++) {
-            LocalDate tripDate = startDate.plusDays(dayNumber - 1L);
-            TripDay tripDay = tripDaysByDate.get(tripDate);
-            if (tripDay == null) {
-                newTripDays.add(new TripDay(trip, dayNumber, tripDate));
-                continue;
-            }
-            tripDay.updateDayNumber(dayNumber);
-        }
-        if (!newTripDays.isEmpty()) {
-            tripDayRepository.saveAll(newTripDays);
-        }
-    }
-
-    private void deleteTripDays(List<TripDay> tripDays) {
-        if (tripDays.isEmpty()) {
-            return;
-        }
-        List<Long> tripDayIds = tripDays.stream()
-                .map(TripDay::getId)
-                .toList();
-        voteRepository.deleteAllByTripDayIds(tripDayIds);
-        itineraryItemRepository.clearConfirmedOptionByTripDayIds(tripDayIds);
-        voteOptionRepository.deleteAllByTripDayIds(tripDayIds);
-        itineraryItemRepository.deleteAllByTripDayIds(tripDayIds);
-        tripDayRepository.deleteAll(tripDays);
     }
 
     private List<Trip> orderTripsForList(List<Trip> trips) {

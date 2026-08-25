@@ -1,7 +1,6 @@
 package com.samsam55.trip.trip.repository;
 
 import com.samsam55.trip.trip.entity.ItineraryItem;
-import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -29,23 +28,9 @@ public interface ItineraryItemRepository extends JpaRepository<ItineraryItem, Lo
 
     @Modifying(flushAutomatically = true)
     @Query("""
-            update ItineraryItem item
-            set item.confirmedOption = null
-            where item.tripDay.id in :tripDayIds
-            """)
-    int clearConfirmedOptionByTripDayIds(@Param("tripDayIds") Collection<Long> tripDayIds);
-
-    @Modifying(flushAutomatically = true)
-    @Query("""
             delete from ItineraryItem item
             where item.tripDay.trip.id = :tripId
             """)
     int deleteAllByTripId(@Param("tripId") Long tripId);
 
-    @Modifying(flushAutomatically = true)
-    @Query("""
-            delete from ItineraryItem item
-            where item.tripDay.id in :tripDayIds
-            """)
-    int deleteAllByTripDayIds(@Param("tripDayIds") Collection<Long> tripDayIds);
 }

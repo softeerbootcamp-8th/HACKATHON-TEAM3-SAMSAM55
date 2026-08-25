@@ -40,7 +40,4 @@ public class TripDay {
         this.tripDate = tripDate;
     }
 
-    public void updateDayNumber(Integer dayNumber) {
-        this.dayNumber = dayNumber;
-    }
 }
