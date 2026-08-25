@@ -10,6 +10,7 @@ import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.member.repository.UserRepository;
 import com.samsam55.trip.trip.dto.TripCreateRequestDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
+import com.samsam55.trip.trip.dto.TripSummaryResponseDto;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.repository.ParticipantRepository;
 import com.samsam55.trip.trip.repository.ItineraryItemRepository;
@@ -148,6 +149,35 @@ class TripServiceTest {
                 participantRepository,
                 tripDayRepository
         );
+    }
+
+    @Test
+    @DisplayName("방장인 사용자는 여행 상세 정보를 조회할 수 있다")
+    void 방장인_사용자는_여행_상세_정보를_조회할_수_있다() {
+        when(tripRepository.findByIdAndHostUserId(1L, 1L)).thenReturn(java.util.Optional.of(trip));
+        when(trip.getId()).thenReturn(1L);
+        when(trip.getTitle()).thenReturn("제주 가족 여행");
+        when(trip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 1, 0, 0));
+        when(trip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 3, 0, 0));
+        when(trip.getCompanionCount()).thenReturn(2);
+
+        TripSummaryResponseDto response = service().findTrip(1L, 1L);
+
+        assertThat(response.id()).isEqualTo(1L);
+        assertThat(response.title()).isEqualTo("제주 가족 여행");
+        assertThat(response.startDate()).isEqualTo(LocalDate.of(2026, 9, 1));
+        assertThat(response.endDate()).isEqualTo(LocalDate.of(2026, 9, 3));
+        assertThat(response.companionCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("방장이 아닌 사용자는 여행 상세 정보를 조회할 수 없다")
+    void 방장이_아닌_사용자는_여행_상세_정보를_조회할_수_없다() {
+        when(tripRepository.findByIdAndHostUserId(1L, 2L)).thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> service().findTrip(2L, 1L))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType().getCode()).isEqualTo("TRIP_NOT_FOUND"));
     }
 
     private TripService service() {

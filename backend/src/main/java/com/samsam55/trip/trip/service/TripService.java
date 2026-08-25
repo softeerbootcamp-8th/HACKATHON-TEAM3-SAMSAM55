@@ -7,6 +7,7 @@ import com.samsam55.trip.member.repository.UserRepository;
 import com.samsam55.trip.trip.dto.TripCreateRequestDto;
 import com.samsam55.trip.trip.dto.TripCreateResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
+import com.samsam55.trip.trip.dto.TripSummaryResponseDto;
 import com.samsam55.trip.trip.entity.Participant;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
@@ -48,6 +49,21 @@ public class TripService {
     @Transactional(readOnly = true)
     public TripListResponseDto findTrips(Long userId) {
         return TripListResponseDto.from(tripRepository.findAllByHostUserIdOrderByIdAsc(userId));
+    }
+
+    /**
+     * 로그인한 사용자가 방장인 여행의 상세 정보를 조회한다.
+     *
+     * @param userId 여행 상세를 요청한 로그인 사용자의 ID
+     * @param tripId 조회할 여행의 ID
+     * @return 여행 상세 요약 정보
+     * @throws ApplicationException 여행이 없거나 방장이 아닐 때(TRIP_NOT_FOUND)
+     */
+    @Transactional(readOnly = true)
+    public TripSummaryResponseDto findTrip(Long userId, Long tripId) {
+        Trip trip = tripRepository.findByIdAndHostUserId(tripId, userId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.TRIP_NOT_FOUND));
+        return TripSummaryResponseDto.from(trip);
     }
 
     /**
