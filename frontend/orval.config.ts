@@ -3,7 +3,7 @@ import { defineConfig } from 'orval'
 export default defineConfig({
   samsam55: {
     input: {
-      target: './openapi/spec.yaml',
+      target: 'http://localhost:8080/v3/api-docs',
     },
     output: {
       mode: 'tags-split',

@@ -30,8 +30,6 @@ src/
     globals.css     # Tailwind 토큰(CSS 변수) 정의
   main.tsx
   routeTree.gen.ts  # TanStack Router 자동 생성 파일 — 직접 수정 금지, git에 커밋하지 않는다 (gitignore)
-openapi/
-  spec.yaml         # Orval 입력 스펙 (임시 로컬 파일, 아래 "API 계약 동기화" 참고)
 orval.config.ts
 components.json      # shadcn/ui 설정
 ```
@@ -47,17 +45,13 @@ components.json      # shadcn/ui 설정
 
 ## API 연동 (Orval)
 
-- 계약 변경 시 순서: 1) 백엔드 OpenAPI 스펙 갱신 → 2) `pnpm api:generate` 재실행 → 3) 생성된 타입/훅을 쓰는 화면 코드 갱신.
-- `src/api/generated`는 손으로 고치지 않는다. 스펙이 틀렸으면 스펙(또는 백엔드)을 고치고 재생성한다.
+- `orval.config.ts`의 `input.target`은 백엔드가 로컬(`:8080`)에서 노출하는 `http://localhost:8080/v3/api-docs`다. 즉 **`pnpm api:generate`를 돌리려면 백엔드가 로컬에서 떠 있어야 한다** (`./gradlew bootRun`, MySQL은 저장소 루트 `docker-compose.yml`로 띄운다).
+- 계약 변경 시 순서: 1) 백엔드 컨트롤러/DTO 수정(springdoc이 스펙에 자동 반영) → 2) 백엔드를 로컬에서 기동한 채 `pnpm api:generate` 재실행 → 3) 생성된 타입/훅을 쓰는 화면 코드 갱신.
+- `src/api/generated`는 손으로 고치지 않는다. 스펙이 틀렸으면 백엔드 컨트롤러/DTO를 고치고 재생성한다.
 - 인증은 Session Cookie 방식이 확정 사항이므로 (`contracts.md`), `src/api/mutator/custom-instance.ts`의 axios 인스턴스는 `withCredentials: true`를 유지한다.
-- 응답은 항상 `{ success, data, error }` 3필드 봉투(envelope)를 따른다 (`contracts.md`). 화면 코드에서 `success` 분기 없이 `data`만 믿고 쓰지 않는다.
+- 응답은 항상 `{ success, data, error }` 3필드 봉투(envelope)를 따른다 (`contracts.md`, 백엔드의 `CommonResponse<T>`). 화면 코드에서 `success` 분기 없이 `data`만 믿고 쓰지 않는다.
 - 개발 서버는 `/api` 요청을 `http://localhost:8080`(백엔드)으로 프록시한다 (`vite.config.ts`의 `server.proxy`). 그래서 axios `baseURL`을 비워두면 dev에서도 프로덕션과 같은 동일 출처 구성이 되어 Session Cookie가 CORS 없이 그대로 전달된다. dev 중 API가 안 붙으면 먼저 백엔드가 `:8080`에 떠 있는지 확인한다.
-
-### API 계약 동기화 (현재 미확정 상태)
-
-- `openapi/spec.yaml`은 백엔드에 아직 springdoc-openapi 같은 스펙 자동 노출이 없어서 만든 **임시 로컬 스펙**이다 (echo 엔드포인트만 정의).
-- 백엔드가 실제 OpenAPI 스펙을 노출하면 `orval.config.ts`의 `input.target`을 그 URL(`http://localhost:8080/v3/api-docs`) 또는 export된 파일로 교체하고, 이 임시 파일은 제거한다. 이 교체는 공용 계약 변경에 준하므로 팀 확인 후 진행한다.
-- API prefix(`/api/v1` 등)는 `contracts.md`상으로는 아직 "미확정"이지만, 배포 워크플로(`.github/workflows/frontend-deploy.yml`)의 주석은 이미 "CloudFront가 `/api`를 EC2 백엔드로 프록시하는 동일 출처 구성"을 전제로 하고 있다. 즉 인프라 쪽에서는 사실상 `/api` prefix가 정해진 상태다 — `contracts.md`가 이 사실을 반영하도록 팀과 확인해서 문서를 맞추는 게 좋다. 확정되면 `openapi/spec.yaml`의 `servers.url`과 `vite.config.ts`의 dev 프록시 경로를 함께 맞춘다.
+- API prefix는 실제 컨트롤러 기준 `/api/...`로 확인됐다 (`AuthController`의 `@RequestMapping("/api/auth")`). `contracts.md`가 여전히 이를 "미확정"으로 적어두고 있으니 팀과 확인해서 문서를 맞추는 걸 추천한다.
 
 ## 스타일 (Tailwind v4 + shadcn/ui)
 
@@ -74,7 +68,7 @@ components.json      # shadcn/ui 설정
 ## 아직 정하지 않은 것 (임의로 결정하지 않는다)
 
 - 테스트 도구 (Vitest, Testing Library 등) — 아직 설치되지 않았다. 저장소 공통 규칙상 기능 구현 시 테스트 코드가 필요하므로, 첫 기능 작업 전에 팀과 도구를 정하고 추가한다.
-- API prefix, 인증 이후의 세부 에러 코드 목록 — `contracts.md`의 "미확정 사항"을 따른다.
+- 인증 이후의 세부 에러 코드 목록 — `contracts.md`의 "미확정 사항"을 따른다.
 - 전역 상태 관리 라이브러리 (필요해지면 그때 논의한다. TanStack Query가 다루는 서버 상태와 혼동하지 않는다).
 
 ## 명령어
