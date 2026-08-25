@@ -4,7 +4,10 @@ import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
+import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionSummaryDto;
+import com.samsam55.trip.trip.dto.VoteStartItemResultDto;
+import com.samsam55.trip.trip.dto.VoteStartResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
@@ -28,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class ItineraryItemService {
 
+    private static final int MIN_VOTE_OPTION_COUNT = 2;
     private static final int MAX_VOTE_OPTION_COUNT = 4;
 
     private final TripDayRepository tripDayRepository;
@@ -95,6 +99,67 @@ public class ItineraryItemService {
                 .toList();
 
         return ItineraryItemCreateResponseDto.from(itineraryItem, voteOptions);
+    }
+
+    /**
+     * 일정 항목 상세를 조회한다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param itemId 조회할 일정 항목의 식별자
+     * @return 일정 항목과 선택지 목록
+     * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     */
+    @Transactional(readOnly = true)
+    public ItineraryItemDetailResponseDto getItineraryItem(Long loginUserId, Long itemId) {
+        ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+
+        if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
+            throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+        }
+
+        List<VoteOptionSummaryDto> voteOptions = voteOptionRepository.findByItineraryItem(itineraryItem).stream()
+                .map(VoteOptionSummaryDto::from)
+                .toList();
+
+        return ItineraryItemDetailResponseDto.from(itineraryItem, voteOptions);
+    }
+
+    /**
+     * 일정 항목들을 한 번에 투표 상태로 전환한다. 하나라도 조건을 못 채우면 전체가 실패한다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param itemIds 투표를 시작할 일정 항목 식별자 목록
+     * @return 전환된 일정 항목들의 상태
+     * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     * @throws ApplicationException 이미 투표가 시작됐거나 VOTE 방식이 아닐 때(VOTE_ALREADY_STARTED)
+     * @throws ApplicationException 선택지가 2개 미만일 때(VOTE_OPTION_COUNT_INSUFFICIENT)
+     */
+    @Transactional
+    public VoteStartResponseDto startVote(Long loginUserId, List<Long> itemIds) {
+        List<ItineraryItem> itineraryItems = itemIds.stream()
+                .map(itemId -> itineraryItemRepository.findById(itemId)
+                        .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND)))
+                .toList();
+
+        for (ItineraryItem itineraryItem : itineraryItems) {
+            if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
+                throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+            }
+            if (itineraryItem.getDecisionType() != ItineraryItemDecisionType.VOTE
+                    || itineraryItem.getStatus() != ItineraryItemStatus.PENDING) {
+                throw new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED);
+            }
+            if (voteOptionRepository.countByItineraryItem(itineraryItem) < MIN_VOTE_OPTION_COUNT) {
+                throw new ApplicationException(TripErrorType.VOTE_OPTION_COUNT_INSUFFICIENT);
+            }
+        }
+
+        itineraryItems.forEach(ItineraryItem::startVoting);
+
+        return new VoteStartResponseDto(itineraryItems.stream().map(VoteStartItemResultDto::from).toList());
     }
 
     private boolean hasContent(MultipartFile file) {

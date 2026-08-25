@@ -6,6 +6,6 @@
  */
 
 export interface AuthSignupResponseDto {
-  id?: number
-  loginId?: string
+  id?: number;
+  loginId?: string;
 }

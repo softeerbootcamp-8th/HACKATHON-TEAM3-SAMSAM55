@@ -3,7 +3,9 @@ package com.samsam55.trip.trip.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -13,8 +15,13 @@ import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.global.exception.GlobalExceptionHandler;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
+import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
+import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
+import com.samsam55.trip.trip.dto.VoteStartItemResultDto;
+import com.samsam55.trip.trip.dto.VoteStartResponseDto;
 import com.samsam55.trip.trip.exception.TripErrorType;
 import com.samsam55.trip.trip.service.ItineraryItemService;
+import com.samsam55.trip.trip.service.VoteOptionService;
 import jakarta.validation.Validation;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -36,11 +43,14 @@ class ItineraryItemControllerTest {
     @Mock
     private ItineraryItemService itineraryItemService;
 
+    @Mock
+    private VoteOptionService voteOptionService;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new ItineraryItemController(itineraryItemService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new ItineraryItemController(itineraryItemService, voteOptionService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new LoginUserArgumentResolver())
                 .setValidator(new SpringValidatorAdapter(Validation.buildDefaultValidatorFactory().getValidator()))
@@ -111,5 +121,85 @@ class ItineraryItemControllerTest {
                         .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("TRIP_DAY_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("일정 항목 상세 조회는 200과 공통 응답 형식으로 반환한다")
+    void 일정_항목_상세_조회는_200과_공통_응답_형식으로_반환한다() throws Exception {
+        when(itineraryItemService.getItineraryItem(anyLong(), anyLong()))
+                .thenReturn(new ItineraryItemDetailResponseDto(
+                        100L, "점심 메뉴", "식사", 1, "VOTE", "PENDING", List.of(), null));
+
+        mockMvc.perform(get("/api/itinerary-items/100")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(100))
+                .andExpect(jsonPath("$.error").isEmpty());
+    }
+
+    @Test
+    @DisplayName("투표 시작 요청은 200과 전환된 상태를 반환한다")
+    void 투표_시작_요청은_200과_전환된_상태를_반환한다() throws Exception {
+        when(itineraryItemService.startVote(anyLong(), any()))
+                .thenReturn(new VoteStartResponseDto(List.of(new VoteStartItemResultDto(100L, "VOTING"))));
+
+        mockMvc.perform(post("/api/itinerary-items/vote/start")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L)
+                        .contentType("application/json")
+                        .content("""
+                                {"itemIds":[100]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].itemId").value(100))
+                .andExpect(jsonPath("$.data.items[0].status").value("VOTING"));
+    }
+
+    @Test
+    @DisplayName("선택지가 부족하면 투표 시작 요청은 409 공통 에러 응답으로 반환한다")
+    void 선택지가_부족하면_투표_시작_요청은_409_공통_에러_응답으로_반환한다() throws Exception {
+        when(itineraryItemService.startVote(anyLong(), any()))
+                .thenThrow(new ApplicationException(TripErrorType.VOTE_OPTION_COUNT_INSUFFICIENT));
+
+        mockMvc.perform(post("/api/itinerary-items/vote/start")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L)
+                        .contentType("application/json")
+                        .content("""
+                                {"itemIds":[100]}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("VOTE_OPTION_COUNT_INSUFFICIENT"));
+    }
+
+    @Test
+    @DisplayName("선택지 추가 요청은 201과 공통 응답 형식으로 반환한다")
+    void 선택지_추가_요청은_201과_공통_응답_형식으로_반환한다() throws Exception {
+        when(voteOptionService.createVoteOption(anyLong(), anyLong(), any(), any()))
+                .thenReturn(new VoteOptionCreateResponseDto(501L, 100L, "스시", "AI가 쓴 설명", "AI", true));
+
+        MockMultipartFile image = new MockMultipartFile(
+                "image", "sushi.jpg", "image/jpeg", "image-bytes".getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(multipart("/api/itinerary-items/100/vote-options")
+                        .file(image)
+                        .param("name", "스시")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(501))
+                .andExpect(jsonPath("$.data.hasImage").value(true));
+    }
+
+    @Test
+    @DisplayName("선택지가 이미 4개면 선택지 추가 요청은 409 공통 에러 응답으로 반환한다")
+    void 선택지가_이미_4개면_선택지_추가_요청은_409_공통_에러_응답으로_반환한다() throws Exception {
+        when(voteOptionService.createVoteOption(anyLong(), anyLong(), any(), any()))
+                .thenThrow(new ApplicationException(TripErrorType.VOTE_OPTION_COUNT_EXCEEDED));
+
+        mockMvc.perform(multipart("/api/itinerary-items/100/vote-options")
+                        .param("name", "스시")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VOTE_OPTION_COUNT_EXCEEDED"));
     }
 }

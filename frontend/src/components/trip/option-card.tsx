@@ -12,6 +12,9 @@ type OptionCardProps = {
   voters?: string[]
   leading?: boolean
   editable?: boolean
+  // 있으면 회색 박스 대신 이 주소의 이미지를 채운다 (세션 쿠키로 인증되는 GET 엔드포인트).
+  // DB에 저장된 값이 아니라 <img> 렌더링 시점에 필요한 src일 뿐이라 imageUrl이 아닌 imageSrc로 부른다.
+  imageSrc?: string
   onClick?: () => void
   onDelete?: () => void
   className?: string
@@ -25,6 +28,7 @@ function OptionCard({
   voters,
   leading = false,
   editable = false,
+  imageSrc,
   onClick,
   onDelete,
   className,
@@ -46,7 +50,16 @@ function OptionCard({
         )}
       >
         <div className="flex w-full items-center gap-3">
-          {isResultCard ? (
+          {imageSrc ? (
+            <img
+              src={imageSrc}
+              alt=""
+              className={cn(
+                'size-11 shrink-0 object-cover',
+                isResultCard ? 'rounded-thumb' : 'rounded-card',
+              )}
+            />
+          ) : isResultCard ? (
             <div className="size-11 shrink-0 rounded-thumb bg-muted" />
           ) : (
             <div className="flex size-11 shrink-0 items-center justify-center rounded-card border-[1.5px] border-dashed border-border bg-muted" />

@@ -1,5 +1,6 @@
 package com.samsam55.trip.trip.repository;
 
+import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.VoteOption;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +10,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface VoteOptionRepository extends JpaRepository<VoteOption, Long> {
+
+    List<VoteOption> findByItineraryItem(ItineraryItem itineraryItem);
+
+    long countByItineraryItem(ItineraryItem itineraryItem);
 
     List<VoteOption> findAllByItineraryItemIdOrderByIdAsc(Long itineraryItemId);
 
