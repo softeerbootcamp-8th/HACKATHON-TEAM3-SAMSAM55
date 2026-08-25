@@ -20,6 +20,16 @@ public interface VoteRepository extends JpaRepository<Vote, Long> {
             """)
     List<Vote> findAllByTripIdWithOptionAndParticipant(@Param("tripId") Long tripId);
 
+    @Query("""
+            select vote
+            from Vote vote
+            join fetch vote.option
+            join fetch vote.participant
+            where vote.itineraryItem.id = :itemId
+            order by vote.id asc
+            """)
+    List<Vote> findAllByItineraryItemIdWithOptionAndParticipant(@Param("itemId") Long itemId);
+
     @Modifying(flushAutomatically = true)
     @Query("""
             delete from Vote vote
