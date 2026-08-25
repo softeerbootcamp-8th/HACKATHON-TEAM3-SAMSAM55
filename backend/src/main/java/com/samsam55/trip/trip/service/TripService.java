@@ -25,6 +25,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,7 +50,8 @@ public class TripService {
      */
     @Transactional(readOnly = true)
     public TripListResponseDto findTrips(Long userId) {
-        return TripListResponseDto.from(tripRepository.findAllByHostUserIdOrderByStartDateAscIdAsc(userId));
+        List<Trip> trips = tripRepository.findAllByHostUserIdOrderByStartDateAscIdAsc(userId);
+        return TripListResponseDto.from(orderTripsForList(trips));
     }
 
     /**
@@ -130,6 +132,18 @@ public class TripService {
         if (startDate.isAfter(endDate)) {
             throw new ApplicationException(TripErrorType.INVALID_TRIP_PERIOD);
         }
+    }
+
+    private List<Trip> orderTripsForList(List<Trip> trips) {
+        LocalDate today = LocalDate.now();
+        return Stream.concat(
+                trips.stream().filter(trip -> isInProgress(trip, today)),
+                trips.stream().filter(trip -> !isInProgress(trip, today))
+        ).toList();
+    }
+
+    private boolean isInProgress(Trip trip, LocalDate today) {
+        return !trip.getEndDate().toLocalDate().isBefore(today);
     }
 
     private List<TripDay> createTripDays(Trip trip, LocalDate startDate, LocalDate endDate) {

@@ -94,29 +94,36 @@ class TripServiceTest {
     }
 
     @Test
-    @DisplayName("여행 목록을 시작일이 빠른 순서로 반환한다")
-    void 여행_목록을_시작일이_빠른_순서로_반환한다() {
-        Trip earlierTrip = org.mockito.Mockito.mock(Trip.class);
+    @DisplayName("진행 중인 여행 중 가장 임박한 여행을 먼저 반환한다")
+    void 진행_중인_여행_중_가장_임박한_여행을_먼저_반환한다() {
+        LocalDate today = LocalDate.now();
+        Trip endedTrip = org.mockito.Mockito.mock(Trip.class);
+        Trip nearestTrip = org.mockito.Mockito.mock(Trip.class);
         Trip laterTrip = org.mockito.Mockito.mock(Trip.class);
         when(tripRepository.findAllByHostUserIdOrderByStartDateAscIdAsc(1L))
-                .thenReturn(List.of(earlierTrip, laterTrip));
-        when(earlierTrip.getId()).thenReturn(2L);
-        when(earlierTrip.getTitle()).thenReturn("다가오는 여행");
-        when(earlierTrip.getStartDate()).thenReturn(LocalDateTime.of(2026, 8, 24, 0, 0));
-        when(earlierTrip.getEndDate()).thenReturn(LocalDateTime.of(2026, 8, 27, 0, 0));
-        when(earlierTrip.getCompanionCount()).thenReturn(4);
+                .thenReturn(List.of(endedTrip, nearestTrip, laterTrip));
+        when(endedTrip.getId()).thenReturn(1L);
+        when(endedTrip.getTitle()).thenReturn("지난 여행");
+        when(endedTrip.getStartDate()).thenReturn(today.minusDays(10).atStartOfDay());
+        when(endedTrip.getEndDate()).thenReturn(today.minusDays(7).atStartOfDay());
+        when(endedTrip.getCompanionCount()).thenReturn(2);
+        when(nearestTrip.getId()).thenReturn(2L);
+        when(nearestTrip.getTitle()).thenReturn("가장 임박한 여행");
+        when(nearestTrip.getStartDate()).thenReturn(today.plusDays(18).atStartOfDay());
+        when(nearestTrip.getEndDate()).thenReturn(today.plusDays(21).atStartOfDay());
+        when(nearestTrip.getCompanionCount()).thenReturn(4);
         when(laterTrip.getId()).thenReturn(3L);
-        when(laterTrip.getTitle()).thenReturn("다른 여행");
-        when(laterTrip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 12, 0, 0));
-        when(laterTrip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 14, 0, 0));
+        when(laterTrip.getTitle()).thenReturn("다른 진행 중 여행");
+        when(laterTrip.getStartDate()).thenReturn(today.plusDays(30).atStartOfDay());
+        when(laterTrip.getEndDate()).thenReturn(today.plusDays(33).atStartOfDay());
         when(laterTrip.getCompanionCount()).thenReturn(3);
 
         TripListResponseDto response = service().findTrips(1L);
 
         assertThat(response.items()).extracting("title")
-                .containsExactly("다가오는 여행", "다른 여행");
+                .containsExactly("가장 임박한 여행", "다른 진행 중 여행", "지난 여행");
         assertThat(response.items()).extracting("startDate")
-                .containsExactly(LocalDate.of(2026, 8, 24), LocalDate.of(2026, 9, 12));
+                .containsExactly(today.plusDays(18), today.plusDays(30), today.minusDays(10));
     }
 
     @Test
