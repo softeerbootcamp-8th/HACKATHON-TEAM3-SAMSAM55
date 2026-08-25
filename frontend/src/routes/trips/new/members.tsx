@@ -91,7 +91,7 @@ function NewTripMembersPage() {
           title,
           startDate,
           endDate,
-          companions: [...selected, ...customMembers],
+          companions: [...new Set([...selected, ...customMembers])],
         },
       })
 
