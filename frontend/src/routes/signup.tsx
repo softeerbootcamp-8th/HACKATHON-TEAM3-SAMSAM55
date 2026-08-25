@@ -62,7 +62,6 @@ function SignupPage() {
             label="아이디"
             name="loginId"
             autoComplete="username"
-            placeholder="example"
             value={loginId}
             onChange={(event) => setLoginId(event.target.value)}
             error={errorMessage}
