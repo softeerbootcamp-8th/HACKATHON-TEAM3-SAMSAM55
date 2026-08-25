@@ -9,6 +9,8 @@ import com.samsam55.trip.trip.dto.TripCreateResponseDto;
 import com.samsam55.trip.trip.dto.TripDetailResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
+import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
+import com.samsam55.trip.trip.entity.ItineraryItemStatus;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
 import com.samsam55.trip.trip.repository.ParticipantRepository;
@@ -145,8 +147,8 @@ class TripServiceIntegrationTest extends AbstractMySqlContainerTest {
                 secondDay,
                 "숙소 체크인",
                 "숙소",
-                "VOTE",
-                "PENDING",
+                ItineraryItemDecisionType.VOTE,
+                ItineraryItemStatus.PENDING,
                 1,
                 null
         ));
@@ -154,8 +156,8 @@ class TripServiceIntegrationTest extends AbstractMySqlContainerTest {
                 firstDay,
                 "점심 식사",
                 "식사",
-                "VOTE",
-                "VOTING",
+                ItineraryItemDecisionType.VOTE,
+                ItineraryItemStatus.VOTING,
                 1,
                 null
         ));

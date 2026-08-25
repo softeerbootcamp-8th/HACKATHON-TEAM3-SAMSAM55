@@ -12,6 +12,7 @@ import com.samsam55.trip.trip.dto.TripCreateRequestDto;
 import com.samsam55.trip.trip.dto.TripDetailResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
+import com.samsam55.trip.trip.entity.ItineraryItemStatus;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
 import com.samsam55.trip.trip.repository.ParticipantRepository;
@@ -268,7 +269,7 @@ class TripServiceTest {
         when(itineraryItem.getId()).thenReturn(100L);
         when(itineraryItem.getName()).thenReturn("점심 식사");
         when(itineraryItem.getCategory()).thenReturn("식사");
-        when(itineraryItem.getStatus()).thenReturn("VOTING");
+        when(itineraryItem.getStatus()).thenReturn(ItineraryItemStatus.VOTING);
 
         TripDetailResponseDto response = service().findTrip(1L, 1L);
 

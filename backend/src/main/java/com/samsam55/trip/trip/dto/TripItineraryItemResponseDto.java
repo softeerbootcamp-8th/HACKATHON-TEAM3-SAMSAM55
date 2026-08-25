@@ -14,7 +14,7 @@ public record TripItineraryItemResponseDto(
                 itineraryItem.getId(),
                 itineraryItem.getName(),
                 itineraryItem.getCategory(),
-                itineraryItem.getStatus()
+                itineraryItem.getStatus().name()
         );
     }
 }
