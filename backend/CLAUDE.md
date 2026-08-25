@@ -20,6 +20,9 @@ SAMSAM55의 Spring 백엔드다. 이 문서는 백엔드의 상시 규칙만 정
 - 필드 형식 검증은 DTO(Bean Validation)에서, 비즈니스 규칙 검증은 Service에서 한다.
 - `ApplicationException`, 도메인별 `ErrorType`, `GlobalExceptionHandler`를 사용한다.
 - 생성자 주입을 사용한다.
+- Controller·Service의 public 메서드에는 Javadoc을 작성한다
+  (`@param`/`@return`/`@throws` — 어떤 상황에 어떤 `ErrorType`이 발생하는지 명시).
+  자세한 형식은 `.claude/skills/trip-development/references/backend.md`를 본다.
 - API 응답 형식(`success`/`data`/`error`)과 에러 코드는 팀 확인 없이 임의 변경하지 않는다.
 - 기능을 구현한 뒤 그 기능의 테스트를 작성한다 (TDD로 테스트를 먼저 쓰지 않는다 — 팀 결정).
 
