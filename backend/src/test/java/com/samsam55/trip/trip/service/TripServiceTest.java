@@ -9,8 +9,8 @@ import static org.mockito.Mockito.when;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.member.repository.UserRepository;
 import com.samsam55.trip.trip.dto.TripCreateRequestDto;
+import com.samsam55.trip.trip.dto.TripDetailResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
-import com.samsam55.trip.trip.dto.TripSummaryResponseDto;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.repository.ParticipantRepository;
 import com.samsam55.trip.trip.repository.ItineraryItemRepository;
@@ -160,14 +160,17 @@ class TripServiceTest {
         when(trip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 1, 0, 0));
         when(trip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 3, 0, 0));
         when(trip.getCompanionCount()).thenReturn(2);
+        when(tripDayRepository.findAllByTripIdOrderByDayNumberAsc(1L)).thenReturn(List.of());
+        when(itineraryItemRepository.findAllByTripIdOrderByDayAndSortOrder(1L)).thenReturn(List.of());
 
-        TripSummaryResponseDto response = service().findTrip(1L, 1L);
+        TripDetailResponseDto response = service().findTrip(1L, 1L);
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.title()).isEqualTo("제주 가족 여행");
         assertThat(response.startDate()).isEqualTo(LocalDate.of(2026, 9, 1));
         assertThat(response.endDate()).isEqualTo(LocalDate.of(2026, 9, 3));
         assertThat(response.companionCount()).isEqualTo(2);
+        assertThat(response.days()).isEmpty();
     }
 
     @Test

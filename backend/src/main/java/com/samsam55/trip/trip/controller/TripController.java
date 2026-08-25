@@ -4,8 +4,8 @@ import com.samsam55.trip.auth.annotation.Login;
 import com.samsam55.trip.global.common.CommonResponse;
 import com.samsam55.trip.trip.dto.TripCreateRequestDto;
 import com.samsam55.trip.trip.dto.TripCreateResponseDto;
+import com.samsam55.trip.trip.dto.TripDetailResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
-import com.samsam55.trip.trip.dto.TripSummaryResponseDto;
 import com.samsam55.trip.trip.service.TripService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +46,7 @@ public class TripController {
      * @throws com.samsam55.trip.global.exception.ApplicationException 여행이 없거나 방장이 아닐 때(TRIP_NOT_FOUND)
      */
     @GetMapping("/{tripId}")
-    public CommonResponse<TripSummaryResponseDto> findTrip(
+    public CommonResponse<TripDetailResponseDto> findTrip(
             @Login Long userId,
             @PathVariable Long tripId
     ) {
