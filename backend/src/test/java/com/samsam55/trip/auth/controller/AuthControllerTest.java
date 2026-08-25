@@ -18,6 +18,7 @@ import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.global.exception.GlobalExceptionHandler;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -125,7 +126,11 @@ class AuthControllerTest {
     @Test
     @DisplayName("로그인은 세션이 포함된 공통 성공 응답으로 반환한다")
     void 로그인은_세션이_포함된_공통_성공_응답으로_반환한다() throws Exception {
-        when(authService.login(any(AuthLoginRequestDto.class), any(HttpServletRequest.class)))
+        when(authService.login(
+                any(AuthLoginRequestDto.class),
+                any(HttpServletRequest.class),
+                any(HttpServletResponse.class)
+        ))
                 .thenReturn(new AuthLoginResponseDto(1L, "login-user"));
 
         mockMvc.perform(post("/api/auth/login")

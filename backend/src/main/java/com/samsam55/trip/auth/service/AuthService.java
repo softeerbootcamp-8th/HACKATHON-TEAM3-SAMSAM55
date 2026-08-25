@@ -9,7 +9,10 @@ import com.samsam55.trip.auth.exception.AuthErrorType;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.member.entity.User;
 import com.samsam55.trip.member.repository.UserRepository;
+import com.samsam55.trip.trip.service.InviteService;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -53,11 +56,16 @@ public class AuthService {
      *
      * @param request 로그인 아이디와 비밀번호
      * @param servletRequest 현재 HTTP 요청
+     * @param servletResponse 참여자 복구 쿠키를 제거할 현재 HTTP 응답
      * @return 로그인한 회원의 식별자와 아이디
      * @throws ApplicationException 아이디가 없거나 비밀번호가 틀릴 때(INVALID_CREDENTIALS)
      */
     @Transactional(readOnly = true)
-    public AuthLoginResponseDto login(AuthLoginRequestDto request, HttpServletRequest servletRequest) {
+    public AuthLoginResponseDto login(
+            AuthLoginRequestDto request,
+            HttpServletRequest servletRequest,
+            HttpServletResponse servletResponse
+    ) {
         User user = userRepository.findByLoginId(request.loginId())
                 .orElseThrow(() -> new ApplicationException(AuthErrorType.INVALID_CREDENTIALS));
 
@@ -67,8 +75,19 @@ public class AuthService {
 
         HttpSession session = servletRequest.getSession(true);
         servletRequest.changeSessionId();
+        session.removeAttribute(InviteService.PARTICIPANT_ID_SESSION_ATTRIBUTE);
+        session.removeAttribute(InviteService.TRIP_ID_SESSION_ATTRIBUTE);
         session.setAttribute(LOGIN_USER_ID_SESSION_ATTRIBUTE, user.getId());
+        expireParticipantRecoveryCookie(servletResponse);
         return AuthLoginResponseDto.from(user);
+    }
+
+    private void expireParticipantRecoveryCookie(HttpServletResponse servletResponse) {
+        Cookie cookie = new Cookie(InviteService.RECOVERY_COOKIE_NAME, "");
+        cookie.setPath("/");
+        cookie.setHttpOnly(true);
+        cookie.setMaxAge(0);
+        servletResponse.addCookie(cookie);
     }
 
     /**
