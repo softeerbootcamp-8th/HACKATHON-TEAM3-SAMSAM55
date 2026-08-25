@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# TanStack Router (dev/build 시 자동 생성 — 커밋하지 않는다)
+src/routeTree.gen.ts
+
 # env
 .env
 .env.*
