@@ -6,7 +6,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.samsam55.trip.auth.dto.AuthLoginRequestDto;
+import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.auth.dto.AuthSignupRequestDto;
+import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.auth.exception.AuthErrorType;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.member.entity.User;
@@ -37,11 +39,14 @@ class AuthServiceTest {
     @Mock
     private HttpSession session;
 
+    @Mock
+    private ParticipantSessionResolver participantSessionResolver;
+
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, passwordHasher);
+        authService = new AuthService(userRepository, passwordHasher, participantSessionResolver);
     }
 
     @Test
@@ -72,5 +77,41 @@ class AuthServiceTest {
 
         verify(servletRequest).changeSessionId();
         verify(session).setAttribute(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, user.getId());
+    }
+
+    @Test
+    @DisplayName("HOST 세션이 있으면 HOST 정보를 반환한다")
+    void HOST_세션이_있으면_HOST_정보를_반환한다() {
+        when(servletRequest.getSession(false)).thenReturn(session);
+        when(session.getAttribute(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE)).thenReturn(5L);
+
+        AuthMeResponseDto response = authService.me(servletRequest);
+
+        org.assertj.core.api.Assertions.assertThat(response).isEqualTo(AuthMeResponseDto.ofHost(5L));
+    }
+
+    @Test
+    @DisplayName("HOST 세션이 없으면 참여자 세션을 확인해 PARTICIPANT 정보를 반환한다")
+    void HOST_세션이_없으면_참여자_정보를_반환한다() {
+        when(servletRequest.getSession(false)).thenReturn(null);
+        when(participantSessionResolver.resolve(servletRequest))
+                .thenReturn(Optional.of(new ParticipantPrincipal(12L, 1L)));
+
+        AuthMeResponseDto response = authService.me(servletRequest);
+
+        org.assertj.core.api.Assertions.assertThat(response)
+                .isEqualTo(AuthMeResponseDto.ofParticipant(new ParticipantPrincipal(12L, 1L)));
+    }
+
+    @Test
+    @DisplayName("HOST도 PARTICIPANT도 아니면 UNAUTHENTICATED 에러를 던진다")
+    void HOST도_참여자도_아니면_에러를_던진다() {
+        when(servletRequest.getSession(false)).thenReturn(null);
+        when(participantSessionResolver.resolve(servletRequest)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.me(servletRequest))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        org.assertj.core.api.Assertions.assertThat(exception.getErrorType())
+                                .isEqualTo(AuthErrorType.UNAUTHENTICATED));
     }
 }

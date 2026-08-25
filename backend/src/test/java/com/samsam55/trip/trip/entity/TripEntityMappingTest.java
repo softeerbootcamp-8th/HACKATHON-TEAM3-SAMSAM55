@@ -3,6 +3,7 @@ package com.samsam55.trip.trip.entity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.samsam55.trip.global.support.AbstractMySqlContainerTest;
 import com.samsam55.trip.member.entity.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
@@ -12,12 +13,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
-@ActiveProfiles("test")
-class TripEntityMappingTest {
+class TripEntityMappingTest extends AbstractMySqlContainerTest {
 
     private final EntityManager entityManager;
 
@@ -53,8 +52,8 @@ class TripEntityMappingTest {
                 tripDay,
                 "오전 관광지",
                 "TOURIST_SPOT",
-                "VOTE",
-                "PENDING",
+                ItineraryItemDecisionType.VOTE,
+                ItineraryItemStatus.PENDING,
                 1,
                 null
         );
@@ -65,6 +64,7 @@ class TripEntityMappingTest {
                 "성산일출봉",
                 "일출 명소",
                 "AI",
+                null,
                 null
         );
         entityManager.persist(voteOption);
@@ -92,6 +92,31 @@ class TripEntityMappingTest {
 
         assertThrows(PersistenceException.class, () -> {
             entityManager.persist(new User("duplicate-login-id", "password-2"));
+            entityManager.flush();
+        });
+    }
+
+    @Test
+    @DisplayName("같은 일차 안에서 sortOrder는 중복될 수 없다")
+    @Transactional
+    void 같은_일차_안에서_sortOrder는_중복될_수_없다() {
+        User user = new User("sort-order-host", "hashed-password");
+        entityManager.persist(user);
+
+        Trip trip = new Trip(user, "제주 여행",
+                LocalDateTime.of(2026, 9, 1, 9, 0), LocalDateTime.of(2026, 9, 3, 18, 0), 3, "invite-code");
+        entityManager.persist(trip);
+
+        TripDay tripDay = new TripDay(trip, 1, LocalDate.of(2026, 9, 1));
+        entityManager.persist(tripDay);
+
+        entityManager.persist(new ItineraryItem(
+                tripDay, "오전 관광지", "TOURIST_SPOT", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null));
+        entityManager.flush();
+
+        assertThrows(PersistenceException.class, () -> {
+            entityManager.persist(new ItineraryItem(
+                    tripDay, "점심 식사", "MEAL", ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.PENDING, 1, null));
             entityManager.flush();
         });
     }

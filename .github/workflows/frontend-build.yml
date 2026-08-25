@@ -31,6 +31,9 @@ jobs:
         # 실패하므로 생략한다. esbuild·tailwind·rolldown은 prebuilt 바이너리(optional dep)라 빌드 스크립트가 불필요.
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Format check
+        run: pnpm format:check
+
       - name: Lint
         run: pnpm lint
 

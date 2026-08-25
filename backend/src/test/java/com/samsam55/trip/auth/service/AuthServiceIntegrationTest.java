@@ -9,6 +9,7 @@ import com.samsam55.trip.auth.dto.AuthSignupRequestDto;
 import com.samsam55.trip.auth.dto.AuthSignupResponseDto;
 import com.samsam55.trip.auth.exception.AuthErrorType;
 import com.samsam55.trip.global.exception.ApplicationException;
+import com.samsam55.trip.global.support.AbstractMySqlContainerTest;
 import com.samsam55.trip.member.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
 import org.mindrot.jbcrypt.BCrypt;
@@ -17,13 +18,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class AuthServiceIntegrationTest {
+class AuthServiceIntegrationTest extends AbstractMySqlContainerTest {
 
     private final AuthService authService;
     private final UserRepository userRepository;

@@ -65,12 +65,14 @@ class LoginUserArgumentResolverTest {
     @Test
     @DisplayName("WebMvc 설정에 로그인 사용자 resolver를 등록한다")
     void WebMvc_설정에_로그인_사용자_resolver를_등록한다() {
-        WebMvcConfig webMvcConfig = new WebMvcConfig(resolver);
+        ParticipantArgumentResolver participantArgumentResolver =
+                new ParticipantArgumentResolver(null);
+        WebMvcConfig webMvcConfig = new WebMvcConfig(resolver, participantArgumentResolver);
         List<HandlerMethodArgumentResolver> resolvers = new ArrayList<>();
 
         webMvcConfig.addArgumentResolvers(resolvers);
 
-        assertThat(resolvers).containsExactly(resolver);
+        assertThat(resolvers).containsExactly(resolver, participantArgumentResolver);
     }
 
     private MethodParameter parameterOf(String methodName, Class<?> parameterType) throws NoSuchMethodException {

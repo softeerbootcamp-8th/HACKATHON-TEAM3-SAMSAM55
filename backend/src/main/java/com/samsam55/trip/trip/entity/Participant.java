@@ -39,4 +39,8 @@ public class Participant {
         this.roleName = roleName;
         this.joinedAt = joinedAt;
     }
+
+    public void join(LocalDateTime joinedAt) {
+        this.joinedAt = joinedAt;
+    }
 }
