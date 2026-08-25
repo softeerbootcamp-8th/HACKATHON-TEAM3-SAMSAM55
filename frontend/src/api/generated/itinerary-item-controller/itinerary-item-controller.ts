@@ -27,6 +27,7 @@ import type {
   CommonResponseItineraryItemCreateResponseDto,
   CommonResponseItineraryItemDetailResponseDto,
   CommonResponseVoteOptionCreateResponseDto,
+  CommonResponseVoteStatusResponseDto,
   CreateItineraryItemBody,
   CreateVoteOptionBody,
   CreateVoteOptionParams
@@ -260,6 +261,92 @@ export function useGetItineraryItem<TData = Awaited<ReturnType<typeof getItinera
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetItineraryItemQueryOptions(itemId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getVoteStatus = (
+    itemId: number,
+ signal?: AbortSignal
+) => {
+
+
+      return customInstance<CommonResponseVoteStatusResponseDto>(
+      {url: `/api/itinerary-items/${itemId}/vote-status`, method: 'GET', signal
+    },
+      );
+    }
+
+
+
+
+export const getGetVoteStatusQueryKey = (itemId: number,) => {
+    return [
+    `/api/itinerary-items/${itemId}/vote-status`
+    ] as const;
+    }
+
+
+export const getGetVoteStatusQueryOptions = <TData = Awaited<ReturnType<typeof getVoteStatus>>, TError = unknown>(itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getVoteStatus>>, TError, TData>>, }
+) => {
+
+const {query: queryOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetVoteStatusQueryKey(itemId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVoteStatus>>> = ({ signal }) => getVoteStatus(itemId, signal);
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: itemId !== null && itemId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getVoteStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetVoteStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getVoteStatus>>>
+export type GetVoteStatusQueryError = unknown
+
+
+export function useGetVoteStatus<TData = Awaited<ReturnType<typeof getVoteStatus>>, TError = unknown>(
+ itemId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getVoteStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getVoteStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getVoteStatus>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetVoteStatus<TData = Awaited<ReturnType<typeof getVoteStatus>>, TError = unknown>(
+ itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getVoteStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getVoteStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getVoteStatus>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetVoteStatus<TData = Awaited<ReturnType<typeof getVoteStatus>>, TError = unknown>(
+ itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getVoteStatus>>, TError, TData>>, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetVoteStatus<TData = Awaited<ReturnType<typeof getVoteStatus>>, TError = unknown>(
+ itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getVoteStatus>>, TError, TData>>, }
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetVoteStatusQueryOptions(itemId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
