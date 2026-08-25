@@ -7,6 +7,7 @@ import com.samsam55.trip.member.repository.UserRepository;
 import com.samsam55.trip.trip.dto.TripCreateRequestDto;
 import com.samsam55.trip.trip.dto.TripCreateResponseDto;
 import com.samsam55.trip.trip.dto.TripDetailResponseDto;
+import com.samsam55.trip.trip.dto.TripListResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
@@ -83,6 +84,35 @@ class TripServiceIntegrationTest {
         assertThat(participantRepository.count()).isEqualTo(3);
         assertThat(participantRepository.findAll())
                 .allSatisfy(participant -> assertThat(participant.getJoinedAt()).isNull());
+    }
+
+    @Test
+    @DisplayName("여행 목록을 시작일이 빠른 순서로 조회한다")
+    void 여행_목록을_시작일이_빠른_순서로_조회한다() {
+        User host = userRepository.saveAndFlush(new User("list-host", "hashed-password"));
+        tripRepository.saveAndFlush(new Trip(
+                host,
+                "늦은 여행",
+                LocalDateTime.of(2026, 9, 12, 0, 0),
+                LocalDateTime.of(2026, 9, 14, 0, 0),
+                3,
+                "late-invite-code"
+        ));
+        tripRepository.saveAndFlush(new Trip(
+                host,
+                "임박한 여행",
+                LocalDateTime.of(2026, 8, 24, 0, 0),
+                LocalDateTime.of(2026, 8, 27, 0, 0),
+                4,
+                "early-invite-code"
+        ));
+
+        TripListResponseDto response = tripService.findTrips(host.getId());
+
+        assertThat(response.items()).extracting("title")
+                .containsExactly("임박한 여행", "늦은 여행");
+        assertThat(response.items()).extracting("startDate")
+                .containsExactly(LocalDate.of(2026, 8, 24), LocalDate.of(2026, 9, 12));
     }
 
     @Test
