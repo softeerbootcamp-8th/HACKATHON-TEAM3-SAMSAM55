@@ -7,6 +7,7 @@ import {
   getGetItineraryItemQueryKey,
   useCreateVoteOption,
   useGetItineraryItem,
+  useGetVoteStatus,
 } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
 import type {
   CommonResponseItineraryItemDetailResponseDto,
@@ -17,6 +18,7 @@ import { useDeleteVoteOption } from '@/api/generated/vote-option-controller/vote
 import { AddOptionSheet } from '@/components/trip/add-option-sheet'
 import { EditOptionSheet } from '@/components/trip/edit-option-sheet'
 import { OptionCard } from '@/components/trip/option-card'
+import { VoteStatusRow } from '@/components/trip/vote-status-row'
 import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -43,6 +45,9 @@ const STATUS_BADGE: Record<
 // 서버(POST vote/start)가 요구하는 것과 같은 규칙 — 선택지가 2개 미만이면 투표를 시작할 수 없다.
 const MIN_VOTE_OPTION_COUNT = 2
 
+// 투표 중일 때만 폴링한다 — 확정되면 더 이상 집계가 바뀌지 않으므로 멈춘다.
+const VOTE_STATUS_POLLING_INTERVAL_MS = 3000
+
 function ItemDetailPage() {
   const { tripId, itemId } = Route.useParams()
   const navigate = useNavigate()
@@ -54,6 +59,18 @@ function ItemDetailPage() {
   const detail = response?.data
   const options = detail?.voteOptions ?? []
   const status = detail?.status
+  const isVoting = status === 'VOTING' || status === 'VOTED'
+
+  const { data: voteStatusResponse } = useGetVoteStatus(itemIdNumber, {
+    query: {
+      enabled: isVoting,
+      refetchInterval: isVoting ? VOTE_STATUS_POLLING_INTERVAL_MS : false,
+    },
+  })
+  const voteStatus = voteStatusResponse?.data
+  const voteStatusByOptionId = new Map(
+    (voteStatus?.options ?? []).map((option) => [option.optionId, option]),
+  )
 
   const [isEditingOptions, setIsEditingOptions] = React.useState(false)
   const [addOpen, setAddOpen] = React.useState(false)
@@ -82,6 +99,16 @@ function ItemDetailPage() {
   const isVote = detail.decisionType === 'VOTE'
   const badge = STATUS_BADGE[status ?? 'PENDING']
   const canStartVote = options.length >= MIN_VOTE_OPTION_COUNT
+  const leadingOptionName = options.reduce<VoteOptionSummaryDto | undefined>(
+    (leading, option) => {
+      const votes = voteStatusByOptionId.get(option.id)?.voteCount ?? 0
+      const leadingVotes = leading
+        ? (voteStatusByOptionId.get(leading.id)?.voteCount ?? 0)
+        : -1
+      return votes > leadingVotes ? option : leading
+    },
+    undefined,
+  )?.name
 
   const handleDeleteOption = () => {
     const optionId = deletingOption?.id
@@ -246,6 +273,38 @@ function ItemDetailPage() {
           </>
         )}
 
+        {isVote && isVoting && (
+          <>
+            <VoteStatusRow
+              votedCount={voteStatus?.votedCount ?? 0}
+              totalCount={voteStatus?.totalParticipants ?? 0}
+              voters={(voteStatus?.participants ?? []).map((participant) => ({
+                initial: participant.roleName?.charAt(0) ?? '?',
+                voted: participant.voted ?? false,
+              }))}
+            />
+            <p className="text-subtitle text-foreground">
+              선택지 {options.length}개
+            </p>
+            <div className="flex flex-col gap-3">
+              {options.map((option) => {
+                const optionVotes = voteStatusByOptionId.get(option.id)
+                return (
+                  <OptionCard
+                    key={option.id}
+                    title={option.name ?? ''}
+                    voteCount={optionVotes?.voteCount ?? 0}
+                    voters={(optionVotes?.voters ?? []).map(
+                      (voter) => voter.roleName?.charAt(0) ?? '?',
+                    )}
+                    leading={(optionVotes?.voteCount ?? 0) > 0}
+                  />
+                )
+              })}
+            </div>
+          </>
+        )}
+
         {!isVote && (
           <div className="flex flex-col gap-2.5">
             <div className="flex flex-col gap-2.5 rounded-card border border-border p-3">
@@ -285,6 +344,9 @@ function ItemDetailPage() {
           <Button variant="dangerOutline" size="cta">
             확정 해제하기
           </Button>
+        ) : isVote && isVoting ? (
+          // 확정하기 버튼의 실제 API 연동은 다른 팀원이 작업 중이라 onClick을 비워둔다.
+          <Button size="cta">{leadingOptionName}로 확정하기</Button>
         ) : isVote ? (
           <Button size="cta" disabled={!canStartVote} onClick={handleStartVote}>
             이 일정만 투표 올리기
@@ -306,9 +368,11 @@ function ItemDetailPage() {
           <p className="text-center text-caption-sm text-muted-foreground">
             {status === 'CONFIRMED'
               ? '해제하면 다시 투표 상태로 돌아가요'
-              : canStartVote
-                ? '투표를 올리면 가족들이 투표할 수 있고, 더는 수정할 수 없어요'
-                : '선택지는 2개 이상이어야 해요'}
+              : isVoting
+                ? '확정해도 나중에 되돌릴 수 있어요'
+                : canStartVote
+                  ? '투표를 올리면 가족들이 투표할 수 있고, 더는 수정할 수 없어요'
+                  : '선택지는 2개 이상이어야 해요'}
           </p>
         )}
       </div>
