@@ -17,9 +17,12 @@ import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.global.exception.GlobalExceptionHandler;
 import com.samsam55.trip.trip.dto.TripCreateResponseDto;
+import com.samsam55.trip.trip.dto.TripDayResponseDto;
+import com.samsam55.trip.trip.dto.TripDetailResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
 import com.samsam55.trip.trip.dto.TripParticipantResponseDto;
 import com.samsam55.trip.trip.dto.TripSummaryResponseDto;
+import com.samsam55.trip.trip.dto.TripItineraryItemResponseDto;
 import com.samsam55.trip.trip.exception.TripErrorType;
 import com.samsam55.trip.trip.service.TripService;
 import java.time.LocalDate;
@@ -220,12 +223,23 @@ class TripControllerTest {
     @Test
     @DisplayName("방장의 여행 상세 조회는 200 공통 응답으로 반환한다")
     void 방장의_여행_상세_조회는_200_공통_응답으로_반환한다() throws Exception {
-        when(tripService.findTrip(1L, 1L)).thenReturn(new TripSummaryResponseDto(
+        when(tripService.findTrip(1L, 1L)).thenReturn(new TripDetailResponseDto(
                 1L,
                 "제주 가족 여행",
                 LocalDate.of(2026, 9, 1),
                 LocalDate.of(2026, 9, 3),
-                2
+                2,
+                List.of(new TripDayResponseDto(
+                        10L,
+                        1,
+                        LocalDate.of(2026, 9, 1),
+                        List.of(new TripItineraryItemResponseDto(
+                                100L,
+                                "점심 식사",
+                                "식사",
+                                "VOTING"
+                        ))
+                ))
         ));
 
         mockMvc.perform(get("/api/trips/1").session(loginSession()))
@@ -236,6 +250,13 @@ class TripControllerTest {
                 .andExpect(jsonPath("$.data.startDate").value("2026-09-01"))
                 .andExpect(jsonPath("$.data.endDate").value("2026-09-03"))
                 .andExpect(jsonPath("$.data.companionCount").value(2))
+                .andExpect(jsonPath("$.data.days[0].id").value(10))
+                .andExpect(jsonPath("$.data.days[0].dayNumber").value(1))
+                .andExpect(jsonPath("$.data.days[0].date").value("2026-09-01"))
+                .andExpect(jsonPath("$.data.days[0].items[0].id").value(100))
+                .andExpect(jsonPath("$.data.days[0].items[0].name").value("점심 식사"))
+                .andExpect(jsonPath("$.data.days[0].items[0].category").value("식사"))
+                .andExpect(jsonPath("$.data.days[0].items[0].status").value("VOTING"))
                 .andExpect(jsonPath("$.error").isEmpty());
 
         verify(tripService).findTrip(1L, 1L);
