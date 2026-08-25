@@ -30,6 +30,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 여행 수정 기능은 일정 변경 정책 확정 후 추후 적용한다.
+ */
 @Service
 @RequiredArgsConstructor
 public class TripService {
