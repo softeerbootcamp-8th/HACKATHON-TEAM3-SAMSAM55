@@ -33,6 +33,12 @@ public class ItineraryItemController {
      * @param optionImages 선택지별 이미지(선택), {@code request.options}와 같은 순서로 매칭된다
      * @return 생성된 일정 항목이 담긴 201 응답
      */
+    // TODO(일정 항목 생성 담당자): 멀티파트 "request" 파트가 OpenAPI 스펙에 int64로
+    // 잘못 노출되고 있다. Orval이 생성한 프론트 클라이언트도 그대로 깨져서
+    // createItineraryItemBody?: number 타입에 .toString()을 호출해 pnpm build(tsc -b)가
+    // 실패한다 (src/api/generated/itinerary-item-controller/itinerary-item-controller.ts).
+    // @Schema 등으로 request 파트 타입을 명시해서 springdoc이 ItineraryItemCreateRequestDto로
+    // 올바르게 인식하게 고친 뒤 pnpm api:generate 재실행 필요.
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<CommonResponse<ItineraryItemCreateResponseDto>> createItineraryItem(
             @Login Long loginUserId,
