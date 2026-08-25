@@ -1,0 +1,65 @@
+openapi: 3.0.3
+info:
+  title: SAMSAM55 API
+  version: 0.0.1
+  description: >
+    로컬 스펙 파일. 백엔드에 springdoc-openapi가 추가되면
+    orval.config.ts의 input.target을 실제 스펙(URL 또는 export된 파일)으로 교체한다.
+servers:
+  - url: /api/v1
+paths:
+  /echo:
+    post:
+      operationId: postEcho
+      summary: 배포 테스트용 echo 엔드포인트
+      tags:
+        - echo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EchoRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EchoResponse'
+components:
+  schemas:
+    EchoRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+    EchoData:
+      type: object
+      nullable: true
+      properties:
+        message:
+          type: string
+    ApiError:
+      type: object
+      nullable: true
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    EchoResponse:
+      type: object
+      required:
+        - success
+        - data
+        - error
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/EchoData'
+        error:
+          $ref: '#/components/schemas/ApiError'
