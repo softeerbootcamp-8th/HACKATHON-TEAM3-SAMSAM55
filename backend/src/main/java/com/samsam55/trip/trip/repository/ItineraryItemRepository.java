@@ -21,6 +21,23 @@ public interface ItineraryItemRepository extends JpaRepository<ItineraryItem, Lo
             """)
     List<ItineraryItem> findAllByTripIdOrderByDayAndSortOrder(@Param("tripId") Long tripId);
 
+    @Query("""
+            select item
+            from ItineraryItem item
+            join item.tripDay tripDay
+            where tripDay.trip.id = :tripId
+              and item.status = com.samsam55.trip.trip.entity.ItineraryItemStatus.VOTING
+              and not exists (
+                  select 1
+                  from Vote vote
+                  where vote.itineraryItem = item
+                    and vote.participant.id = :participantId
+              )
+            order by tripDay.dayNumber asc, item.sortOrder asc
+            """)
+    List<ItineraryItem> findUnvotedVotingItemsOrderByDayAndSortOrder(
+            @Param("tripId") Long tripId, @Param("participantId") Long participantId);
+
     @Modifying(flushAutomatically = true)
     @Query("""
             update ItineraryItem item

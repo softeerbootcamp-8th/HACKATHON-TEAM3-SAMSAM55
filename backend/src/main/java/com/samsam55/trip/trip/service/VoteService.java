@@ -1,14 +1,23 @@
 package com.samsam55.trip.trip.service;
 
+import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.trip.dto.ItineraryItemStatusDto;
+import com.samsam55.trip.trip.dto.MyVoteBatchResponseDto;
+import com.samsam55.trip.trip.dto.MyVoteItemRequestDto;
+import com.samsam55.trip.trip.dto.MyVoteResultDto;
 import com.samsam55.trip.trip.dto.VoteStartResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
+import com.samsam55.trip.trip.entity.Participant;
+import com.samsam55.trip.trip.entity.Vote;
+import com.samsam55.trip.trip.entity.VoteOption;
 import com.samsam55.trip.trip.exception.TripErrorType;
 import com.samsam55.trip.trip.repository.ItineraryItemRepository;
+import com.samsam55.trip.trip.repository.ParticipantRepository;
 import com.samsam55.trip.trip.repository.VoteOptionRepository;
+import com.samsam55.trip.trip.repository.VoteRepository;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +32,8 @@ public class VoteService {
 
     private final ItineraryItemRepository itineraryItemRepository;
     private final VoteOptionRepository voteOptionRepository;
+    private final VoteRepository voteRepository;
+    private final ParticipantRepository participantRepository;
 
     /**
      * 준비 중인 일정 항목들을 한 번에 부모 투표로 올린다.
@@ -65,5 +76,70 @@ public class VoteService {
 
     private ApplicationException withItemId(TripErrorType errorType, Long itemId) {
         return new ApplicationException(errorType, errorType.getMessage() + " (itemId: " + itemId + ")");
+    }
+
+    /**
+     * 참여자가 여러 일정 항목에 한 번에 투표하거나 기존 투표를 변경한다.
+     * 목록에 담긴 일정 항목 중 하나라도 조건을 만족하지 못하면 전체가 롤백된다.
+     * 각 일정 항목에 트립의 모든 참여자가 투표를 마치면 상태를 VOTED로 전환한다.
+     *
+     * @param principal 로그인한 참여자 정보
+     * @param voteItems 투표할 일정 항목과 선택할 옵션 목록
+     * @return 저장된 투표 정보 목록과 다음으로 투표할 일정 항목의 식별자
+     * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
+     * @throws ApplicationException 참여자가 이 일정이 속한 여행의 참여자가 아닐 때(TRIP_PARTICIPANT_MISMATCH)
+     * @throws ApplicationException 투표 중이거나 투표가 끝난 상태가 아닐 때(ITINERARY_ITEM_NOT_VOTABLE)
+     * @throws ApplicationException 옵션이 해당 일정 항목의 선택지가 아닐 때(VOTE_OPTION_NOT_FOUND)
+     * @throws ApplicationException 참여자를 찾을 수 없을 때(PARTICIPANT_NOT_FOUND)
+     */
+    @Transactional
+    public MyVoteBatchResponseDto castVotes(ParticipantPrincipal principal, List<MyVoteItemRequestDto> voteItems) {
+        Participant participant = participantRepository.findById(principal.participantId())
+                .orElseThrow(() -> new ApplicationException(TripErrorType.PARTICIPANT_NOT_FOUND));
+
+        List<MyVoteResultDto> results = new ArrayList<>();
+        for (MyVoteItemRequestDto voteItem : voteItems) {
+            Long itemId = voteItem.itemId();
+            Long voteOptionId = voteItem.voteOptionId();
+
+            ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
+                    .orElseThrow(() -> withItemId(TripErrorType.ITINERARY_ITEM_NOT_FOUND, itemId));
+
+            if (!itineraryItem.getTripDay().getTrip().getId().equals(principal.tripId())) {
+                throw withItemId(TripErrorType.TRIP_PARTICIPANT_MISMATCH, itemId);
+            }
+            if (itineraryItem.getStatus() != ItineraryItemStatus.VOTING
+                    && itineraryItem.getStatus() != ItineraryItemStatus.VOTED) {
+                throw withItemId(TripErrorType.ITINERARY_ITEM_NOT_VOTABLE, itemId);
+            }
+
+            VoteOption voteOption = voteOptionRepository.findByIdAndItineraryItemId(voteOptionId, itemId)
+                    .orElseThrow(() -> withItemId(TripErrorType.VOTE_OPTION_NOT_FOUND, itemId));
+
+            voteRepository.findByItineraryItemIdAndParticipantId(itemId, principal.participantId())
+                    .ifPresentOrElse(
+                            vote -> vote.changeOption(voteOption),
+                            () -> voteRepository.save(new Vote(voteOption, itineraryItem, participant))
+                    );
+
+            if (itineraryItem.getStatus() == ItineraryItemStatus.VOTING) {
+                long totalParticipantCount = participantRepository.countByTripId(principal.tripId());
+                long votedParticipantCount = voteRepository.countByItineraryItemId(itemId);
+                if (votedParticipantCount >= totalParticipantCount) {
+                    itineraryItem.markVoted();
+                }
+            }
+
+            results.add(new MyVoteResultDto(itemId, voteOptionId));
+        }
+
+        Long nextItemId = itineraryItemRepository
+                .findUnvotedVotingItemsOrderByDayAndSortOrder(principal.tripId(), principal.participantId())
+                .stream()
+                .findFirst()
+                .map(ItineraryItem::getId)
+                .orElse(null);
+
+        return new MyVoteBatchResponseDto(results, nextItemId);
     }
 }

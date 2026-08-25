@@ -9,12 +9,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "vote")
+@Table(name = "vote", uniqueConstraints = @UniqueConstraint(
+        name = "uk_vote_participant_itinerary_item", columnNames = {"participant_id", "itinerary_item_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Vote extends BaseEntity {
@@ -39,5 +41,9 @@ public class Vote extends BaseEntity {
         this.option = option;
         this.itineraryItem = itineraryItem;
         this.participant = participant;
+    }
+
+    public void changeOption(VoteOption option) {
+        this.option = option;
     }
 }
