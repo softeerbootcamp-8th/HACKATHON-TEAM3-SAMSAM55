@@ -7,7 +7,8 @@ public enum AuthErrorType implements ErrorType {
 
     DUPLICATE_LOGIN_ID(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다."),
-    LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+    LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
+    UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
