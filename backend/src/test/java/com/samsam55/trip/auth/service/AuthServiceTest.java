@@ -1,10 +1,12 @@
 package com.samsam55.trip.auth.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.samsam55.trip.auth.dto.ActorPrincipal;
 import com.samsam55.trip.auth.dto.AuthLoginRequestDto;
 import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.auth.dto.AuthSignupRequestDto;
@@ -85,6 +87,7 @@ class AuthServiceTest {
         when(servletRequest.getSession(false)).thenReturn(session);
         when(session.getAttribute(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE)).thenReturn(5L);
 
+        assertThat(authService.resolveActor(servletRequest)).isEqualTo(ActorPrincipal.ofHost(5L));
         AuthMeResponseDto response = authService.me(servletRequest);
 
         org.assertj.core.api.Assertions.assertThat(response).isEqualTo(AuthMeResponseDto.ofHost(5L));
@@ -97,6 +100,8 @@ class AuthServiceTest {
         when(participantSessionResolver.resolve(servletRequest))
                 .thenReturn(Optional.of(new ParticipantPrincipal(12L, 1L)));
 
+        assertThat(authService.resolveActor(servletRequest))
+                .isEqualTo(ActorPrincipal.ofParticipant(new ParticipantPrincipal(12L, 1L)));
         AuthMeResponseDto response = authService.me(servletRequest);
 
         org.assertj.core.api.Assertions.assertThat(response)
@@ -109,9 +114,11 @@ class AuthServiceTest {
         when(servletRequest.getSession(false)).thenReturn(null);
         when(participantSessionResolver.resolve(servletRequest)).thenReturn(Optional.empty());
 
+        assertThatThrownBy(() -> authService.resolveActor(servletRequest))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(AuthErrorType.UNAUTHENTICATED));
         assertThatThrownBy(() -> authService.me(servletRequest))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
-                        org.assertj.core.api.Assertions.assertThat(exception.getErrorType())
-                                .isEqualTo(AuthErrorType.UNAUTHENTICATED));
+                        assertThat(exception.getErrorType()).isEqualTo(AuthErrorType.UNAUTHENTICATED));
     }
 }
