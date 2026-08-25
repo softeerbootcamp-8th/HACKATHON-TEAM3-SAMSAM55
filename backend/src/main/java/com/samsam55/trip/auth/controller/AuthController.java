@@ -2,6 +2,7 @@ package com.samsam55.trip.auth.controller;
 
 import com.samsam55.trip.auth.dto.AuthLoginRequestDto;
 import com.samsam55.trip.auth.dto.AuthLoginResponseDto;
+import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.auth.dto.AuthSignupRequestDto;
 import com.samsam55.trip.auth.dto.AuthSignupResponseDto;
 import com.samsam55.trip.auth.service.AuthService;
@@ -11,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -62,5 +64,16 @@ public class AuthController {
     public CommonResponse<Void> logout(HttpServletRequest servletRequest) {
         authService.logout(servletRequest);
         return CommonResponse.empty();
+    }
+
+    /**
+     * 현재 요청의 인증 주체가 HOST인지 PARTICIPANT인지 조회한다.
+     *
+     * @param servletRequest 현재 HTTP 요청
+     * @return 인증 주체 정보가 담긴 200 응답
+     */
+    @GetMapping("/me")
+    public CommonResponse<AuthMeResponseDto> me(HttpServletRequest servletRequest) {
+        return CommonResponse.success(authService.me(servletRequest));
     }
 }
