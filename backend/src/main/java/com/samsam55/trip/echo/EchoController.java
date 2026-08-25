@@ -11,6 +11,6 @@ public class EchoController {
 
     @PostMapping("/api/v1/echo")
     public EchoResponse echo(@RequestBody EchoRequest request) {
-        return new EchoResponse(request.message());
+        return new EchoResponse(request.message() + "test");
     }
 }
