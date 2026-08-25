@@ -4,14 +4,17 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samsam55.trip.auth.dto.AuthLoginRequestDto;
 import com.samsam55.trip.auth.dto.AuthLoginResponseDto;
+import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.auth.dto.AuthSignupRequestDto;
 import com.samsam55.trip.auth.dto.AuthSignupResponseDto;
+import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.global.exception.GlobalExceptionHandler;
 import jakarta.servlet.http.HttpServletRequest;
@@ -144,5 +147,31 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.error").isEmpty());
 
         verify(authService).logout(any(HttpServletRequest.class));
+    }
+
+    @Test
+    @DisplayName("현재 접근자 조회는 HOST 정보를 공통 성공 응답으로 반환한다")
+    void 현재_접근자_조회는_HOST_정보를_반환한다() throws Exception {
+        when(authService.me(any(HttpServletRequest.class))).thenReturn(AuthMeResponseDto.ofHost(1L));
+
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.actorType").value("HOST"))
+                .andExpect(jsonPath("$.data.userId").value(1))
+                .andExpect(jsonPath("$.error").isEmpty());
+    }
+
+    @Test
+    @DisplayName("현재 접근자 조회는 PARTICIPANT 정보를 공통 성공 응답으로 반환한다")
+    void 현재_접근자_조회는_PARTICIPANT_정보를_반환한다() throws Exception {
+        when(authService.me(any(HttpServletRequest.class)))
+                .thenReturn(AuthMeResponseDto.ofParticipant(new ParticipantPrincipal(12L, 1L)));
+
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.actorType").value("PARTICIPANT"))
+                .andExpect(jsonPath("$.data.participantId").value(12))
+                .andExpect(jsonPath("$.data.tripId").value(1));
     }
 }

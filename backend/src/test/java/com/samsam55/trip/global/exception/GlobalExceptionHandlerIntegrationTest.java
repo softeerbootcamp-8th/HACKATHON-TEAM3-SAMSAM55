@@ -1,5 +1,6 @@
 package com.samsam55.trip.global.exception;
 
+import com.samsam55.trip.auth.service.ParticipantSessionResolver;
 import com.samsam55.trip.global.exception.support.GlobalExceptionTestController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.nullValue;
@@ -21,6 +23,11 @@ class GlobalExceptionHandlerIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    // ParticipantArgumentResolver(HandlerMethodArgumentResolver)는 @WebMvcTest 슬라이스에 포함되지만,
+    // 그 의존성인 ParticipantSessionResolver는 일반 @Component라 슬라이스 밖이라 목으로 채워준다.
+    @MockitoBean
+    private ParticipantSessionResolver participantSessionResolver;
 
     @Test
     @DisplayName("@Valid 검증 실패 시 400과 공통 응답 형식(success/data/error)으로 변환된다")

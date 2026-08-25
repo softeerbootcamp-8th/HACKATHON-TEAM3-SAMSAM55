@@ -2,6 +2,7 @@ package com.samsam55.trip.auth.service;
 
 import com.samsam55.trip.auth.dto.AuthLoginRequestDto;
 import com.samsam55.trip.auth.dto.AuthLoginResponseDto;
+import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.auth.dto.AuthSignupRequestDto;
 import com.samsam55.trip.auth.dto.AuthSignupResponseDto;
 import com.samsam55.trip.auth.exception.AuthErrorType;
@@ -23,6 +24,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordHasher passwordHasher;
+    private final ParticipantSessionResolver participantSessionResolver;
 
     /**
      * 회원가입 정보를 검증하고 BCrypt 해시 비밀번호를 저장한다.
@@ -79,5 +81,28 @@ public class AuthService {
         if (session != null) {
             session.invalidate();
         }
+    }
+
+    /**
+     * 현재 요청의 인증 주체가 HOST인지 PARTICIPANT인지 조회한다.
+     *
+     * <p>HOST 세션을 먼저 확인하고, 없으면 참여자 세션(또는 복구용 쿠키)을 확인한다.
+     *
+     * @param servletRequest 현재 HTTP 요청
+     * @return 인증 주체 정보
+     * @throws ApplicationException 로그인도, 참여자 인증도 되어 있지 않을 때(UNAUTHENTICATED)
+     */
+    public AuthMeResponseDto me(HttpServletRequest servletRequest) {
+        HttpSession session = servletRequest.getSession(false);
+        if (session != null) {
+            Object sessionUserId = session.getAttribute(LOGIN_USER_ID_SESSION_ATTRIBUTE);
+            if (sessionUserId instanceof Number number) {
+                return AuthMeResponseDto.ofHost(number.longValue());
+            }
+        }
+
+        return participantSessionResolver.resolve(servletRequest)
+                .map(AuthMeResponseDto::ofParticipant)
+                .orElseThrow(() -> new ApplicationException(AuthErrorType.UNAUTHENTICATED));
     }
 }
