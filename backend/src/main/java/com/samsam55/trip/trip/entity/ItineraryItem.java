@@ -70,4 +70,18 @@ public class ItineraryItem extends BaseEntity {
         this.sortOrder = sortOrder;
         this.confirmedOption = confirmedOption;
     }
+
+    public void openVote() {
+        this.status = ItineraryItemStatus.VOTING;
+    }
+
+    public void confirm(VoteOption option) {
+        this.status = ItineraryItemStatus.CONFIRMED;
+        this.confirmedOption = option;
+    }
+
+    public void unconfirm() {
+        this.status = ItineraryItemStatus.VOTING;
+        this.confirmedOption = null;
+    }
 }

@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface VoteOptionRepository extends JpaRepository<VoteOption, Long> {
 
+    int countByItineraryItemId(Long itineraryItemId);
+
     @Modifying(flushAutomatically = true)
     @Query("""
             delete from VoteOption option
