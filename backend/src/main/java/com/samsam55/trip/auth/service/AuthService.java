@@ -11,6 +11,7 @@ import com.samsam55.trip.member.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,8 +38,12 @@ public class AuthService {
         }
 
         String passwordHash = passwordHasher.hash(request.password());
-        User user = userRepository.save(new User(request.loginId(), passwordHash));
-        return AuthSignupResponseDto.from(user);
+        try {
+            User user = userRepository.saveAndFlush(new User(request.loginId(), passwordHash));
+            return AuthSignupResponseDto.from(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new ApplicationException(AuthErrorType.DUPLICATE_LOGIN_ID);
+        }
     }
 
     /**
@@ -59,6 +64,7 @@ public class AuthService {
         }
 
         HttpSession session = servletRequest.getSession(true);
+        servletRequest.changeSessionId();
         session.setAttribute(LOGIN_USER_ID_SESSION_ATTRIBUTE, user.getId());
         return AuthLoginResponseDto.from(user);
     }

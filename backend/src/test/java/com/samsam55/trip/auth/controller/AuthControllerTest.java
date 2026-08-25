@@ -2,6 +2,7 @@ package com.samsam55.trip.auth.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -68,6 +69,54 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.data").isEmpty())
                 .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"));
+    }
+
+    @Test
+    @DisplayName("72자를 초과한 회원가입 비밀번호는 400으로 반환한다")
+    void 비밀번호_72자를_초과한_회원가입_요청은_400으로_반환한다() throws Exception {
+        String password = "a".repeat(73);
+
+        mockMvc.perform(post("/api/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"loginId\":\"signup-user\",\"password\":\"" + password + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"))
+                .andExpect(jsonPath("$.error.message")
+                        .value("비밀번호는 72자 이하여야 합니다."));
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    @DisplayName("72자를 초과한 로그인 비밀번호는 400으로 반환한다")
+    void 비밀번호_72자를_초과한_로그인_요청은_400으로_반환한다() throws Exception {
+        String password = "a".repeat(73);
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"loginId\":\"login-user\",\"password\":\"" + password + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"))
+                .andExpect(jsonPath("$.error.message")
+                        .value("비밀번호는 72자 이하여야 합니다."));
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    @DisplayName("허용하지 않는 문자가 포함된 로그인 비밀번호는 400으로 반환한다")
+    void 허용하지_않는_문자가_포함된_로그인_비밀번호는_400으로_반환한다() throws Exception {
+        String password = "비밀번호123";
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"loginId\":\"login-user\",\"password\":\"" + password + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"))
+                .andExpect(jsonPath("$.error.message")
+                        .value("비밀번호는 영문, 숫자, 특수문자만 사용할 수 있습니다."));
+
+        verifyNoInteractions(authService);
     }
 
     @Test
