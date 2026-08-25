@@ -5,7 +5,9 @@
  * OpenAPI spec version: v0
  */
 
-export interface AuthSignupResponseDto {
+export interface TripItineraryItemResponseDto {
   id?: number;
-  loginId?: string;
+  name?: string;
+  category?: string;
+  status?: string;
 }

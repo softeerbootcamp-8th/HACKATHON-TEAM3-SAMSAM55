@@ -5,7 +5,6 @@
  * OpenAPI spec version: v0
  */
 
-export interface AuthSignupResponseDto {
-  id?: number;
-  loginId?: string;
-}
+export type CreateVoteOptionBody = {
+  image?: Blob;
+};

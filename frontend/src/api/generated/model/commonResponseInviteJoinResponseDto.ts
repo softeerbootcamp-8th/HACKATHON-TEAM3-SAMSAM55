@@ -5,9 +5,10 @@
  * OpenAPI spec version: v0
  */
 import type { ErrorResponse } from './errorResponse';
+import type { InviteJoinResponseDto } from './inviteJoinResponseDto';
 
-export interface CommonResponseVoid {
+export interface CommonResponseInviteJoinResponseDto {
   success?: boolean;
-  data?: unknown;
+  data?: InviteJoinResponseDto;
   error?: ErrorResponse;
 }

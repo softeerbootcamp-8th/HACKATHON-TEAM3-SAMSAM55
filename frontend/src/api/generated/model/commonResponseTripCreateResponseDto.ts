@@ -5,9 +5,10 @@
  * OpenAPI spec version: v0
  */
 import type { ErrorResponse } from './errorResponse';
+import type { TripCreateResponseDto } from './tripCreateResponseDto';
 
-export interface CommonResponseVoid {
+export interface CommonResponseTripCreateResponseDto {
   success?: boolean;
-  data?: unknown;
+  data?: TripCreateResponseDto;
   error?: ErrorResponse;
 }

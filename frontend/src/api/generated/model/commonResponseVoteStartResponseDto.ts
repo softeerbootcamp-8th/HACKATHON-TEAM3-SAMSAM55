@@ -5,9 +5,10 @@
  * OpenAPI spec version: v0
  */
 import type { ErrorResponse } from './errorResponse';
+import type { VoteStartResponseDto } from './voteStartResponseDto';
 
-export interface CommonResponseVoid {
+export interface CommonResponseVoteStartResponseDto {
   success?: boolean;
-  data?: unknown;
+  data?: VoteStartResponseDto;
   error?: ErrorResponse;
 }
