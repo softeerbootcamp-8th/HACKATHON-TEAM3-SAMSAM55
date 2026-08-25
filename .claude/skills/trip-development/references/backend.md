@@ -108,8 +108,11 @@ Controller·Service의 public 메서드(주요 기능)에는 Javadoc을 작성�
 - 권한, 검증 실패, 경계값, 동시 요청처럼 실수하기 쉬운 지점을 우선 검증한다.
 - JPA·MySQL 도입 완료. `@SpringBootTest`처럼 실제 DB 연결이 필요한 테스트는
   `global.support.AbstractMySqlContainerTest`를 상속해 Testcontainers로 띄운
-  MySQL을 쓴다 (개발자 로컬 MySQL과 완전히 격리됨). 로컬에 Docker가 떠 있어야
-  이 테스트들이 통과한다.
+  MySQL을 쓴다 (개발자 로컬 MySQL과 완전히 격리됨). 로컬·CI 모두 Docker가
+  떠 있어야 이 테스트들이 통과한다 (CI는 GitHub Actions ubuntu 러너 기본
+  Docker로 전체 테스트를 그대로 돌린다).
+- Docker 없이 로컬에서 빠르게 돌리고 싶으면 `./gradlew test -PexcludeTags=integration`으로
+  `AbstractMySqlContainerTest` 계열(태그 `integration`)만 건너뛸 수 있다.
 
 ## 금지
 
