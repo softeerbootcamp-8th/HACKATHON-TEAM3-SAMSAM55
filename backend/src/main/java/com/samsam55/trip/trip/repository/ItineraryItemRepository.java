@@ -16,6 +16,7 @@ public interface ItineraryItemRepository extends JpaRepository<ItineraryItem, Lo
             select item
             from ItineraryItem item
             join fetch item.tripDay tripDay
+            left join fetch item.confirmedOption
             where tripDay.trip.id = :tripId
             order by tripDay.dayNumber asc, item.sortOrder asc
             """)

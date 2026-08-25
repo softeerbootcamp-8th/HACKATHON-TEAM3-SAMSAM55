@@ -5,6 +5,7 @@ import com.samsam55.trip.auth.dto.AuthLoginResponseDto;
 import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.auth.dto.AuthSignupRequestDto;
 import com.samsam55.trip.auth.dto.AuthSignupResponseDto;
+import com.samsam55.trip.auth.dto.ActorPrincipal;
 import com.samsam55.trip.auth.exception.AuthErrorType;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.member.entity.User;
@@ -93,16 +94,31 @@ public class AuthService {
      * @throws ApplicationException 로그인도, 참여자 인증도 되어 있지 않을 때(UNAUTHENTICATED)
      */
     public AuthMeResponseDto me(HttpServletRequest servletRequest) {
+        return AuthMeResponseDto.from(resolveActor(servletRequest));
+    }
+
+    /**
+     * 현재 요청의 인증 주체를 HOST 또는 PARTICIPANT로 해석한다.
+     *
+     * @param servletRequest 현재 HTTP 요청
+     * @return 인증 주체 식별 정보
+     * @throws ApplicationException 인증 정보를 찾을 수 없을 때(UNAUTHENTICATED)
+     */
+    public ActorPrincipal resolveActor(HttpServletRequest servletRequest) {
+        if (servletRequest == null) {
+            throw new ApplicationException(AuthErrorType.UNAUTHENTICATED);
+        }
+
         HttpSession session = servletRequest.getSession(false);
         if (session != null) {
             Object sessionUserId = session.getAttribute(LOGIN_USER_ID_SESSION_ATTRIBUTE);
             if (sessionUserId instanceof Number number) {
-                return AuthMeResponseDto.ofHost(number.longValue());
+                return ActorPrincipal.ofHost(number.longValue());
             }
         }
 
         return participantSessionResolver.resolve(servletRequest)
-                .map(AuthMeResponseDto::ofParticipant)
+                .map(ActorPrincipal::ofParticipant)
                 .orElseThrow(() -> new ApplicationException(AuthErrorType.UNAUTHENTICATED));
     }
 }
