@@ -53,8 +53,8 @@ class TripEntityMappingTest {
                 tripDay,
                 "오전 관광지",
                 "TOURIST_SPOT",
-                "VOTE",
-                "PENDING",
+                ItineraryItemDecisionType.VOTE,
+                ItineraryItemStatus.PENDING,
                 1,
                 null
         );
@@ -65,6 +65,7 @@ class TripEntityMappingTest {
                 "성산일출봉",
                 "일출 명소",
                 "AI",
+                null,
                 null
         );
         entityManager.persist(voteOption);

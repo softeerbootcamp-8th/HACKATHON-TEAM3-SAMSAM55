@@ -2,7 +2,9 @@ package com.samsam55.trip.trip.entity;
 
 import com.samsam55.trip.global.common.BaseEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -34,11 +36,13 @@ public class ItineraryItem extends BaseEntity {
     @Column(length = 50)
     private String category;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "decision_type", length = 20, nullable = false)
-    private String decisionType;
+    private ItineraryItemDecisionType decisionType;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
-    private String status;
+    private ItineraryItemStatus status;
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
@@ -51,8 +55,8 @@ public class ItineraryItem extends BaseEntity {
             TripDay tripDay,
             String name,
             String category,
-            String decisionType,
-            String status,
+            ItineraryItemDecisionType decisionType,
+            ItineraryItemStatus status,
             Integer sortOrder,
             VoteOption confirmedOption
     ) {
