@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState } from 'react'
 
 import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
@@ -8,61 +9,88 @@ import { StepIndicator } from '@/components/ui/step-indicator'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/trips/new/period')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    title: typeof search.title === 'string' ? search.title : '',
+    startDate:
+      typeof search.startDate === 'string' ? search.startDate : undefined,
+    endDate: typeof search.endDate === 'string' ? search.endDate : undefined,
+  }),
   component: NewTripPeriodPage,
 })
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 type CalendarDay = {
-  label: number
-  state: 'disabled' | 'default' | 'start' | 'range' | 'end'
+  date: Date
+  currentMonth: boolean
 }
 
-// 2026년 8월 캘린더 목업 — 시작일 26일 · 종료일 29일 고정 표시
-const CALENDAR_WEEKS: CalendarDay[][] = [
-  [
-    { label: 27, state: 'disabled' },
-    { label: 28, state: 'disabled' },
-    { label: 29, state: 'disabled' },
-    { label: 30, state: 'disabled' },
-    { label: 31, state: 'disabled' },
-    { label: 1, state: 'disabled' },
-    { label: 2, state: 'disabled' },
-  ],
-  Array.from({ length: 7 }, (_, i) => ({
-    label: 3 + i,
-    state: 'disabled' as const,
-  })),
-  Array.from({ length: 7 }, (_, i) => ({
-    label: 10 + i,
-    state: 'disabled' as const,
-  })),
-  Array.from({ length: 7 }, (_, i) => ({
-    label: 17 + i,
-    state: 'disabled' as const,
-  })),
-  [
-    { label: 24, state: 'disabled' },
-    { label: 25, state: 'default' },
-    { label: 26, state: 'start' },
-    { label: 27, state: 'range' },
-    { label: 28, state: 'range' },
-    { label: 29, state: 'end' },
-    { label: 30, state: 'default' },
-  ],
-  [
-    { label: 31, state: 'default' },
-    { label: 1, state: 'disabled' },
-    { label: 2, state: 'disabled' },
-    { label: 3, state: 'disabled' },
-    { label: 4, state: 'disabled' },
-    { label: 5, state: 'disabled' },
-    { label: 6, state: 'disabled' },
-  ],
-]
+function toDateString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function formatSelectedDate(value?: string): string {
+  if (!value) {
+    return '선택해주세요'
+  }
+
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  }).format(date)
+}
+
+function getCalendarDays(month: Date): CalendarDay[] {
+  const firstDay = new Date(month.getFullYear(), month.getMonth(), 1)
+  const calendarStart = new Date(firstDay)
+  calendarStart.setDate(firstDay.getDate() - firstDay.getDay())
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(calendarStart)
+    date.setDate(calendarStart.getDate() + index)
+    return { date, currentMonth: date.getMonth() === month.getMonth() }
+  })
+}
 
 function NewTripPeriodPage() {
   const navigate = useNavigate()
+  const {
+    title,
+    startDate: initialStartDate,
+    endDate: initialEndDate,
+  } = Route.useSearch()
+  const today = new Date()
+  const [month, setMonth] = useState(
+    () => new Date(today.getFullYear(), today.getMonth(), 1),
+  )
+  const [startDate, setStartDate] = useState<string | undefined>(
+    initialStartDate,
+  )
+  const [endDate, setEndDate] = useState<string | undefined>(initialEndDate)
+  const calendarDays = getCalendarDays(month)
+
+  const handleDateClick = (date: Date) => {
+    const value = toDateString(date)
+    if (!startDate || endDate) {
+      setStartDate(value)
+      setEndDate(undefined)
+      return
+    }
+
+    if (value < startDate) {
+      setStartDate(value)
+      setEndDate(undefined)
+      return
+    }
+
+    setEndDate(value)
+  }
 
   return (
     <MobileScreen
@@ -70,7 +98,13 @@ function NewTripPeriodPage() {
         <div className="px-5 pb-6">
           <Button
             size="cta"
-            onClick={() => navigate({ to: '/trips/new/members' })}
+            disabled={!title || !startDate || !endDate}
+            onClick={() =>
+              navigate({
+                to: '/trips/new/members',
+                search: { title, startDate: startDate!, endDate: endDate! },
+              })
+            }
           >
             다음
           </Button>
@@ -80,7 +114,7 @@ function NewTripPeriodPage() {
       <AppBar
         type="back"
         title="여행 만들기"
-        onBack={() => navigate({ to: '/trips/new/name' })}
+        onBack={() => navigate({ to: '/trips/new/name', search: { title } })}
       />
       <div className="flex flex-col gap-5 px-5 pt-[38px]">
         <div className="flex flex-col gap-4">
@@ -104,11 +138,15 @@ function NewTripPeriodPage() {
           <div className="flex gap-2.5">
             <div className="flex flex-1 flex-col gap-1 rounded-tab border border-primary-deep px-3.5 pt-2.5 pb-3">
               <p className="text-caption text-muted-foreground">시작일</p>
-              <p className="text-body-strong text-foreground">8월 26일 (화)</p>
+              <p className="text-body-strong text-foreground">
+                {formatSelectedDate(startDate)}
+              </p>
             </div>
             <div className="flex flex-1 flex-col gap-1 rounded-tab border border-primary-deep px-3.5 pt-2.5 pb-3">
               <p className="text-caption text-muted-foreground">종료일</p>
-              <p className="text-body-strong text-foreground">8월 29일 (금)</p>
+              <p className="text-body-strong text-foreground">
+                {formatSelectedDate(endDate)}
+              </p>
             </div>
           </div>
 
@@ -118,16 +156,36 @@ function NewTripPeriodPage() {
                 type="button"
                 aria-label="이전 달"
                 className="flex size-8 items-center justify-center"
+                onClick={() =>
+                  setMonth(
+                    (current) =>
+                      new Date(
+                        current.getFullYear(),
+                        current.getMonth() - 1,
+                        1,
+                      ),
+                  )
+                }
               >
                 <ChevronLeft className="size-4 text-muted-foreground" />
               </button>
               <p className="flex-1 text-center text-body-strong text-foreground">
-                2026년 8월
+                {month.getFullYear()}년 {month.getMonth() + 1}월
               </p>
               <button
                 type="button"
                 aria-label="다음 달"
                 className="flex size-8 items-center justify-center"
+                onClick={() =>
+                  setMonth(
+                    (current) =>
+                      new Date(
+                        current.getFullYear(),
+                        current.getMonth() + 1,
+                        1,
+                      ),
+                  )
+                }
               >
                 <ChevronRight className="size-4 text-muted-foreground" />
               </button>
@@ -141,26 +199,39 @@ function NewTripPeriodPage() {
                   {day}
                 </div>
               ))}
-              {CALENDAR_WEEKS.flat().map((day, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-center py-0.5"
-                >
-                  <span
-                    className={cn(
-                      'flex size-9 items-center justify-center rounded-full text-body',
-                      day.state === 'disabled' && 'text-text-disabled',
-                      day.state === 'default' && 'text-foreground',
-                      day.state === 'range' &&
-                        'bg-primary-tint text-primary-deep',
-                      (day.state === 'start' || day.state === 'end') &&
-                        'bg-primary-deep font-medium text-white',
-                    )}
+              {calendarDays.map((day) => {
+                const value = toDateString(day.date)
+                const isStart = value === startDate
+                const isEnd = value === endDate
+                const isInRange =
+                  !!startDate &&
+                  !!endDate &&
+                  value > (startDate < endDate ? startDate : endDate) &&
+                  value < (startDate < endDate ? endDate : startDate)
+
+                return (
+                  <div
+                    key={value}
+                    className="flex items-center justify-center py-0.5"
                   >
-                    {day.label}
-                  </span>
-                </div>
-              ))}
+                    <button
+                      type="button"
+                      onClick={() => handleDateClick(day.date)}
+                      aria-label={`${value} 선택`}
+                      className={cn(
+                        'flex size-9 items-center justify-center rounded-full text-body',
+                        !day.currentMonth && 'text-text-disabled',
+                        day.currentMonth && 'text-foreground',
+                        isInRange && 'bg-primary-tint text-primary-deep',
+                        (isStart || isEnd) &&
+                          'bg-primary-deep font-medium text-white',
+                      )}
+                    >
+                      {day.date.getDate()}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>

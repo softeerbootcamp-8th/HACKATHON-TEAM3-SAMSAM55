@@ -8,12 +8,16 @@ import { StepIndicator } from '@/components/ui/step-indicator'
 import { TextInput } from '@/components/ui/text-input'
 
 export const Route = createFileRoute('/trips/new/name')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    title: typeof search.title === 'string' ? search.title : undefined,
+  }),
   component: NewTripNamePage,
 })
 
 function NewTripNamePage() {
   const navigate = useNavigate()
-  const [name, setName] = useState('')
+  const { title } = Route.useSearch()
+  const [name, setName] = useState(title ?? '')
 
   return (
     <MobileScreen
@@ -21,7 +25,17 @@ function NewTripNamePage() {
         <div className="px-5 pb-6">
           <Button
             size="cta"
-            onClick={() => navigate({ to: '/trips/new/period' })}
+            disabled={!name.trim()}
+            onClick={() =>
+              navigate({
+                to: '/trips/new/period',
+                search: {
+                  title: name.trim(),
+                  startDate: undefined,
+                  endDate: undefined,
+                },
+              })
+            }
           >
             다음
           </Button>
@@ -60,9 +74,10 @@ function NewTripNamePage() {
             placeholder="예: 도쿄 가족여행"
             value={name}
             onChange={(event) => setName(event.target.value)}
+            maxLength={100}
           />
           <p className="text-caption text-muted-foreground">
-            이름은 나중에 언제든 바꿀 수 있어요
+            이름은 100자 이하로 입력해주세요
           </p>
         </div>
       </div>
