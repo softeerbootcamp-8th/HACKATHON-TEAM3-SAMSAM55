@@ -65,7 +65,7 @@ class TripServiceTest {
     @Test
     @DisplayName("로그인한 사용자가 방장인 여행만 목록으로 반환한다")
     void 로그인한_사용자가_방장인_여행만_목록으로_반환한다() {
-        when(tripRepository.findAllByHostUserIdOrderByIdAsc(1L)).thenReturn(List.of(trip));
+        when(tripRepository.findAllByHostUserIdOrderByStartDateAscIdAsc(1L)).thenReturn(List.of(trip));
         when(trip.getId()).thenReturn(1L);
         when(trip.getTitle()).thenReturn("제주 가족 여행");
         when(trip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 1, 0, 0));
@@ -80,17 +80,43 @@ class TripServiceTest {
         assertThat(response.items().getFirst().startDate()).isEqualTo(LocalDate.of(2026, 9, 1));
         assertThat(response.items().getFirst().endDate()).isEqualTo(LocalDate.of(2026, 9, 3));
         assertThat(response.items().getFirst().companionCount()).isEqualTo(2);
-        verify(tripRepository).findAllByHostUserIdOrderByIdAsc(1L);
+        verify(tripRepository).findAllByHostUserIdOrderByStartDateAscIdAsc(1L);
     }
 
     @Test
     @DisplayName("방장에게 여행이 없으면 빈 items를 반환한다")
     void 방장에게_여행이_없으면_빈_items를_반환한다() {
-        when(tripRepository.findAllByHostUserIdOrderByIdAsc(1L)).thenReturn(List.of());
+        when(tripRepository.findAllByHostUserIdOrderByStartDateAscIdAsc(1L)).thenReturn(List.of());
 
         TripListResponseDto response = service().findTrips(1L);
 
         assertThat(response.items()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("여행 목록을 시작일이 빠른 순서로 반환한다")
+    void 여행_목록을_시작일이_빠른_순서로_반환한다() {
+        Trip earlierTrip = org.mockito.Mockito.mock(Trip.class);
+        Trip laterTrip = org.mockito.Mockito.mock(Trip.class);
+        when(tripRepository.findAllByHostUserIdOrderByStartDateAscIdAsc(1L))
+                .thenReturn(List.of(earlierTrip, laterTrip));
+        when(earlierTrip.getId()).thenReturn(2L);
+        when(earlierTrip.getTitle()).thenReturn("다가오는 여행");
+        when(earlierTrip.getStartDate()).thenReturn(LocalDateTime.of(2026, 8, 24, 0, 0));
+        when(earlierTrip.getEndDate()).thenReturn(LocalDateTime.of(2026, 8, 27, 0, 0));
+        when(earlierTrip.getCompanionCount()).thenReturn(4);
+        when(laterTrip.getId()).thenReturn(3L);
+        when(laterTrip.getTitle()).thenReturn("다른 여행");
+        when(laterTrip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 12, 0, 0));
+        when(laterTrip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 14, 0, 0));
+        when(laterTrip.getCompanionCount()).thenReturn(3);
+
+        TripListResponseDto response = service().findTrips(1L);
+
+        assertThat(response.items()).extracting("title")
+                .containsExactly("다가오는 여행", "다른 여행");
+        assertThat(response.items()).extracting("startDate")
+                .containsExactly(LocalDate.of(2026, 8, 24), LocalDate.of(2026, 9, 12));
     }
 
     @Test

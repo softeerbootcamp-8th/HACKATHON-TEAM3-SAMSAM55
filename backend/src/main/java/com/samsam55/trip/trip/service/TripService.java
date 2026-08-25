@@ -49,7 +49,7 @@ public class TripService {
      */
     @Transactional(readOnly = true)
     public TripListResponseDto findTrips(Long userId) {
-        return TripListResponseDto.from(tripRepository.findAllByHostUserIdOrderByIdAsc(userId));
+        return TripListResponseDto.from(tripRepository.findAllByHostUserIdOrderByStartDateAscIdAsc(userId));
     }
 
     /**
