@@ -136,9 +136,7 @@ function ParentItemDetailPage() {
                 title={option.name ?? ''}
                 voteCount={option.voteCount}
                 voters={option.voters?.map((v) => v.roleName?.charAt(0) ?? '?')}
-                leading={
-                  maxVoteCount > 0 && option.voteCount === maxVoteCount
-                }
+                leading={maxVoteCount > 0 && option.voteCount === maxVoteCount}
                 imageSrc={
                   option.hasImage
                     ? `/api/vote-options/${option.optionId}/image`
