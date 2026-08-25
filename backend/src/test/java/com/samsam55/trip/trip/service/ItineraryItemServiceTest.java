@@ -90,6 +90,8 @@ class ItineraryItemServiceTest {
         assertThat(response.sortOrder()).isEqualTo(4);
         assertThat(response.voteOptions()).hasSize(2);
         assertThat(response.voteOptions().get(0).name()).isEqualTo("스시");
+        assertThat(response.voteOptions().get(0).description()).isEqualTo("AI가 생성한 설명");
+        assertThat(response.voteOptions().get(0).descriptionSource()).isEqualTo("AI");
         assertThat(response.voteOptions().get(0).hasImage()).isFalse();
     }
 
