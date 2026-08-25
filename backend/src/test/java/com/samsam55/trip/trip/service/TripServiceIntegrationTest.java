@@ -15,6 +15,7 @@ import com.samsam55.trip.trip.repository.ParticipantRepository;
 import com.samsam55.trip.trip.repository.ItineraryItemRepository;
 import com.samsam55.trip.trip.repository.TripDayRepository;
 import com.samsam55.trip.trip.repository.TripRepository;
+import com.samsam55.trip.global.support.AbstractMySqlContainerTest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,13 +23,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class TripServiceIntegrationTest {
+class TripServiceIntegrationTest extends AbstractMySqlContainerTest {
 
     private final TripService tripService;
     private final UserRepository userRepository;
