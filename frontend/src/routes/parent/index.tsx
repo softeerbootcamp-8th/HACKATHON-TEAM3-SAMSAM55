@@ -29,10 +29,12 @@ const DAYS = [
   { label: '4일차', pending: false },
 ]
 
+// TODO: 일정 목록 조회 API가 붙으면 이 mock을 걷어내고 실제 데이터로 교체한다 (별도 이슈).
+// id는 실제 백엔드 itemId(number)와 형태를 맞추기 위해 숫자 문자열로 둔다.
 const ITEMS_BY_DAY: Record<number, MockItem[]> = {
   0: [
     {
-      id: 'item-1',
+      id: '101',
       title: '점심 식사',
       category: '식사',
       decisionMethod: '부모님과 투표',
@@ -40,7 +42,7 @@ const ITEMS_BY_DAY: Record<number, MockItem[]> = {
       meta: '2/3표 완료',
     },
     {
-      id: 'item-2',
+      id: '102',
       title: '관광지 이동',
       category: '이동',
       decisionMethod: '부모님과 투표',
@@ -48,7 +50,7 @@ const ITEMS_BY_DAY: Record<number, MockItem[]> = {
       meta: '',
     },
     {
-      id: 'item-3',
+      id: '103',
       title: '1일차 관광지',
       category: '관광',
       decisionMethod: '내가 결정',
