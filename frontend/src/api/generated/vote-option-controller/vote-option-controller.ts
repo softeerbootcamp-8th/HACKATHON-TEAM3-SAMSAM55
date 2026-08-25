@@ -5,19 +5,27 @@
  * OpenAPI spec version: v0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
+
+import type {
+  CommonResponseVoid
+} from '../model';
 
 import { customInstance } from '../../mutator/custom-instance';
 
@@ -125,3 +133,60 @@ export function useGetImage<TData = Awaited<ReturnType<typeof getImage>>, TError
 
 
 
+export const deleteVoteOption = (
+    voteOptionId: number,
+ signal?: AbortSignal
+) => {
+
+
+      return customInstance<CommonResponseVoid>(
+      {url: `/api/vote-options/${voteOptionId}`, method: 'DELETE', signal
+    },
+      );
+    }
+
+
+
+
+export const getDeleteVoteOptionMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteVoteOption>>, TError,DeleteVoteOptionMutationVariables, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof deleteVoteOption>>, TError,DeleteVoteOptionMutationVariables, TContext> => {
+
+const mutationKey = ['deleteVoteOption'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteVoteOption>>, DeleteVoteOptionMutationVariables> = (props) => {
+          const {voteOptionId} = props ?? {};
+
+          return  deleteVoteOption(voteOptionId,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteVoteOptionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteVoteOption>>>
+
+    export type DeleteVoteOptionMutationError = unknown
+    export type DeleteVoteOptionMutationVariables = {voteOptionId: number}
+
+    export const useDeleteVoteOption = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteVoteOption>>, TError,DeleteVoteOptionMutationVariables, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteVoteOption>>,
+        TError,
+        DeleteVoteOptionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteVoteOptionMutationOptions(options), queryClient);
+    }

@@ -4,6 +4,7 @@ import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
+import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionSummaryDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
@@ -95,6 +96,31 @@ public class ItineraryItemService {
                 .toList();
 
         return ItineraryItemCreateResponseDto.from(itineraryItem, voteOptions);
+    }
+
+    /**
+     * 일정 항목 상세를 조회한다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param itemId 조회할 일정 항목의 식별자
+     * @return 일정 항목과 선택지 목록
+     * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     */
+    @Transactional(readOnly = true)
+    public ItineraryItemDetailResponseDto getItineraryItem(Long loginUserId, Long itemId) {
+        ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+
+        if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
+            throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+        }
+
+        List<VoteOptionSummaryDto> voteOptions = voteOptionRepository.findByItineraryItem(itineraryItem).stream()
+                .map(VoteOptionSummaryDto::from)
+                .toList();
+
+        return ItineraryItemDetailResponseDto.from(itineraryItem, voteOptions);
     }
 
     private boolean hasContent(MultipartFile file) {

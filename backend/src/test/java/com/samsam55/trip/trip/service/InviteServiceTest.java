@@ -8,6 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.trip.dto.InviteJoinRequestDto;
 import com.samsam55.trip.trip.dto.InviteJoinResponseDto;
@@ -165,6 +166,7 @@ class InviteServiceTest {
 
         verify(participant, times(1)).join(any(LocalDateTime.class));
         verify(servletRequest).changeSessionId();
+        verify(session).removeAttribute(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE);
         verify(session).setAttribute(InviteService.PARTICIPANT_ID_SESSION_ATTRIBUTE, 12L);
         verify(session).setAttribute(InviteService.TRIP_ID_SESSION_ATTRIBUTE, 1L);
 

@@ -1,10 +1,14 @@
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
 
+import { useLogout } from '@/api/generated/auth-controller/auth-controller'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Fab } from '@/components/ui/fab'
 import { MobileScreen } from '@/components/layout/mobile-screen'
+import { getApiError } from '@/features/auth/auth'
 
 export const Route = createFileRoute('/trips/')({
   component: TripListPage,
@@ -39,6 +43,31 @@ const otherTrips = [
 
 function TripListPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const logout = useLogout()
+  const [logoutError, setLogoutError] = useState<string>()
+
+  const handleLogout = async () => {
+    setLogoutError(undefined)
+
+    try {
+      const response = await logout.mutateAsync()
+
+      if (!response.success) {
+        setLogoutError(
+          response.error?.message ?? '로그아웃 중 오류가 발생했습니다.',
+        )
+        return
+      }
+
+      queryClient.clear()
+      await navigate({ to: '/login', replace: true })
+    } catch (error) {
+      setLogoutError(
+        getApiError(error)?.message ?? '로그아웃 중 오류가 발생했습니다.',
+      )
+    }
+  }
 
   return (
     <MobileScreen
@@ -55,7 +84,7 @@ function TripListPage() {
       <div className="flex flex-1 flex-col gap-6 px-6 py-4">
         {hasTrips ? (
           <>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <div className="flex flex-1 flex-col gap-1">
                 <p className="text-[22px] leading-[1.45] font-bold text-foreground">
                   정하은님의 여행
@@ -64,12 +93,26 @@ function TripListPage() {
                   준비 중인 여행 {1 + otherTrips.length}개
                 </p>
               </div>
+              <Button
+                type="button"
+                variant="text"
+                className="px-2"
+                disabled={logout.isPending}
+                onClick={handleLogout}
+              >
+                {logout.isPending ? '로그아웃 중...' : '로그아웃'}
+              </Button>
               <div className="flex size-11 items-center justify-center rounded-full border border-primary-deep bg-primary-tint">
                 <span className="text-[16px] leading-[1.5] font-medium text-primary-deep">
                   정
                 </span>
               </div>
             </div>
+            {logoutError && (
+              <p className="text-caption-sm text-destructive" role="alert">
+                {logoutError}
+              </p>
+            )}
 
             <div className="flex flex-col gap-3">
               <p className="text-[14px] leading-[1.5] font-medium text-muted-foreground">

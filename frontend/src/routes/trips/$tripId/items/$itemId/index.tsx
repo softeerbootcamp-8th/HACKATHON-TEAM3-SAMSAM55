@@ -1,16 +1,22 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { User, Users } from 'lucide-react'
 import * as React from 'react'
 
+import {
+  getGetItineraryItemQueryKey,
+  useCreateVoteOption,
+  useGetItineraryItem,
+} from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
+import type {
+  CommonResponseItineraryItemDetailResponseDto,
+  VoteOptionSummaryDto,
+} from '@/api/generated/model'
+import { useStartVote } from '@/api/generated/vote-controller/vote-controller'
+import { useDeleteVoteOption } from '@/api/generated/vote-option-controller/vote-option-controller'
 import { AddOptionSheet } from '@/components/trip/add-option-sheet'
 import { EditOptionSheet } from '@/components/trip/edit-option-sheet'
-import {
-  ITEM_FIXTURES,
-  type ItemFixture,
-  type Option,
-} from '@/components/trip/item-fixtures'
 import { OptionCard } from '@/components/trip/option-card'
-import { VoteStatusRow } from '@/components/trip/vote-status-row'
 import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -21,37 +27,140 @@ export const Route = createFileRoute('/trips/$tripId/items/$itemId/')({
 })
 
 const STATUS_BADGE: Record<
-  ItemFixture['status'],
+  string,
   { label: string; bg: string; text: string }
 > = {
-  draft: { label: '준비 중', bg: 'bg-[#eeeff1]', text: 'text-[#6b7075]' },
-  voting: {
+  PENDING: { label: '준비 중', bg: 'bg-[#eeeff1]', text: 'text-[#6b7075]' },
+  VOTING: {
     label: '투표 중',
     bg: 'bg-primary-tint',
     text: 'text-primary-deep',
   },
-  confirmed: {
-    label: '확정',
-    bg: 'bg-[#e6f6e9]',
-    text: 'text-[#37b24d]',
-  },
+  VOTED: { label: '투표 중', bg: 'bg-primary-tint', text: 'text-primary-deep' },
+  CONFIRMED: { label: '확정', bg: 'bg-[#e6f6e9]', text: 'text-[#37b24d]' },
 }
+
+// 서버(POST vote/start)가 요구하는 것과 같은 규칙 — 선택지가 2개 미만이면 투표를 시작할 수 없다.
+const MIN_VOTE_OPTION_COUNT = 2
 
 function ItemDetailPage() {
   const { tripId, itemId } = Route.useParams()
   const navigate = useNavigate()
-  const item = ITEM_FIXTURES[itemId] ?? ITEM_FIXTURES['item-1']
+  const itemIdNumber = Number(itemId)
+  const queryClient = useQueryClient()
+  const queryKey = getGetItineraryItemQueryKey(itemIdNumber)
+
+  const { data: response, isLoading } = useGetItineraryItem(itemIdNumber)
+  const detail = response?.data
+  const options = detail?.voteOptions ?? []
+  const status = detail?.status
 
   const [isEditingOptions, setIsEditingOptions] = React.useState(false)
   const [addOpen, setAddOpen] = React.useState(false)
-  const [editingOption, setEditingOption] = React.useState<Option | null>(null)
-  const [deletingOption, setDeletingOption] = React.useState<Option | null>(
-    null,
-  )
+  const [editingOption, setEditingOption] =
+    React.useState<VoteOptionSummaryDto | null>(null)
+  const [deletingOption, setDeletingOption] =
+    React.useState<VoteOptionSummaryDto | null>(null)
   const [deleteItemOpen, setDeleteItemOpen] = React.useState(false)
 
-  const isVote = item.decisionMethod === '부모님과 투표'
-  const badge = STATUS_BADGE[item.status]
+  const deleteVoteOptionMutation = useDeleteVoteOption()
+  const startVoteMutation = useStartVote()
+  const createVoteOptionMutation = useCreateVoteOption()
+
+  if (isLoading || !detail) {
+    return (
+      <MobileScreen>
+        <AppBar
+          type="back"
+          title="일정 상세"
+          onBack={() => window.history.back()}
+        />
+      </MobileScreen>
+    )
+  }
+
+  const isVote = detail.decisionType === 'VOTE'
+  const badge = STATUS_BADGE[status ?? 'PENDING']
+  const canStartVote = options.length >= MIN_VOTE_OPTION_COUNT
+
+  const handleDeleteOption = () => {
+    const optionId = deletingOption?.id
+    if (optionId === undefined) return
+
+    deleteVoteOptionMutation.mutate(
+      { voteOptionId: optionId },
+      {
+        onSuccess: () => {
+          queryClient.setQueryData<CommonResponseItineraryItemDetailResponseDto>(
+            queryKey,
+            (old) =>
+              old?.data
+                ? {
+                    ...old,
+                    data: {
+                      ...old.data,
+                      voteOptions: old.data.voteOptions?.filter(
+                        (option) => option.id !== optionId,
+                      ),
+                    },
+                  }
+                : old,
+          )
+          setDeletingOption(null)
+        },
+      },
+    )
+  }
+
+  const handleAddOption = (name: string, image: File | null) => {
+    createVoteOptionMutation.mutate(
+      {
+        itemId: itemIdNumber,
+        params: { name },
+        data: { image: image ?? undefined },
+      },
+      {
+        onSuccess: (created) => {
+          const createdOption = created.data
+          if (!createdOption) return
+
+          queryClient.setQueryData<CommonResponseItineraryItemDetailResponseDto>(
+            queryKey,
+            (old) =>
+              old?.data
+                ? {
+                    ...old,
+                    data: {
+                      ...old.data,
+                      voteOptions: [
+                        ...(old.data.voteOptions ?? []),
+                        createdOption,
+                      ],
+                    },
+                  }
+                : old,
+          )
+        },
+      },
+    )
+  }
+
+  const handleStartVote = () => {
+    startVoteMutation.mutate(
+      { data: { itemIds: [itemIdNumber] } },
+      {
+        onSuccess: () => {
+          queryClient.setQueryData<CommonResponseItineraryItemDetailResponseDto>(
+            queryKey,
+            (old) =>
+              old?.data
+                ? { ...old, data: { ...old.data, status: 'VOTING' } }
+                : old,
+          )
+        },
+      },
+    )
+  }
 
   return (
     <MobileScreen>
@@ -63,7 +172,7 @@ function ItemDetailPage() {
       />
 
       <div className="flex flex-col gap-2 px-5 pt-4">
-        <p className="text-[24px] font-bold text-foreground">{item.title}</p>
+        <p className="text-[24px] font-bold text-foreground">{detail.name}</p>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             {isVote ? (
@@ -77,7 +186,7 @@ function ItemDetailPage() {
                 (isVote ? 'text-primary-deep' : 'text-muted-foreground')
               }
             >
-              {item.decisionMethod}
+              {isVote ? '부모님과 투표' : '내가 결정'}
             </p>
           </div>
           <span
@@ -86,15 +195,17 @@ function ItemDetailPage() {
             {badge.label}
           </span>
         </div>
-        <p className="text-caption text-muted-foreground">{item.dayLabel}</p>
+        <p className="text-caption text-muted-foreground">
+          {detail.dayNumber}일차 · {detail.category}
+        </p>
       </div>
 
       <div className="flex flex-1 flex-col gap-4 px-5 pt-4">
-        {isVote && item.status === 'draft' && (
+        {isVote && status === 'PENDING' && (
           <>
             <div className="flex items-center justify-between">
               <p className="text-[14px] font-medium text-muted-foreground">
-                선택지 {item.options.length}개
+                선택지 {options.length}개
               </p>
               <button
                 type="button"
@@ -105,13 +216,18 @@ function ItemDetailPage() {
               </button>
             </div>
             <div className="flex flex-col gap-2.5">
-              {item.options.map((option) => (
+              {options.map((option) => (
                 <OptionCard
                   key={option.id}
-                  title={option.title}
+                  title={option.name ?? ''}
                   description={option.description}
-                  aiGenerated={option.aiGenerated}
+                  aiGenerated={option.descriptionSource === 'AI'}
                   editable={isEditingOptions}
+                  imageSrc={
+                    option.hasImage
+                      ? `/api/vote-options/${option.id}/image`
+                      : undefined
+                  }
                   onClick={() => setEditingOption(option)}
                   onDelete={() => setDeletingOption(option)}
                 />
@@ -130,141 +246,33 @@ function ItemDetailPage() {
           </>
         )}
 
-        {isVote && item.status === 'voting' && item.voterStatus && (
-          <>
-            <VoteStatusRow
-              votedCount={item.votedCount ?? 0}
-              totalCount={item.voterStatus.length}
-              voters={item.voterStatus}
-            />
-            <p className="text-subtitle text-foreground">
-              선택지 {item.options.length}개
-            </p>
-            <div className="flex flex-col gap-3">
-              {item.options.map((option) => (
-                <OptionCard
-                  key={option.id}
-                  title={option.title}
-                  voteCount={option.voteCount}
-                  voters={option.voters}
-                  leading={(option.voteCount ?? 0) > 0}
-                />
-              ))}
-            </div>
-          </>
-        )}
-
-        {isVote && item.status === 'confirmed' && (
-          <>
-            <div className="flex flex-col gap-2 overflow-hidden rounded-[18px] border border-border">
-              <div className="h-[233px] w-full bg-muted" />
-              <div className="flex flex-col gap-2.5 p-4">
-                <p className="text-title-2 text-foreground">
-                  {item.options[0].title}
-                </p>
-                <p className="text-caption text-muted-foreground">
-                  {item.options[0].description}
-                </p>
-                {item.decidedBy && (
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center -space-x-1.5">
-                      {item.decidedBy.map((initial) => (
-                        <span
-                          key={initial}
-                          className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-medium text-foreground"
-                        >
-                          {initial}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="text-[14px] font-medium text-primary-deep">
-                      {item.decidedBy.length === 2
-                        ? '엄마, 첫째가 골랐어요'
-                        : '골랐어요'}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-            <p className="text-subtitle text-foreground">최종 투표 결과</p>
-            <div className="flex flex-col gap-2">
-              {item.options.map((option, index) => (
-                <div
-                  key={option.id}
-                  className={
-                    'flex h-[50px] items-center justify-between rounded-thumb px-3.5 ' +
-                    (index === 0
-                      ? 'border-2 border-primary-deep bg-primary-tint'
-                      : 'bg-muted')
-                  }
-                >
-                  <p
-                    className={
-                      index === 0
-                        ? 'text-[14px] font-medium text-foreground'
-                        : 'text-[14px] text-muted-foreground'
-                    }
-                  >
-                    {option.title}
-                  </p>
-                  <p
-                    className={
-                      'text-[14px] font-bold ' +
-                      (index === 0
-                        ? 'text-primary-deep'
-                        : 'text-muted-foreground')
-                    }
-                  >
-                    {option.voteCount}표
-                  </p>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
         {!isVote && (
           <div className="flex flex-col gap-2.5">
-            {item.status === 'confirmed' && (
-              <div className="h-[233px] w-full overflow-hidden rounded-t-[18px] bg-muted" />
-            )}
-            <div
-              className={
-                item.status === 'confirmed'
-                  ? 'flex flex-col gap-2.5 rounded-b-[18px] border border-t-0 border-border p-4'
-                  : 'flex flex-col gap-2.5 rounded-card border border-border p-3'
-              }
-            >
+            <div className="flex flex-col gap-2.5 rounded-card border border-border p-3">
               <div className="flex w-full items-center gap-3">
-                {item.status === 'draft' && (
+                {options[0]?.hasImage ? (
+                  <img
+                    src={`/api/vote-options/${options[0].id}/image`}
+                    alt=""
+                    className="size-11 shrink-0 rounded-card object-cover"
+                  />
+                ) : (
                   <div className="size-11 shrink-0 rounded-card border-[1.5px] border-dashed border-border bg-muted" />
                 )}
-                <p
-                  className={
-                    item.status === 'confirmed'
-                      ? 'flex-1 text-title-2 text-foreground'
-                      : 'flex-1 text-card-title text-foreground'
-                  }
-                >
-                  {item.options[0].title}
+                <p className="flex-1 text-card-title text-foreground">
+                  {options[0]?.name ?? '아직 선택지가 없어요'}
                 </p>
               </div>
-              <div className="flex items-center gap-1.5">
-                <p className="flex-1 text-[12.5px] text-muted-foreground">
-                  {item.options[0].description}
-                </p>
-                {item.options[0].aiGenerated && (
-                  <span className="shrink-0 rounded-chip bg-primary-tint px-2 py-[3px] text-[11px] leading-none font-medium text-primary-deep">
-                    ✨ AI 작성
-                  </span>
-                )}
-              </div>
-              {item.status === 'confirmed' && (
+              {options[0]?.description && (
                 <div className="flex items-center gap-1.5">
-                  <User className="size-4 text-muted-foreground" />
-                  <p className="text-[14px] font-medium text-muted-foreground">
-                    내가 정했어요
+                  <p className="flex-1 text-[12.5px] text-muted-foreground">
+                    {options[0].description}
                   </p>
+                  {options[0].descriptionSource === 'AI' && (
+                    <span className="shrink-0 rounded-chip bg-primary-tint px-2 py-[3px] text-[11px] leading-none font-medium text-primary-deep">
+                      ✨ AI 작성
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -273,48 +281,48 @@ function ItemDetailPage() {
       </div>
 
       <div className="flex flex-col gap-2 border-t border-border px-5 pt-3 pb-7">
-        {item.status === 'confirmed' ? (
-          // TODO(일정 확정/해제 담당자): DELETE /api/itinerary-items/{itemId}/confirmation
-          // 연동 필요 (백엔드 구현 완료, VoteController.unconfirm). 응답 {itemId, status:"VOTING"}.
+        {status === 'CONFIRMED' ? (
           <Button variant="dangerOutline" size="cta">
             확정 해제하기
+          </Button>
+        ) : isVote ? (
+          <Button size="cta" disabled={!canStartVote} onClick={handleStartVote}>
+            이 일정만 투표 올리기
           </Button>
         ) : (
           <Button
             size="cta"
             onClick={() =>
-              // TODO: isVote === true인 "이 일정만 투표 올리기"는 아직 실제 API를 안 붙였다.
-              // 여행 홈 화면(trips/$tripId/index.tsx)의 useStartVote와 동일하게
-              // POST /api/itinerary-items/vote/start (itemIds: [Number(itemId)])로 연동하면 된다.
-              // isVote === false("~로 확정하기")는 담당자가 다름:
-              // TODO(일정 확정/해제 담당자): PUT /api/itinerary-items/{itemId}/confirmation
-              // (body: { voteOptionId }) 연동 필요 (백엔드 구현 완료, VoteController.confirm).
               navigate({
                 to: '/trips/$tripId/items/$itemId/edit',
                 params: { tripId, itemId },
               })
             }
           >
-            {isVote
-              ? '이 일정만 투표 올리기'
-              : `${item.options[0].title}로 확정하기`}
+            {options[0]?.name ? `${options[0].name}로 확정하기` : '확정하기'}
           </Button>
         )}
         {isVote && (
           <p className="text-center text-caption-sm text-muted-foreground">
-            {item.status === 'confirmed'
+            {status === 'CONFIRMED'
               ? '해제하면 다시 투표 상태로 돌아가요'
-              : '투표를 올리면 가족들이 투표할 수 있고, 더는 수정할 수 없어요'}
+              : canStartVote
+                ? '투표를 올리면 가족들이 투표할 수 있고, 더는 수정할 수 없어요'
+                : '선택지는 2개 이상이어야 해요'}
           </p>
         )}
       </div>
 
-      <AddOptionSheet open={addOpen} onOpenChange={setAddOpen} />
+      <AddOptionSheet
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onAdd={handleAddOption}
+      />
       <EditOptionSheet
         key={editingOption?.id}
         open={editingOption !== null}
         onOpenChange={(open) => !open && setEditingOption(null)}
-        initialName={editingOption?.title ?? ''}
+        initialName={editingOption?.name ?? ''}
         initialDescription={editingOption?.description ?? ''}
       />
       <ConfirmDialog
@@ -324,7 +332,7 @@ function ItemDetailPage() {
         description="해당 선택지가 삭제됩니다."
         confirmLabel="삭제하기"
         danger
-        onConfirm={() => setDeletingOption(null)}
+        onConfirm={handleDeleteOption}
       />
       <ConfirmDialog
         open={deleteItemOpen}

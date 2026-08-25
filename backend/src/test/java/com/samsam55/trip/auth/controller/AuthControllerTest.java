@@ -18,6 +18,7 @@ import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.global.exception.GlobalExceptionHandler;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -75,6 +76,20 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("8자 미만의 회원가입 비밀번호는 400으로 반환한다")
+    void 비밀번호_8자_미만의_회원가입_요청은_400으로_반환한다() throws Exception {
+        mockMvc.perform(post("/api/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"loginId\":\"signup-user\",\"password\":\"1234567\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"))
+                .andExpect(jsonPath("$.error.message")
+                        .value("비밀번호는 8자 이상 72자 이하여야 합니다."));
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
     @DisplayName("72자를 초과한 회원가입 비밀번호는 400으로 반환한다")
     void 비밀번호_72자를_초과한_회원가입_요청은_400으로_반환한다() throws Exception {
         String password = "a".repeat(73);
@@ -85,7 +100,7 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"))
                 .andExpect(jsonPath("$.error.message")
-                        .value("비밀번호는 72자 이하여야 합니다."));
+                        .value("비밀번호는 8자 이상 72자 이하여야 합니다."));
 
         verifyNoInteractions(authService);
     }
@@ -125,7 +140,11 @@ class AuthControllerTest {
     @Test
     @DisplayName("로그인은 세션이 포함된 공통 성공 응답으로 반환한다")
     void 로그인은_세션이_포함된_공통_성공_응답으로_반환한다() throws Exception {
-        when(authService.login(any(AuthLoginRequestDto.class), any(HttpServletRequest.class)))
+        when(authService.login(
+                any(AuthLoginRequestDto.class),
+                any(HttpServletRequest.class),
+                any(HttpServletResponse.class)
+        ))
                 .thenReturn(new AuthLoginResponseDto(1L, "login-user"));
 
         mockMvc.perform(post("/api/auth/login")
