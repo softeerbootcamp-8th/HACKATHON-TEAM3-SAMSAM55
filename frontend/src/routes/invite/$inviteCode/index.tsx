@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
 
 import { useVerify } from '@/api/generated/invite-controller/invite-controller'
+import { InviteErrorState } from '@/components/invite/invite-error-state'
 import { Button } from '@/components/ui/button'
 import { MobileScreen } from '@/components/layout/mobile-screen'
 
@@ -14,11 +15,25 @@ function InviteEntryPage() {
 
   // InviteVerifyResponseDto엔 여행 제목만 있고 방장 이름은 없어서,
   // "OOO님의 여행에 초대되었어요" 대신 제목만으로 문구를 구성한다.
-  const { data: response, isLoading } = useVerify(inviteCode)
+  const {
+    data: response,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useVerify(inviteCode)
   const trip = response?.data
 
-  if (isLoading || !trip) {
+  if (isLoading) {
     return <MobileScreen>{null}</MobileScreen>
+  }
+
+  if (isError || !trip) {
+    return (
+      <MobileScreen>
+        <InviteErrorState error={error} onRetry={() => refetch()} />
+      </MobileScreen>
+    )
   }
 
   return (

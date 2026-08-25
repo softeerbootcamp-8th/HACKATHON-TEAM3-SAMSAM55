@@ -5,6 +5,7 @@ import {
   useJoin,
   useVerify,
 } from '@/api/generated/invite-controller/invite-controller'
+import { InviteErrorState } from '@/components/invite/invite-error-state'
 import { Button } from '@/components/ui/button'
 import { RoleChip } from '@/components/ui/role-chip'
 import { MobileScreen } from '@/components/layout/mobile-screen'
@@ -22,8 +23,15 @@ function InviteRolePage() {
     number | null
   >(null)
 
-  const { data: response, isLoading } = useVerify(inviteCode)
-  const participants = response?.data?.participants ?? []
+  const {
+    data: response,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useVerify(inviteCode)
+  const trip = response?.data
+  const participants = trip?.participants ?? []
 
   const joinMutation = useJoin({
     mutation: {
@@ -43,6 +51,14 @@ function InviteRolePage() {
 
   if (isLoading) {
     return <MobileScreen>{null}</MobileScreen>
+  }
+
+  if (isError || !trip) {
+    return (
+      <MobileScreen>
+        <InviteErrorState error={error} onRetry={() => refetch()} />
+      </MobileScreen>
+    )
   }
 
   return (
