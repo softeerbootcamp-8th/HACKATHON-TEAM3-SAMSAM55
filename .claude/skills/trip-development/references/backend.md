@@ -106,9 +106,10 @@ Controller·Service의 public 메서드(주요 기능)에는 Javadoc을 작성�
 - **이 프로젝트는 구현을 먼저 하고, 그 기능에 대한 테스트를 작성하는 순서를
   따른다** (TDD로 테스트를 먼저 쓰지 않는다 — 팀이 그렇게 정했다).
 - 권한, 검증 실패, 경계값, 동시 요청처럼 실수하기 쉬운 지점을 우선 검증한다.
-- JPA·MySQL이 도입되면 `@DataJpaTest` 등 DB 연결이 필요한 테스트는
-  개발자 로컬 MySQL과 격리된 별도 컨테이너(Testcontainers 등) 사용을
-  검토한다 — 도입 전이라 현재는 해당 없음.
+- JPA·MySQL 도입 완료. `@SpringBootTest`처럼 실제 DB 연결이 필요한 테스트는
+  `global.support.AbstractMySqlContainerTest`를 상속해 Testcontainers로 띄운
+  MySQL을 쓴다 (개발자 로컬 MySQL과 완전히 격리됨). 로컬에 Docker가 떠 있어야
+  이 테스트들이 통과한다.
 
 ## 금지
 
