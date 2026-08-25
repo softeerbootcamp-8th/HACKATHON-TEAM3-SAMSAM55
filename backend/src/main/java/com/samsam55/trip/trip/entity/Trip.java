@@ -60,4 +60,10 @@ public class Trip extends BaseEntity {
         this.companionCount = companionCount;
         this.inviteCode = inviteCode;
     }
+
+    public void update(String title, LocalDateTime startDate, LocalDateTime endDate) {
+        this.title = title;
+        this.startDate = startDate;
+        this.endDate = endDate;
+    }
 }

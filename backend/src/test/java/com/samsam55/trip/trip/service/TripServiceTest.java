@@ -11,6 +11,7 @@ import com.samsam55.trip.member.repository.UserRepository;
 import com.samsam55.trip.trip.dto.TripCreateRequestDto;
 import com.samsam55.trip.trip.dto.TripDetailResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
+import com.samsam55.trip.trip.dto.TripUpdateRequestDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
@@ -189,6 +190,65 @@ class TripServiceTest {
                 voteRepository,
                 participantRepository,
                 tripDayRepository
+        );
+    }
+
+    @Test
+    @DisplayName("여행 전체 수정 시 기간 밖 일차의 하위 데이터를 정해진 순서로 삭제한다")
+    void 여행_전체_수정_시_기간_밖_일차의_하위_데이터를_정해진_순서로_삭제한다() {
+        TripDay removedTripDay = org.mockito.Mockito.mock(TripDay.class);
+        TripDay retainedTripDay = org.mockito.Mockito.mock(TripDay.class);
+        when(tripRepository.findByIdAndHostUserId(1L, 1L)).thenReturn(java.util.Optional.of(trip));
+        when(trip.getId()).thenReturn(1L);
+        when(trip.getTitle()).thenReturn("제주 효도 여행");
+        when(trip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 2, 0, 0));
+        when(trip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 3, 0, 0));
+        when(trip.getCompanionCount()).thenReturn(2);
+        when(removedTripDay.getId()).thenReturn(10L);
+        when(removedTripDay.getTripDate()).thenReturn(LocalDate.of(2026, 9, 1));
+        when(retainedTripDay.getTripDate()).thenReturn(LocalDate.of(2026, 9, 2));
+        when(tripDayRepository.findAllByTripIdOrderByDayNumberAsc(1L))
+                .thenReturn(List.of(removedTripDay, retainedTripDay));
+
+        service().updateTrip(1L, 1L, new TripUpdateRequestDto(
+                "제주 효도 여행",
+                LocalDate.of(2026, 9, 2),
+                LocalDate.of(2026, 9, 3)
+        ));
+
+        var inOrder = org.mockito.Mockito.inOrder(
+                voteRepository,
+                itineraryItemRepository,
+                voteOptionRepository,
+                tripDayRepository
+        );
+        inOrder.verify(voteRepository).deleteAllByTripDayIds(List.of(10L));
+        inOrder.verify(itineraryItemRepository).clearConfirmedOptionByTripDayIds(List.of(10L));
+        inOrder.verify(voteOptionRepository).deleteAllByTripDayIds(List.of(10L));
+        inOrder.verify(itineraryItemRepository).deleteAllByTripDayIds(List.of(10L));
+        inOrder.verify(tripDayRepository).deleteAll(List.of(removedTripDay));
+        verify(retainedTripDay).updateDayNumber(1);
+        verify(tripDayRepository).saveAll(org.mockito.ArgumentMatchers.anyList());
+    }
+
+    @Test
+    @DisplayName("시작일이 종료일보다 늦으면 여행 전체 수정을 하지 않는다")
+    void 시작일이_종료일보다_늦으면_여행_전체_수정을_하지_않는다() {
+        TripUpdateRequestDto request = new TripUpdateRequestDto(
+                "잘못된 여행",
+                LocalDate.of(2026, 9, 3),
+                LocalDate.of(2026, 9, 1)
+        );
+
+        assertThatThrownBy(() -> service().updateTrip(1L, 1L, request))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType().getCode()).isEqualTo("INVALID_TRIP_PERIOD"));
+        verifyNoInteractions(
+                tripRepository,
+                tripDayRepository,
+                itineraryItemRepository,
+                voteOptionRepository,
+                voteRepository
         );
     }
 
