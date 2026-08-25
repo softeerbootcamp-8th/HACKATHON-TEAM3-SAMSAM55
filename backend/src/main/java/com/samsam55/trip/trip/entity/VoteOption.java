@@ -39,20 +39,26 @@ public class VoteOption extends BaseEntity {
     @Column(name = "description_source", length = 20, nullable = false)
     private String descriptionSource;
 
-    @Column(name = "image_url", length = 500)
-    private String imageUrl;
+    @Lob
+    @Column(name = "image")
+    private byte[] image;
+
+    @Column(name = "image_content_type", length = 100)
+    private String imageContentType;
 
     public VoteOption(
             ItineraryItem itineraryItem,
             String name,
             String description,
             String descriptionSource,
-            String imageUrl
+            byte[] image,
+            String imageContentType
     ) {
         this.itineraryItem = itineraryItem;
         this.name = name;
         this.description = description;
         this.descriptionSource = descriptionSource;
-        this.imageUrl = imageUrl;
+        this.image = image;
+        this.imageContentType = imageContentType;
     }
 }

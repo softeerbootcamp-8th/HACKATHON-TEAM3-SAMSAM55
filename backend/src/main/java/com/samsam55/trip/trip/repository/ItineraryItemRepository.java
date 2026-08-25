@@ -9,6 +9,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface ItineraryItemRepository extends JpaRepository<ItineraryItem, Long> {
 
+    @Query("SELECT COALESCE(MAX(i.sortOrder), 0) FROM ItineraryItem i WHERE i.tripDay.id = :tripDayId")
+    int findMaxSortOrderByTripDayId(@Param("tripDayId") Long tripDayId);
+
     @Query("""
             select item
             from ItineraryItem item

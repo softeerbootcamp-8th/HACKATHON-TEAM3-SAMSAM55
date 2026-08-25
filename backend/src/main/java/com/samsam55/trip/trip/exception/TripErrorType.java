@@ -10,7 +10,12 @@ public enum TripErrorType implements ErrorType {
     INVITE_CODE_NOT_FOUND(HttpStatus.NOT_FOUND, "유효하지 않은 초대 코드입니다."),
     PARTICIPANT_NOT_FOUND(HttpStatus.NOT_FOUND, "참여자를 찾을 수 없습니다."),
     PARTICIPANT_ALREADY_JOINED(HttpStatus.CONFLICT, "이미 다른 사람이 참여한 역할입니다."),
-    PARTICIPANT_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "참여자 인증이 필요합니다.");
+    PARTICIPANT_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "참여자 인증이 필요합니다."),
+    TRIP_DAY_NOT_FOUND(HttpStatus.NOT_FOUND, "일차를 찾을 수 없습니다."),
+    NOT_TRIP_HOST(HttpStatus.FORBIDDEN, "여행의 방장만 사용할 수 있습니다."),
+    VOTE_OPTION_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "선택지는 최대 4개까지 등록할 수 있습니다."),
+    VOTE_OPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "선택지를 찾을 수 없습니다."),
+    VOTE_OPTION_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "선택지에 등록된 이미지가 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

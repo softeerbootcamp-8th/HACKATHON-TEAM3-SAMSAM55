@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.samsam55.trip.member.entity.User;
 import com.samsam55.trip.member.repository.UserRepository;
 import com.samsam55.trip.trip.entity.ItineraryItem;
+import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
+import com.samsam55.trip.trip.entity.ItineraryItemStatus;
 import com.samsam55.trip.trip.entity.Participant;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
@@ -85,8 +87,8 @@ class TripDeletionIntegrationTest extends AbstractMySqlContainerTest {
                 tripDay,
                 "오전 관광지",
                 "TOURIST_SPOT",
-                "VOTE",
-                "PENDING",
+                ItineraryItemDecisionType.VOTE,
+                ItineraryItemStatus.PENDING,
                 1,
                 null
         ));
@@ -95,6 +97,7 @@ class TripDeletionIntegrationTest extends AbstractMySqlContainerTest {
                 "성산일출봉",
                 "일출 명소",
                 "AI",
+                null,
                 null
         ));
         entityManager.createQuery("""
