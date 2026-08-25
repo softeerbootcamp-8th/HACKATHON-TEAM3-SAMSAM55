@@ -151,6 +151,31 @@ class TripServiceTest {
     }
 
     @Test
+    @DisplayName("여행 기간이 최대 365일을 초과하면 여행을 생성하지 않는다")
+    void 여행_기간이_최대_365일을_초과하면_여행을_생성하지_않는다() {
+        LocalDate startDate = LocalDate.of(2026, 1, 1);
+        TripCreateRequestDto request = new TripCreateRequestDto(
+                "너무 긴 여행",
+                startDate,
+                startDate.plusDays(365),
+                List.of("엄마")
+        );
+
+        assertThatThrownBy(() -> service().createTrip(1L, request))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType().getCode()).isEqualTo("INVALID_TRIP_PERIOD"));
+        verifyNoInteractions(
+                userRepository,
+                tripRepository,
+                tripDayRepository,
+                participantRepository,
+                itineraryItemRepository,
+                voteOptionRepository,
+                voteRepository
+        );
+    }
+
+    @Test
     @DisplayName("방장이 여행을 삭제하면 하위 데이터를 정해진 순서로 삭제한다")
     void 방장이_여행을_삭제하면_하위_데이터를_정해진_순서로_삭제한다() {
         when(tripRepository.findByIdAndHostUserId(1L, 1L)).thenReturn(java.util.Optional.of(trip));

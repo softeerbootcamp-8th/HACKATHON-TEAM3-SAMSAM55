@@ -37,6 +37,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TripService {
 
+    private static final long MAX_TRIP_DAYS = 365L;
+
     private final TripRepository tripRepository;
     private final TripDayRepository tripDayRepository;
     private final ParticipantRepository participantRepository;
@@ -82,7 +84,7 @@ public class TripService {
      * @param request 여행 제목, 기간, 동행자 역할 목록
      * @return 생성된 여행과 참여자 빈 슬롯
      * @throws ApplicationException 세션의 사용자를 찾을 수 없을 때(LOGIN_REQUIRED)
-     * @throws ApplicationException 시작일이 종료일보다 늦을 때(INVALID_TRIP_PERIOD)
+     * @throws ApplicationException 여행 기간이 올바르지 않거나 최대 여행 일수를 초과할 때(INVALID_TRIP_PERIOD)
      */
     @Transactional
     public TripCreateResponseDto createTrip(Long userId, TripCreateRequestDto request) {
@@ -133,6 +135,10 @@ public class TripService {
 
     private void validateTripPeriod(LocalDate startDate, LocalDate endDate) {
         if (startDate.isAfter(endDate)) {
+            throw new ApplicationException(TripErrorType.INVALID_TRIP_PERIOD);
+        }
+        long tripLength = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        if (tripLength > MAX_TRIP_DAYS) {
             throw new ApplicationException(TripErrorType.INVALID_TRIP_PERIOD);
         }
     }
