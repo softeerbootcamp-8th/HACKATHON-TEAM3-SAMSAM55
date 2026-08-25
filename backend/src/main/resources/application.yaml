@@ -1,3 +1,15 @@
 spring:
   application:
     name: trip
+  datasource:
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/trip?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${DATABASE_USERNAME:root}
+    password: ${DATABASE_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
