@@ -1,70 +1,41 @@
 import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
+import { useFindSchedule } from '@/api/generated/schedule-controller/schedule-controller'
 import { Button } from '@/components/ui/button'
 import { ItemCard } from '@/components/trip/item-card'
 import { MobileScreen } from '@/components/layout/mobile-screen'
+import { formatDateRange } from '@/lib/date'
+import { toItemStatus } from '@/lib/itinerary-item-status'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/parent/')({
   component: ParentHomePage,
 })
 
-type DecisionMethod = '부모님과 투표' | '내가 결정'
-type ItemStatus = 'draft' | 'voting' | 'confirmed' | 'voteDone'
-
-type MockItem = {
-  id: string
-  title: string
-  category: string
-  decisionMethod: DecisionMethod
-  status: ItemStatus
-  meta: string
-}
-
-const DAYS = [
-  { label: '1일차', pending: false },
-  { label: '2일차', pending: false },
-  { label: '3일차', pending: true },
-  { label: '4일차', pending: false },
-]
-
-// TODO: 일정 목록 조회 API가 붙으면 이 mock을 걷어내고 실제 데이터로 교체한다 (별도 이슈).
-// id는 실제 백엔드 itemId(number)와 형태를 맞추기 위해 숫자 문자열로 둔다.
-const ITEMS_BY_DAY: Record<number, MockItem[]> = {
-  0: [
-    {
-      id: '101',
-      title: '점심 식사',
-      category: '식사',
-      decisionMethod: '부모님과 투표',
-      status: 'voting',
-      meta: '2/3표 완료',
-    },
-    {
-      id: '102',
-      title: '관광지 이동',
-      category: '이동',
-      decisionMethod: '부모님과 투표',
-      status: 'voteDone',
-      meta: '',
-    },
-    {
-      id: '103',
-      title: '1일차 관광지',
-      category: '관광',
-      decisionMethod: '내가 결정',
-      status: 'confirmed',
-      meta: '',
-    },
-  ],
-}
-
 function ParentHomePage() {
   const navigate = useNavigate()
-  const [dayIndex, setDayIndex] = useState(0)
-  const items = ITEMS_BY_DAY[dayIndex] ?? []
-  const pendingCount = items.filter((item) => item.status === 'voting').length
+  const { tripId } = Route.useRouteContext()
+  const [selectedDayId, setSelectedDayId] = useState<number | null>(null)
+
+  const { data: response, isLoading } = useFindSchedule(tripId ?? 0, {
+    query: { enabled: tripId !== undefined },
+  })
+  const schedule = response?.data
+  const days = schedule?.days ?? []
+  const day = days.find((d) => d.id === selectedDayId) ?? days[0]
+  const items = day?.items ?? []
+  const pendingCount = items.filter((item) => item.status === 'VOTING').length
+
+  if (isLoading || !schedule) {
+    return (
+      <MobileScreen>
+        <p className="px-5 pt-4 text-[14px] text-muted-foreground">
+          불러오는 중...
+        </p>
+      </MobileScreen>
+    )
+  }
 
   return (
     <MobileScreen
@@ -73,14 +44,14 @@ function ParentHomePage() {
           <Button
             size="cta"
             disabled={pendingCount === 0}
-            onClick={() =>
+            onClick={() => {
+              const firstVotingItem = items.find((i) => i.status === 'VOTING')
+              if (!firstVotingItem?.id) return
               navigate({
                 to: '/parent/items/$itemId/vote',
-                params: {
-                  itemId: items.find((i) => i.status === 'voting')!.id,
-                },
+                params: { itemId: String(firstVotingItem.id) },
               })
-            }
+            }}
           >
             {pendingCount > 0
               ? `투표 시작하기 (남은 ${pendingCount}개)`
@@ -91,27 +62,29 @@ function ParentHomePage() {
     >
       <div className="flex flex-col gap-4 px-5 pt-4">
         <div className="flex flex-col gap-1.5">
-          <p className="text-display text-foreground">도쿄 가족여행</p>
-          <p className="text-[13px] leading-[1.55] text-muted-foreground">
-            8월 24일 - 8월 27일
-          </p>
+          <p className="text-display text-foreground">{schedule.title}</p>
+          {schedule.startDate && schedule.endDate && (
+            <p className="text-[13px] leading-[1.55] text-muted-foreground">
+              {formatDateRange(schedule.startDate, schedule.endDate)}
+            </p>
+          )}
         </div>
 
         <div className="flex gap-2">
-          {DAYS.map((day, index) => (
+          {days.map((d) => (
             <button
-              key={day.label}
+              key={d.id}
               type="button"
-              onClick={() => setDayIndex(index)}
+              onClick={() => setSelectedDayId(d.id ?? null)}
               className={cn(
                 'relative rounded-tab px-4 py-2 text-label',
-                index === dayIndex
+                d.id === (day?.id ?? days[0]?.id)
                   ? 'bg-primary text-primary-foreground'
                   : 'border border-border bg-background text-muted-foreground',
               )}
             >
-              {day.label}
-              {day.pending && (
+              {d.dayNumber}일차
+              {d.items?.some((item) => item.status === 'VOTING') && (
                 <span className="absolute top-1 right-2 size-1.5 rounded-full bg-status-voting" />
               )}
             </button>
@@ -123,21 +96,29 @@ function ParentHomePage() {
         </p>
 
         <div className="flex flex-col gap-3">
-          {items.map((item) => (
-            <ItemCard
-              key={item.id}
-              title={item.title}
-              category={item.category}
-              meta={item.meta || undefined}
-              status={item.status}
-              onClick={() =>
-                navigate({
-                  to: '/parent/items/$itemId',
-                  params: { itemId: item.id },
-                })
-              }
-            />
-          ))}
+          {items.map((item) => {
+            const status = toItemStatus(item.status)
+            const meta =
+              item.status === 'VOTING' || item.status === 'VOTED'
+                ? `${item.votedCount ?? 0}/${item.totalParticipants ?? 0}표 완료`
+                : undefined
+
+            return (
+              <ItemCard
+                key={item.id}
+                title={item.name ?? ''}
+                category={item.category ?? ''}
+                meta={meta}
+                status={status ?? 'draft'}
+                onClick={() =>
+                  navigate({
+                    to: '/parent/items/$itemId',
+                    params: { itemId: String(item.id) },
+                  })
+                }
+              />
+            )
+          })}
         </div>
       </div>
     </MobileScreen>
