@@ -7,9 +7,11 @@
 
 export * from './authLoginRequestDto'
 export * from './authLoginResponseDto'
+export * from './authMeResponseDto'
 export * from './authSignupRequestDto'
 export * from './authSignupResponseDto'
 export * from './commonResponseAuthLoginResponseDto'
+export * from './commonResponseAuthMeResponseDto'
 export * from './commonResponseAuthSignupResponseDto'
 export * from './commonResponseVoid'
 export * from './errorResponse'
