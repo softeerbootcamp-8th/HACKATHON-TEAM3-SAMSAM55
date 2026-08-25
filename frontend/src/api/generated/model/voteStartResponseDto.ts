@@ -4,8 +4,8 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { VoteStartItemResultDto } from './voteStartItemResultDto';
+import type { ItineraryItemStatusDto } from './itineraryItemStatusDto';
 
 export interface VoteStartResponseDto {
-  items?: VoteStartItemResultDto[];
+  items?: ItineraryItemStatusDto[];
 }

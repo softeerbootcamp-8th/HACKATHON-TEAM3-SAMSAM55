@@ -27,11 +27,9 @@ import type {
   CommonResponseItineraryItemCreateResponseDto,
   CommonResponseItineraryItemDetailResponseDto,
   CommonResponseVoteOptionCreateResponseDto,
-  CommonResponseVoteStartResponseDto,
   CreateItineraryItemBody,
   CreateVoteOptionBody,
-  CreateVoteOptionParams,
-  VoteStartRequestDto
+  CreateVoteOptionParams
 } from '../model';
 
 import { customInstance } from '../../mutator/custom-instance';
@@ -186,65 +184,6 @@ const {mutation: mutationOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateVoteOptionMutationOptions(options), queryClient);
-    }
-    export const startVote = (
-    voteStartRequestDto: VoteStartRequestDto,
- signal?: AbortSignal
-) => {
-
-
-      return customInstance<CommonResponseVoteStartResponseDto>(
-      {url: `/api/itinerary-items/vote/start`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: voteStartRequestDto, signal
-    },
-      );
-    }
-
-
-
-
-export const getStartVoteMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startVote>>, TError,StartVoteMutationVariables, TContext>, }
-): UseMutationOptions<Awaited<ReturnType<typeof startVote>>, TError,StartVoteMutationVariables, TContext> => {
-
-const mutationKey = ['startVote'];
-const {mutation: mutationOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startVote>>, StartVoteMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  startVote(data,)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type StartVoteMutationResult = NonNullable<Awaited<ReturnType<typeof startVote>>>
-    export type StartVoteMutationBody = VoteStartRequestDto
-    export type StartVoteMutationError = unknown
-    export type StartVoteMutationVariables = {data: VoteStartRequestDto}
-
-    export const useStartVote = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startVote>>, TError,StartVoteMutationVariables, TContext>, }
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof startVote>>,
-        TError,
-        StartVoteMutationVariables,
-        TContext
-      > => {
-      return useMutation(getStartVoteMutationOptions(options), queryClient);
     }
     export const getItineraryItem = (
     itemId: number,

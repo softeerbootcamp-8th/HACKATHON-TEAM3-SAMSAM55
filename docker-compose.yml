@@ -5,9 +5,10 @@
 # 사용법:
 #   1) .env.example 을 .env 로 복사하고 값 확인 (기본값 그대로 써도 됨)
 #   2) docker compose up -d
-#   3) 백엔드 실행 시 같은 .env 의 DB_HOST=localhost, DB_PORT=3306 등을 환경변수로 넘겨준다
-#      (예: IntelliJ Run Configuration에 EnvFile 플러그인으로 .env 지정,
-#       또는 터미널에서 `export $(grep -v '^#' .env | xargs) && ./gradlew bootRun`)
+#   3) backend/.env 는 spring.config.import(application.yaml)로 자동 로드된다.
+#      IntelliJ 실행이든 `./gradlew bootRun`이든 별도 설정 없이 바로 읽힌다
+#      (working directory가 backend/ 인 경우 기준. optional: 접두사라 .env가
+#      없는 배포 환경에서는 조용히 무시된다).
 
 services:
   mysql:

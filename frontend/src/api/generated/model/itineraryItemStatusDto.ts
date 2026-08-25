@@ -5,7 +5,7 @@
  * OpenAPI spec version: v0
  */
 
-export interface VoteStartItemResultDto {
+export interface ItineraryItemStatusDto {
   itemId?: number;
   status?: string;
 }

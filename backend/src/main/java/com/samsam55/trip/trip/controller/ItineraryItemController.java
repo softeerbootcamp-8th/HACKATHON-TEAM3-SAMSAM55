@@ -6,8 +6,6 @@ import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
-import com.samsam55.trip.trip.dto.VoteStartRequestDto;
-import com.samsam55.trip.trip.dto.VoteStartResponseDto;
 import com.samsam55.trip.trip.service.ItineraryItemService;
 import com.samsam55.trip.trip.service.VoteOptionService;
 import jakarta.validation.Valid;
@@ -18,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -65,21 +62,6 @@ public class ItineraryItemController {
             @PathVariable Long itemId
     ) {
         return CommonResponse.success(itineraryItemService.getItineraryItem(loginUserId, itemId));
-    }
-
-    /**
-     * 일정 항목들을 투표 상태로 전환한다. 여행 방장만 호출할 수 있다.
-     *
-     * @param loginUserId 로그인한 회원의 식별자
-     * @param request 투표를 시작할 일정 항목 ID 목록
-     * @return 전환된 일정 항목들의 상태가 담긴 200 응답
-     */
-    @PostMapping("/api/itinerary-items/vote/start")
-    public CommonResponse<VoteStartResponseDto> startVote(
-            @Login Long loginUserId,
-            @Valid @RequestBody VoteStartRequestDto request
-    ) {
-        return CommonResponse.success(itineraryItemService.startVote(loginUserId, request.itemIds()));
     }
 
     /**

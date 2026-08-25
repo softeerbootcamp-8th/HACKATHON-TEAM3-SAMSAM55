@@ -11,6 +11,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface VoteOptionRepository extends JpaRepository<VoteOption, Long> {
 
+    int countByItineraryItemId(Long itineraryItemId);
+
+    Optional<VoteOption> findByIdAndItineraryItemId(Long id, Long itineraryItemId);
+
     List<VoteOption> findByItineraryItem(ItineraryItem itineraryItem);
 
     long countByItineraryItem(ItineraryItem itineraryItem);

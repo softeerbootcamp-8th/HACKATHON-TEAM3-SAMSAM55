@@ -7,12 +7,12 @@ import {
   getGetItineraryItemQueryKey,
   useCreateVoteOption,
   useGetItineraryItem,
-  useStartVote,
 } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
 import type {
   CommonResponseItineraryItemDetailResponseDto,
   VoteOptionSummaryDto,
 } from '@/api/generated/model'
+import { useStartVote } from '@/api/generated/vote-controller/vote-controller'
 import { useDeleteVoteOption } from '@/api/generated/vote-option-controller/vote-option-controller'
 import { AddOptionSheet } from '@/components/trip/add-option-sheet'
 import { EditOptionSheet } from '@/components/trip/edit-option-sheet'

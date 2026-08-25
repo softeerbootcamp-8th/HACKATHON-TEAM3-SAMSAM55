@@ -18,8 +18,12 @@ type MockOption = {
   voters: string[]
 }
 
+// TODO(일정 항목 상세 조회 담당자): 이 화면 전체(상태·선택지·득표수)가
+// 일정 항목 상세 조회 API에 의존한다. GET 엔드포인트가 생기면 mock을 걷어내고
+// 실제 데이터로 교체한다. "투표하러 가기" 버튼 자체는 단순 이동이라 API 연동이
+// 필요 없다 (실제 제출은 /vote 화면의 PUT /api/itinerary-items/my-votes가 담당).
 const MOCK_ITEM_STATUS: Record<string, 'voting' | 'confirmed'> = {
-  'item-2': 'confirmed',
+  '102': 'confirmed',
 }
 
 const MOCK_OPTIONS: MockOption[] = [

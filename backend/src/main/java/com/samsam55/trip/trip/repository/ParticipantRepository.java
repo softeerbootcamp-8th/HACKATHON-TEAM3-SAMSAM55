@@ -15,6 +15,8 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
 
     Optional<Participant> findByIdAndTrip(Long id, Trip trip);
 
+    long countByTripId(Long tripId);
+
     @Modifying(flushAutomatically = true)
     @Query("delete from Participant participant where participant.trip.id = :tripId")
     int deleteAllByTripId(@Param("tripId") Long tripId);

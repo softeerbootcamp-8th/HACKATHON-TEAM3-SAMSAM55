@@ -27,9 +27,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ApplicationException.class)
     public ResponseEntity<CommonResponse<Void>> handleApplicationException(ApplicationException e) {
         ErrorType errorType = e.getErrorType();
-        log.error("ApplicationException: code={}, message={}", errorType.getCode(), errorType.getMessage(), e);
+        log.error("ApplicationException: code={}, message={}", errorType.getCode(), e.getMessage(), e);
         return ResponseEntity.status(errorType.getHttpStatus())
-                .body(CommonResponse.error(errorType));
+                .body(CommonResponse.error(errorType, e.getMessage()));
     }
 
     /**
