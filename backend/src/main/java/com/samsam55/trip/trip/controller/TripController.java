@@ -2,12 +2,19 @@ package com.samsam55.trip.trip.controller;
 
 import com.samsam55.trip.auth.annotation.Login;
 import com.samsam55.trip.global.common.CommonResponse;
+import com.samsam55.trip.trip.dto.TripCreateRequestDto;
+import com.samsam55.trip.trip.dto.TripCreateResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
 import com.samsam55.trip.trip.service.TripService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("/api/trips")
@@ -25,5 +32,21 @@ public class TripController {
     @GetMapping
     public CommonResponse<TripListResponseDto> findTrips(@Login Long userId) {
         return CommonResponse.success(tripService.findTrips(userId));
+    }
+
+    /**
+     * 현재 로그인한 사용자를 방장으로 여행을 생성한다.
+     *
+     * @param userId 세션에서 해석한 로그인 사용자의 ID
+     * @param request 여행 생성 정보
+     * @return 생성된 여행 정보를 담은 201 응답
+     */
+    @PostMapping
+    public ResponseEntity<CommonResponse<TripCreateResponseDto>> createTrip(
+            @Login Long userId,
+            @Valid @RequestBody TripCreateRequestDto request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(CommonResponse.success(tripService.createTrip(userId, request)));
     }
 }

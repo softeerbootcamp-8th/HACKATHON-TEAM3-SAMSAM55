@@ -1,7 +1,25 @@
 package com.samsam55.trip.trip.service;
 
+import com.samsam55.trip.auth.exception.AuthErrorType;
+import com.samsam55.trip.global.exception.ApplicationException;
+import com.samsam55.trip.member.entity.User;
+import com.samsam55.trip.member.repository.UserRepository;
+import com.samsam55.trip.trip.dto.TripCreateRequestDto;
+import com.samsam55.trip.trip.dto.TripCreateResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
+import com.samsam55.trip.trip.entity.Participant;
+import com.samsam55.trip.trip.entity.Trip;
+import com.samsam55.trip.trip.entity.TripDay;
+import com.samsam55.trip.trip.exception.TripErrorType;
 import com.samsam55.trip.trip.repository.TripRepository;
+import com.samsam55.trip.trip.repository.ParticipantRepository;
+import com.samsam55.trip.trip.repository.TripDayRepository;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class TripService {
 
     private final TripRepository tripRepository;
+    private final TripDayRepository tripDayRepository;
+    private final ParticipantRepository participantRepository;
+    private final UserRepository userRepository;
 
     /**
      * 로그인한 사용자가 방장인 여행 목록을 조회한다.
@@ -21,5 +42,58 @@ public class TripService {
     @Transactional(readOnly = true)
     public TripListResponseDto findTrips(Long userId) {
         return TripListResponseDto.from(tripRepository.findAllByHostUserIdOrderByIdAsc(userId));
+    }
+
+    /**
+     * 로그인한 사용자를 방장으로 여행과 여행 일차, 참여자 빈 슬롯을 생성한다.
+     *
+     * @param userId 여행을 생성하는 로그인 사용자의 ID
+     * @param request 여행 제목, 기간, 동행자 역할 목록
+     * @return 생성된 여행과 참여자 빈 슬롯
+     * @throws ApplicationException 세션의 사용자를 찾을 수 없을 때(LOGIN_REQUIRED)
+     * @throws ApplicationException 시작일이 종료일보다 늦을 때(INVALID_TRIP_PERIOD)
+     */
+    @Transactional
+    public TripCreateResponseDto createTrip(Long userId, TripCreateRequestDto request) {
+        validateTripPeriod(request.startDate(), request.endDate());
+
+        User hostUser = userRepository.findById(userId)
+                .orElseThrow(() -> new ApplicationException(AuthErrorType.LOGIN_REQUIRED));
+        LocalDateTime startDate = request.startDate().atStartOfDay();
+        LocalDateTime endDate = request.endDate().atStartOfDay();
+        Trip trip = tripRepository.saveAndFlush(new Trip(
+                hostUser,
+                request.title(),
+                startDate,
+                endDate,
+                request.companions().size(),
+                createInviteCode()
+        ));
+
+        tripDayRepository.saveAll(createTripDays(trip, request.startDate(), request.endDate()));
+        List<Participant> participants = request.companions().stream()
+                .map(roleName -> new Participant(trip, roleName, null))
+                .toList();
+        List<Participant> savedParticipants = participantRepository.saveAllAndFlush(participants);
+        return TripCreateResponseDto.from(trip, savedParticipants);
+    }
+
+    private void validateTripPeriod(LocalDate startDate, LocalDate endDate) {
+        if (startDate.isAfter(endDate)) {
+            throw new ApplicationException(TripErrorType.INVALID_TRIP_PERIOD);
+        }
+    }
+
+    private List<TripDay> createTripDays(Trip trip, LocalDate startDate, LocalDate endDate) {
+        long tripLength = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        List<TripDay> tripDays = new ArrayList<>();
+        for (int dayNumber = 1; dayNumber <= tripLength; dayNumber++) {
+            tripDays.add(new TripDay(trip, dayNumber, startDate.plusDays(dayNumber - 1L)));
+        }
+        return tripDays;
+    }
+
+    private String createInviteCode() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 }
