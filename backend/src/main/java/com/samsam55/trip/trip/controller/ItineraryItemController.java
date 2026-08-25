@@ -4,21 +4,24 @@ import com.samsam55.trip.auth.annotation.Login;
 import com.samsam55.trip.global.common.CommonResponse;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
+import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
+import com.samsam55.trip.trip.dto.VoteStartRequestDto;
+import com.samsam55.trip.trip.dto.VoteStartResponseDto;
 import com.samsam55.trip.trip.service.ItineraryItemService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/trip-days/{dayId}/itinerary-items")
 @RequiredArgsConstructor
 public class ItineraryItemController {
 
@@ -33,7 +36,7 @@ public class ItineraryItemController {
      * @param optionImages 선택지별 이미지(선택), {@code request.options}와 같은 순서로 매칭된다
      * @return 생성된 일정 항목이 담긴 201 응답
      */
-    @PostMapping(consumes = "multipart/form-data")
+    @PostMapping(value = "/api/trip-days/{dayId}/itinerary-items", consumes = "multipart/form-data")
     public ResponseEntity<CommonResponse<ItineraryItemCreateResponseDto>> createItineraryItem(
             @Login Long loginUserId,
             @PathVariable Long dayId,
@@ -43,5 +46,35 @@ public class ItineraryItemController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(CommonResponse.success(
                         itineraryItemService.createItineraryItem(loginUserId, dayId, request, optionImages)));
+    }
+
+    /**
+     * 일정 항목 상세를 조회한다. 여행 방장만 호출할 수 있다.
+     *
+     * @param loginUserId 로그인한 회원의 식별자
+     * @param itemId 조회할 일정 항목의 식별자
+     * @return 일정 항목 상세가 담긴 200 응답
+     */
+    @GetMapping("/api/itinerary-items/{itemId}")
+    public CommonResponse<ItineraryItemDetailResponseDto> getItineraryItem(
+            @Login Long loginUserId,
+            @PathVariable Long itemId
+    ) {
+        return CommonResponse.success(itineraryItemService.getItineraryItem(loginUserId, itemId));
+    }
+
+    /**
+     * 일정 항목들을 투표 상태로 전환한다. 여행 방장만 호출할 수 있다.
+     *
+     * @param loginUserId 로그인한 회원의 식별자
+     * @param request 투표를 시작할 일정 항목 ID 목록
+     * @return 전환된 일정 항목들의 상태가 담긴 200 응답
+     */
+    @PostMapping("/api/itinerary-items/vote/start")
+    public CommonResponse<VoteStartResponseDto> startVote(
+            @Login Long loginUserId,
+            @Valid @RequestBody VoteStartRequestDto request
+    ) {
+        return CommonResponse.success(itineraryItemService.startVote(loginUserId, request.itemIds()));
     }
 }
