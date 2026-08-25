@@ -12,7 +12,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 /**
- * 모든 JPA 엔티티가 공통으로 사용하는 식별자와 생성·수정 시각을 정의한다.
+ * 생성·수정 시각이 필요한 엔티티가 공통으로 사용하는 감사 필드를 정의한다.
  */
 @Getter
 @MappedSuperclass
