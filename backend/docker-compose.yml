@@ -64,22 +64,30 @@ services:
       - ./dump:/dump
 
   # 프론트(CloudFront, https)에서 이 백엔드(http)로 바로 요청하면 브라우저가
-  # mixed content 로 차단한다. Caddy 가 samsam55.duckdns.org 앞단에서 Let's Encrypt
-  # 인증서를 자동 발급/갱신하고 backend:8080 으로 리버스 프록시한다.
-  caddy:
-    image: caddy:2-alpine
-    container_name: trip-caddy
+  # mixed content 로 차단한다. nginx 가 samsam55.duckdns.org 앞단에서 Let's Encrypt
+  # 인증서로 HTTPS 를 종료하고 backend:8080 으로 리버스 프록시한다.
+  # 최초 1회는 인증서가 없어 nginx 가 그냥 못 뜨므로 init-letsencrypt.sh 로 먼저
+  # 더미 인증서 생성 → nginx 기동 → 실제 인증서 발급 순서를 거쳐야 한다.
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: trip-nginx
     restart: always
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
     depends_on:
       - backend
 
-volumes:
-  caddy_data:
-  caddy_config:
+  # 12시간마다 인증서 갱신 시도 (certbot이 만료 30일 이내일 때만 실제로 갱신함)
+  certbot:
+    image: certbot/certbot
+    container_name: trip-certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: >-
+      /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h & wait $${!}; done;"
