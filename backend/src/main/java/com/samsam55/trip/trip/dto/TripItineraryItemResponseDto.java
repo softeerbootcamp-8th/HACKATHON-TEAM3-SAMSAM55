@@ -8,7 +8,8 @@ public record TripItineraryItemResponseDto(
         String category,
         String status,
         String decisionType,
-        int optionCount
+        int optionCount,
+        String confirmedOptionName
 ) {
 
     public static TripItineraryItemResponseDto from(ItineraryItem itineraryItem, int optionCount) {
@@ -18,7 +19,8 @@ public record TripItineraryItemResponseDto(
                 itineraryItem.getCategory(),
                 itineraryItem.getStatus().name(),
                 itineraryItem.getDecisionType().name(),
-                optionCount
+                optionCount,
+                itineraryItem.getConfirmedOption() != null ? itineraryItem.getConfirmedOption().getName() : null
         );
     }
 }

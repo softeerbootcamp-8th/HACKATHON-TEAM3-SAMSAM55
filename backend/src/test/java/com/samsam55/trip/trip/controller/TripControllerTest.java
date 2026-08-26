@@ -267,7 +267,8 @@ class TripControllerTest {
                                 "식사",
                                 "VOTING",
                                 "VOTE",
-                                2
+                                2,
+                                null
                         ))
                 ))
         ));
