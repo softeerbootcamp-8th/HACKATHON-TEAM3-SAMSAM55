@@ -6,9 +6,6 @@ import { cn } from '@/lib/utils'
 type OptionCardProps = {
   title: string
   description?: string
-  // 서버가 내려주는 설명 출처 — "AI"면 AI가 쓴 것이고, 그 외(스텁/방장이 직접 수정)는
-  // 방장이 직접 쓴 것으로 표시한다.
-  descriptionSource?: string
   // voteCount가 있으면 투표중/확정 결과 카드 스타일(회색 사진 박스, rounded-btn)로,
   // 없으면 준비중/선택 카드 스타일(점선 업로드 박스, rounded-card)로 그려진다.
   voteCount?: number
@@ -26,7 +23,6 @@ type OptionCardProps = {
 function OptionCard({
   title,
   description,
-  descriptionSource,
   voteCount,
   voters,
   leading = false,
@@ -73,15 +69,10 @@ function OptionCard({
             </p>
           )}
         </div>
-        {description && descriptionSource && (
-          <div className="flex w-full items-center gap-1.5">
-            <p className="flex-1 text-[12.5px] text-muted-foreground">
-              {description}
-            </p>
-            <span className="shrink-0 rounded-chip bg-primary-tint px-2 py-[3px] text-[11px] leading-none font-medium text-primary-deep">
-              {descriptionSource === 'AI' ? '✨ AI 작성' : '✏️ 직접 작성'}
-            </span>
-          </div>
+        {description && (
+          <p className="w-full text-[12.5px] text-muted-foreground">
+            {description}
+          </p>
         )}
         {voters && voters.length > 0 && (
           <div className="flex items-center -space-x-1.5">

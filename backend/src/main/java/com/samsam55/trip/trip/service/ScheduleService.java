@@ -44,9 +44,9 @@ public class ScheduleService {
     private final S3PresignService s3PresignService;
 
     /**
-     * 현재 참여자가 속한 여행의 날짜별 일정 목록을 조회한다. 응답의 {@code votingCount}는
-     * 이 참여자가 아직 투표하지 않은 VOTING 항목 개수다 — 다른 참여자의 투표 여부와는
-     * 무관하다.
+     * 현재 참여자가 속한 여행의 날짜별 일정 목록을 조회한다. 응답의 {@code votingCount}와
+     * 각 항목의 {@code needsVote}는 모두 이 참여자가 아직 투표하지 않은 VOTING 항목 기준이다 —
+     * 다른 참여자의 투표 여부와는 무관하다.
      *
      * @param participant 현재 참여자
      * @param tripId 조회할 여행의 식별자
@@ -69,6 +69,14 @@ public class ScheduleService {
                         voteCount -> Math.toIntExact(voteCount.getVotedCount())
                 ));
         long totalParticipants = participants.size();
+        // 트립 전체의 VOTING 개수가 아니라, 이 참여자가 아직 투표하지 않은 개수여야 한다 —
+        // 다른 참여자가 투표를 마쳐도 이 참여자 본인이 투표하기 전까지는 항목이 계속 남는다.
+        // 항목별 needsVote 플래그에도 그대로 재사용한다.
+        Set<Long> unvotedItemIds = itineraryItemRepository
+                .findUnvotedVotingItemsOrderByDayAndSortOrder(tripId, participant.participantId())
+                .stream()
+                .map(ItineraryItem::getId)
+                .collect(Collectors.toSet());
         Map<Long, List<ScheduleItemResponseDto>> itemsByDayId = items.stream()
                 .collect(Collectors.groupingBy(
                         item -> item.getTripDay().getId(),
@@ -78,6 +86,7 @@ public class ScheduleService {
                                         item,
                                         votedCounts.getOrDefault(item.getId(), 0),
                                         totalParticipants,
+                                        unvotedItemIds.contains(item.getId()),
                                         item.getConfirmedOption() == null
                                                 ? null
                                                 : s3PresignService.toPublicUrl(item.getConfirmedOption().getImageKey())
@@ -93,13 +102,8 @@ public class ScheduleService {
                         itemsByDayId.getOrDefault(day.getId(), List.of())
                 ))
                 .toList();
-        // 트립 전체의 VOTING 개수가 아니라, 이 참여자가 아직 투표하지 않은 개수여야 한다 —
-        // 다른 참여자가 투표를 마쳐도 이 참여자 본인이 투표하기 전까지는 항목이 계속 남는다.
-        int votingCount = itineraryItemRepository
-                .findUnvotedVotingItemsOrderByDayAndSortOrder(tripId, participant.participantId())
-                .size();
 
-        return ScheduleResponseDto.of(trip, votingCount, days);
+        return ScheduleResponseDto.of(trip, unvotedItemIds.size(), days);
     }
 
     /**

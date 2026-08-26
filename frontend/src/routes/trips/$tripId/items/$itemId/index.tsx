@@ -37,6 +37,7 @@ import {
   defaultOptionImageWide,
 } from '@/lib/default-option-image'
 import { uploadImage } from '@/lib/upload-image'
+import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/trips/$tripId/items/$itemId/')({
   component: ItemDetailPage,
@@ -58,6 +59,8 @@ const STATUS_BADGE: Record<
 
 // 서버(POST vote/start)가 요구하는 것과 같은 규칙 — 선택지가 2개 미만이면 투표를 시작할 수 없다.
 const MIN_VOTE_OPTION_COUNT = 2
+// 일정 만들기 시트와 같은 규칙 — 선택지는 최대 4개까지다.
+const MAX_VOTE_OPTION_COUNT = 4
 
 // 투표 중일 때만 폴링한다 — 확정되면 더 이상 집계가 바뀌지 않으므로 멈춘다.
 const VOTE_STATUS_POLLING_INTERVAL_MS = 3000
@@ -374,7 +377,7 @@ function ItemDetailPage() {
                 (isVote ? 'text-primary-deep' : 'text-muted-foreground')
               }
             >
-              {isVote ? '부모님과 투표' : '내가 결정'}
+              {isVote ? '투표' : '내가 결정'}
             </p>
           </div>
           <span
@@ -417,7 +420,6 @@ function ItemDetailPage() {
                   key={option.id}
                   title={option.name ?? ''}
                   description={withDescriptionPlaceholder(option.description)}
-                  descriptionSource={option.descriptionSource ?? 'HOST'}
                   editable={isEditingOptions}
                   imageSrc={option.imageUrl}
                   onClick={() => setEditingOption(option)}
@@ -427,10 +429,18 @@ function ItemDetailPage() {
             </div>
             <button
               type="button"
+              disabled={options.length >= MAX_VOTE_OPTION_COUNT}
               onClick={() => setAddOpen(true)}
-              className="flex h-13 items-center justify-center rounded-card border-[1.5px] border-dashed border-primary-deep text-card-title text-primary-deep"
+              className={cn(
+                'flex h-13 items-center justify-center rounded-card border-[1.5px] border-dashed text-card-title',
+                options.length >= MAX_VOTE_OPTION_COUNT
+                  ? 'border-border text-muted-foreground'
+                  : 'border-primary-deep text-primary-deep',
+              )}
             >
-              + 선택지 추가
+              {options.length >= MAX_VOTE_OPTION_COUNT
+                ? '선택지는 최대 4개까지예요'
+                : '+ 선택지 추가'}
             </button>
             <p className="text-caption-sm text-muted-foreground">
               카드를 탭하면 이름, 설명, 사진을 수정할 수 있어요
@@ -464,11 +474,6 @@ function ItemDetailPage() {
                     title={option.name ?? ''}
                     description={
                       hasDescription ? option.description : undefined
-                    }
-                    descriptionSource={
-                      hasDescription
-                        ? (option.descriptionSource ?? 'HOST')
-                        : undefined
                     }
                     voteCount={optionVotes?.voteCount ?? 0}
                     voters={(optionVotes?.voters ?? []).map(
@@ -591,16 +596,9 @@ function ItemDetailPage() {
                 </p>
               </div>
               {options[0] && (
-                <div className="flex items-center gap-1.5">
-                  <p className="flex-1 text-[12.5px] text-muted-foreground">
-                    {withDescriptionPlaceholder(options[0].description)}
-                  </p>
-                  <span className="shrink-0 rounded-chip bg-primary-tint px-2 py-[3px] text-[11px] leading-none font-medium text-primary-deep">
-                    {(options[0].descriptionSource ?? 'HOST') === 'AI'
-                      ? '✨ AI 작성'
-                      : '✏️ 직접 작성'}
-                  </span>
-                </div>
+                <p className="text-[12.5px] text-muted-foreground">
+                  {withDescriptionPlaceholder(options[0].description)}
+                </p>
               )}
             </button>
           </div>

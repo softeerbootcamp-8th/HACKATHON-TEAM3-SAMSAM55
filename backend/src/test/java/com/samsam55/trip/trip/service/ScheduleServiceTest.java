@@ -104,11 +104,14 @@ class ScheduleServiceTest {
         assertThat(response.days().getFirst().items())
                 .extracting("name")
                 .doesNotContain("준비 중 일정");
+        assertThat(response.days().getFirst().items())
+                .extracting("needsVote")
+                .containsExactly(true, false, false);
     }
 
     @Test
-    @DisplayName("votingCount는 다른 참여자의 투표 여부와 무관하게 이 참여자가 아직 투표하지 않은 개수다")
-    void votingCount는_이_참여자가_아직_투표하지_않은_개수다() {
+    @DisplayName("votingCount와 항목별 needsVote는 다른 참여자의 투표 여부와 무관하게 이 참여자 기준이다")
+    void votingCount와_needsVote는_이_참여자가_아직_투표하지_않은_기준이다() {
         ScheduleFixture fixture = fixture();
         List<ItineraryItem> items = List.of(fixture.votingItem);
         when(tripRepository.findById(1L)).thenReturn(Optional.of(fixture.trip));
@@ -123,6 +126,7 @@ class ScheduleServiceTest {
         ScheduleResponseDto response = scheduleService.findSchedule(participantActor(101L, 1L), 1L);
 
         assertThat(response.votingCount()).isZero();
+        assertThat(response.days().getFirst().items().getFirst().needsVote()).isFalse();
     }
 
     @Test
