@@ -5,6 +5,7 @@ import * as React from 'react'
 
 import {
   getGetItineraryItemQueryKey,
+  getGetVoteStatusQueryKey,
   useCreateVoteOption,
   useDeleteItineraryItem,
   useGetItineraryItem,
@@ -135,16 +136,15 @@ function ItemDetailPage() {
   const isVote = detail.decisionType === 'VOTE'
   const badge = STATUS_BADGE[status ?? 'PENDING']
   const canStartVote = options.length >= MIN_VOTE_OPTION_COUNT
-  const leadingOption = options.reduce<VoteOptionSummaryDto | undefined>(
-    (leading, option) => {
-      const votes = voteStatusByOptionId.get(option.id)?.voteCount ?? 0
-      const leadingVotes = leading
-        ? (voteStatusByOptionId.get(leading.id)?.voteCount ?? 0)
-        : -1
-      return votes > leadingVotes ? option : leading
-    },
-    undefined,
-  )
+  const leadingOption = isVote
+    ? options.reduce<VoteOptionSummaryDto | undefined>((leading, option) => {
+        const votes = voteStatusByOptionId.get(option.id)?.voteCount ?? 0
+        const leadingVotes = leading
+          ? (voteStatusByOptionId.get(leading.id)?.voteCount ?? 0)
+          : -1
+        return votes > leadingVotes ? option : leading
+      }, undefined)
+    : options[0]
   // 동점이면 leadingOption이 항상 먼저 나온 선택지로 고정되므로, 자녀가 직접 탭해서
   // 고른 선택지가 있으면 그걸 우선한다.
   const selectedConfirmOption =
@@ -341,10 +341,14 @@ function ItemDetailPage() {
                     data: {
                       ...old.data,
                       status: result.status ?? old.data.status,
+                      confirmedOptionId: undefined,
                     },
                   }
                 : old,
           )
+          void queryClient.invalidateQueries({
+            queryKey: getGetVoteStatusQueryKey(itemIdNumber),
+          })
         },
       },
     )
@@ -490,7 +494,7 @@ function ItemDetailPage() {
           </>
         )}
 
-        {isVote && isConfirmed && (
+        {isConfirmed && (
           <>
             <div className="flex flex-col gap-2 overflow-hidden rounded-[18px] border border-border">
               <img
@@ -507,77 +511,93 @@ function ItemDetailPage() {
                     {confirmedOption.description}
                   </p>
                 )}
-                {confirmedOptionVoters.length > 0 && (
+                {!isVote ? (
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center -space-x-1.5">
-                      {confirmedOptionVoters.map((voter, index) => (
-                        <span
-                          key={voter.participantId ?? index}
-                          className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-medium text-foreground"
-                        >
-                          {voter.roleName?.charAt(0) ?? '?'}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="text-[14px] font-medium text-primary-deep">
-                      {confirmedOptionVoters
-                        .map((voter) => voter.roleName)
-                        .filter(Boolean)
-                        .join(', ')}
-                      가 골랐어요
+                    <User className="size-6 text-muted-foreground" />
+                    <p className="text-[14px] font-medium text-muted-foreground">
+                      내가 정했어요
                     </p>
                   </div>
+                ) : (
+                  confirmedOptionVoters.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center -space-x-1.5">
+                        {confirmedOptionVoters.map((voter, index) => (
+                          <span
+                            key={voter.participantId ?? index}
+                            className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-medium text-foreground"
+                          >
+                            {voter.roleName?.charAt(0) ?? '?'}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-[14px] font-medium text-primary-deep">
+                        {confirmedOptionVoters
+                          .map((voter) => voter.roleName)
+                          .filter(Boolean)
+                          .join(', ')}
+                        가 골랐어요
+                      </p>
+                    </div>
+                  )
                 )}
               </div>
             </div>
-            <p className="text-subtitle text-foreground">최종 투표 결과</p>
-            <div className="flex flex-col gap-2">
-              {options.map((option) => {
-                const isOptionConfirmed = option.id === detail.confirmedOptionId
-                const voteCount =
-                  voteStatusByOptionId.get(option.id)?.voteCount ?? 0
-                return (
-                  <div
-                    key={option.id}
-                    className={
-                      'flex h-[50px] items-center justify-between rounded-thumb px-3.5 ' +
-                      (isOptionConfirmed
-                        ? 'border-2 border-primary-deep bg-primary-tint'
-                        : 'bg-muted')
-                    }
-                  >
-                    <p
-                      className={
-                        isOptionConfirmed
-                          ? 'text-[14px] font-medium text-foreground'
-                          : 'text-[14px] text-muted-foreground'
-                      }
-                    >
-                      {option.name}
-                    </p>
-                    <p
-                      className={
-                        'text-[14px] font-bold ' +
-                        (isOptionConfirmed
-                          ? 'text-primary-deep'
-                          : 'text-muted-foreground')
-                      }
-                    >
-                      {voteCount}표
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
+            {isVote && (
+              <>
+                <p className="text-subtitle text-foreground">최종 투표 결과</p>
+                <div className="flex flex-col gap-2">
+                  {options.map((option) => {
+                    const isOptionConfirmed =
+                      option.id === detail.confirmedOptionId
+                    const voteCount =
+                      voteStatusByOptionId.get(option.id)?.voteCount ?? 0
+                    return (
+                      <div
+                        key={option.id}
+                        className={
+                          'flex h-[50px] items-center justify-between rounded-thumb px-3.5 ' +
+                          (isOptionConfirmed
+                            ? 'border-2 border-primary-deep bg-primary-tint'
+                            : 'bg-muted')
+                        }
+                      >
+                        <p
+                          className={
+                            isOptionConfirmed
+                              ? 'text-[14px] font-medium text-foreground'
+                              : 'text-[14px] text-muted-foreground'
+                          }
+                        >
+                          {option.name}
+                        </p>
+                        <p
+                          className={
+                            'text-[14px] font-bold ' +
+                            (isOptionConfirmed
+                              ? 'text-primary-deep'
+                              : 'text-muted-foreground')
+                          }
+                        >
+                          {voteCount}표
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
           </>
         )}
 
-        {!isVote && (
+        {!isVote && !isConfirmed && (
           <div className="flex flex-col gap-2.5">
             <button
               type="button"
-              disabled={!options[0] || status !== 'PENDING'}
-              onClick={() => options[0] && setEditingOption(options[0])}
+              disabled={status !== 'PENDING'}
+              onClick={() =>
+                options[0] ? setEditingOption(options[0]) : setAddOpen(true)
+              }
               className="flex flex-col gap-2.5 rounded-card border border-border p-3 text-left"
             >
               <div className="flex w-full items-center gap-3">
@@ -587,7 +607,7 @@ function ItemDetailPage() {
                   className="size-11 shrink-0 rounded-card object-cover"
                 />
                 <p className="flex-1 text-card-title text-foreground">
-                  {options[0]?.name ?? '아직 선택지가 없어요'}
+                  {options[0]?.name ?? '정한 곳을 추가해주세요'}
                 </p>
               </div>
               {options[0] && (
