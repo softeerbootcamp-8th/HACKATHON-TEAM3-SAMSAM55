@@ -143,6 +143,27 @@ class TripControllerTest {
     }
 
     @Test
+    @DisplayName("동행자 목록이 비어 있으면 여행을 생성하지 않는다")
+    void 동행자_목록이_비어_있으면_여행을_생성하지_않는다() throws Exception {
+        mockMvc.perform(post("/api/trips")
+                        .session(loginSession())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "동행자 없는 여행",
+                                  "startDate": "2026-09-01",
+                                  "endDate": "2026-09-03",
+                                  "companions": []
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"));
+
+        verifyNoInteractions(tripService);
+    }
+
+    @Test
     @DisplayName("로그인하지 않은 여행 생성 요청은 LOGIN_REQUIRED를 반환한다")
     void 로그인하지_않은_여행_생성_요청은_LOGIN_REQUIRED를_반환한다() throws Exception {
         mockMvc.perform(post("/api/trips")
