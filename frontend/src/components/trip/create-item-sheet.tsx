@@ -128,6 +128,13 @@ function CreateItemSheet({
     string | null
   >(null)
   const decidedPlaceFileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  // HOST_PICK 생성은 일정 생성 → 선택지 등록 → 확정, 3번의 API 호출로 나뉜다.
+  // 중간에 실패하면 처음부터 다시 하지 않고 실패한 단계부터 이어가도록, 이미
+  // 성공한 단계의 id를 기억해둔다 (안 그러면 재시도할 때 일정이 중복 생성된다).
+  const [createdItemId, setCreatedItemId] = useState<number | null>(null)
+  const [createdOptionId, setCreatedOptionId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!decidedPlaceImage) {
@@ -151,6 +158,9 @@ function CreateItemSheet({
     ])
     setDecidedPlace('')
     setDecidedPlaceImage(null)
+    setCreatedItemId(null)
+    setCreatedOptionId(null)
+    setUploadError(null)
   }, [open])
 
   const currentDayId = days.find(
@@ -160,24 +170,79 @@ function CreateItemSheet({
   const createItineraryItemMutation = useCreateItineraryItem()
   const createVoteOptionMutation = useCreateVoteOption()
   const confirmMutation = useConfirm()
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
 
   const decisionType = decisionMethod === '투표' ? 'VOTE' : 'HOST_PICK'
   // HOST_PICK은 정한 곳이 곧 유일한 선택지라, 없으면 선택지 없는 일정이 그대로 만들어진다.
   const isMissingDecidedPlace =
     decisionType === 'HOST_PICK' && decidedPlace.trim().length === 0
 
+  const confirmHostPick = (itemId: number, optionId: number) => {
+    confirmMutation.mutate(
+      { itemId, data: { voteOptionId: optionId } },
+      {
+        onSuccess: () => onCreated(itemId),
+        onError: () => setUploadError('확정에 실패했어요. 다시 시도해주세요.'),
+      },
+    )
+  }
+
+  const createHostPickOption = (itemId: number, imageKey?: string) => {
+    createVoteOptionMutation.mutate(
+      { itemId, data: { name: decidedPlace.trim(), imageKey } },
+      {
+        onSuccess: (optionResponse) => {
+          const optionId = optionResponse.data?.id
+          if (optionId === undefined) {
+            setUploadError('선택지 등록에 실패했어요. 다시 시도해주세요.')
+            return
+          }
+          setCreatedOptionId(optionId)
+          confirmHostPick(itemId, optionId)
+        },
+        onError: () =>
+          setUploadError('선택지 등록에 실패했어요. 다시 시도해주세요.'),
+      },
+    )
+  }
+
   const handleCreate = async () => {
     if (currentDayId === undefined) return
     if (category === null) return
     if (isMissingDecidedPlace) return
 
+    setUploadError(null)
+
+    // 이전 시도에서 일정 생성까지는 성공했다면, 그 일정을 다시 만들지 않고
+    // 실패했던 다음 단계부터 이어간다.
+    if (createdItemId !== null) {
+      if (decisionType !== 'HOST_PICK') {
+        onCreated(createdItemId)
+        return
+      }
+      if (createdOptionId !== null) {
+        confirmHostPick(createdItemId, createdOptionId)
+        return
+      }
+      setIsUploading(true)
+      let imageKey: string | undefined
+      try {
+        imageKey = decidedPlaceImage
+          ? await uploadImage(decidedPlaceImage)
+          : undefined
+      } catch {
+        setUploadError('사진 업로드에 실패했어요. 다시 시도해주세요.')
+        setIsUploading(false)
+        return
+      }
+      setIsUploading(false)
+      createHostPickOption(createdItemId, imageKey)
+      return
+    }
+
     const filledOptions = options.filter(
       (option) => option.name.trim().length > 0,
     )
 
-    setUploadError(null)
     setIsUploading(true)
     let optionPayloads: { name: string; imageKey?: string }[] | undefined
     let decidedPlaceImageKey: string | undefined
@@ -215,47 +280,21 @@ function CreateItemSheet({
         onSuccess: (response) => {
           const created = response.data
           if (created?.id === undefined) return
+          setCreatedItemId(created.id)
 
           void queryClient.invalidateQueries({
             queryKey: getFindTripQueryKey(tripIdNumber),
           })
 
-          const finish = () => onCreated(created.id!)
-
           // HOST_PICK은 생성 시점엔 선택지가 없으므로, 입력한 장소를 바로
           // 선택지로 추가하고 그 자리에서 확정까지 시킨다. 확정을 안 하면
           // 상세 화면이 PENDING 상태로 남아 수정 화면처럼 보인다.
           if (decisionType === 'HOST_PICK' && decidedPlace.trim().length > 0) {
-            createVoteOptionMutation.mutate(
-              {
-                itemId: created.id,
-                data: {
-                  name: decidedPlace.trim(),
-                  imageKey: decidedPlaceImageKey,
-                },
-              },
-              {
-                onSuccess: (optionResponse) => {
-                  const optionId = optionResponse.data?.id
-                  if (optionId === undefined) {
-                    finish()
-                    return
-                  }
-                  confirmMutation.mutate(
-                    {
-                      itemId: created.id!,
-                      data: { voteOptionId: optionId },
-                    },
-                    { onSuccess: finish, onError: finish },
-                  )
-                },
-                onError: finish,
-              },
-            )
+            createHostPickOption(created.id, decidedPlaceImageKey)
             return
           }
 
-          finish()
+          onCreated(created.id)
         },
       },
     )
