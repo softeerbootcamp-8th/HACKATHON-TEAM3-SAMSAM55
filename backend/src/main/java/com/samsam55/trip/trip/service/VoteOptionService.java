@@ -6,6 +6,7 @@ import com.samsam55.trip.global.exception.GlobalErrorType;
 import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
 import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionImageDto;
+import com.samsam55.trip.trip.dto.VoteOptionSummaryDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
@@ -27,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class VoteOptionService {
 
     private static final int MAX_VOTE_OPTION_COUNT = 4;
+    private static final String MANUAL_DESCRIPTION_SOURCE = "HOST";
 
     private final VoteOptionRepository voteOptionRepository;
     private final ItineraryItemRepository itineraryItemRepository;
@@ -120,7 +122,7 @@ public class VoteOptionService {
                 itineraryItem,
                 name,
                 descriptionGenerator.generate(name),
-                VoteOptionDescriptionGenerator.SOURCE,
+                descriptionGenerator.getSource(),
                 hasImage ? readBytes(image) : null,
                 hasImage ? image.getContentType() : null
         ));
@@ -130,6 +132,49 @@ public class VoteOptionService {
         }
 
         return VoteOptionCreateResponseDto.from(voteOption);
+    }
+
+    /**
+     * 선택지의 이름·설명·이미지를 수정한다. 이미지를 새로 보내지 않으면 기존 이미지를
+     * 그대로 유지한다. 설명은 방장이 직접 쓴 것으로 취급해 descriptionSource를 HOST로
+     * 바꾼다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param voteOptionId 수정할 선택지의 식별자
+     * @param name 선택지 이름
+     * @param description 선택지 설명(선택)
+     * @param image 새로 첨부할 이미지(선택, 없으면 기존 이미지 유지)
+     * @return 수정된 선택지
+     * @throws ApplicationException 이름이 비어 있을 때(INVALID_INPUT_VALUE)
+     * @throws ApplicationException 선택지를 찾을 수 없을 때(VOTE_OPTION_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     * @throws ApplicationException 투표가 이미 시작된 일정 항목의 선택지일 때(VOTE_ALREADY_STARTED)
+     */
+    @Transactional
+    public VoteOptionSummaryDto updateVoteOption(
+            Long loginUserId, Long voteOptionId, String name, String description, MultipartFile image) {
+        if (name == null || name.isBlank()) {
+            throw new ApplicationException(GlobalErrorType.INVALID_INPUT_VALUE);
+        }
+
+        VoteOption voteOption = voteOptionRepository.findById(voteOptionId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.VOTE_OPTION_NOT_FOUND));
+
+        ItineraryItem itineraryItem = voteOption.getItineraryItem();
+        if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
+            throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+        }
+        if (itineraryItem.getStatus() != ItineraryItemStatus.PENDING) {
+            throw new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED);
+        }
+
+        boolean hasNewImage = hasContent(image);
+        byte[] imageBytes = hasNewImage ? readBytes(image) : voteOption.getImage();
+        String imageContentType = hasNewImage ? image.getContentType() : voteOption.getImageContentType();
+
+        voteOption.update(name, description, MANUAL_DESCRIPTION_SOURCE, imageBytes, imageContentType);
+
+        return VoteOptionSummaryDto.from(voteOption);
     }
 
     private boolean hasContent(MultipartFile file) {

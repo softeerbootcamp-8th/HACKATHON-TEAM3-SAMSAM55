@@ -16,6 +16,7 @@ import com.samsam55.trip.member.entity.User;
 import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
 import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionImageDto;
+import com.samsam55.trip.trip.dto.VoteOptionSummaryDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
@@ -236,6 +237,7 @@ class VoteOptionServiceTest {
         when(itineraryItemRepository.findById(10L)).thenReturn(Optional.of(pendingItem));
         when(voteOptionRepository.countByItineraryItem(pendingItem)).thenReturn(1L);
         when(descriptionGenerator.generate(anyString())).thenReturn("AI가 생성한 설명");
+        when(descriptionGenerator.getSource()).thenReturn("AI");
         when(voteOptionRepository.save(any(VoteOption.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         MockMultipartFile image = new MockMultipartFile(
@@ -310,6 +312,101 @@ class VoteOptionServiceTest {
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_ALREADY_STARTED));
         verify(voteOptionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("선택지를 수정하면 이름·설명이 바뀌고 descriptionSource가 HOST로 바뀐다")
+    void 선택지를_수정하면_이름_설명이_바뀌고_descriptionSource가_HOST로_바뀐다() {
+        ItineraryItem pendingItem = pendingItineraryItem(1L);
+        VoteOption voteOption = new VoteOption(pendingItem, "스시", "AI 설명", "AI", null, null);
+        when(voteOptionRepository.findById(1L)).thenReturn(Optional.of(voteOption));
+
+        VoteOptionSummaryDto response = voteOptionService.updateVoteOption(1L, 1L, "라멘", "직접 쓴 설명", null);
+
+        assertThat(response.name()).isEqualTo("라멘");
+        assertThat(response.description()).isEqualTo("직접 쓴 설명");
+        assertThat(response.descriptionSource()).isEqualTo("HOST");
+        assertThat(response.hasImage()).isFalse();
+    }
+
+    @Test
+    @DisplayName("새 이미지를 안 보내면 기존 이미지를 유지한다")
+    void 새_이미지를_안_보내면_기존_이미지를_유지한다() {
+        ItineraryItem pendingItem = pendingItineraryItem(1L);
+        byte[] existingImage = "existing-image".getBytes(StandardCharsets.UTF_8);
+        VoteOption voteOption = new VoteOption(pendingItem, "스시", "설명", "AI", existingImage, "image/jpeg");
+        when(voteOptionRepository.findById(1L)).thenReturn(Optional.of(voteOption));
+
+        VoteOptionSummaryDto response = voteOptionService.updateVoteOption(1L, 1L, "라멘", "설명", null);
+
+        assertThat(response.hasImage()).isTrue();
+        assertThat(voteOption.getImage()).isEqualTo(existingImage);
+    }
+
+    @Test
+    @DisplayName("새 이미지를 보내면 기존 이미지를 교체한다")
+    void 새_이미지를_보내면_기존_이미지를_교체한다() {
+        ItineraryItem pendingItem = pendingItineraryItem(1L);
+        VoteOption voteOption = new VoteOption(
+                pendingItem, "스시", "설명", "AI", "old-image".getBytes(StandardCharsets.UTF_8), "image/png");
+        when(voteOptionRepository.findById(1L)).thenReturn(Optional.of(voteOption));
+
+        MockMultipartFile newImage = new MockMultipartFile(
+                "image", "ramen.jpg", "image/jpeg", "new-image".getBytes(StandardCharsets.UTF_8));
+
+        voteOptionService.updateVoteOption(1L, 1L, "라멘", "설명", newImage);
+
+        assertThat(voteOption.getImage()).isEqualTo("new-image".getBytes(StandardCharsets.UTF_8));
+        assertThat(voteOption.getImageContentType()).isEqualTo("image/jpeg");
+    }
+
+    @Test
+    @DisplayName("선택지 수정 시 이름이 비어 있으면 예외가 발생한다")
+    void 선택지_수정_시_이름이_비어_있으면_예외가_발생한다() {
+        assertThatThrownBy(() -> voteOptionService.updateVoteOption(1L, 1L, "  ", "설명", null))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType().getCode()).isEqualTo("INVALID_INPUT_VALUE"));
+        verify(voteOptionRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("선택지 수정 시 선택지를 찾을 수 없으면 예외가 발생한다")
+    void 선택지_수정_시_선택지를_찾을_수_없으면_예외가_발생한다() {
+        when(voteOptionRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> voteOptionService.updateVoteOption(1L, 1L, "라멘", "설명", null))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_OPTION_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("선택지 수정 시 방장이 아니면 예외가 발생한다")
+    void 선택지_수정_시_방장이_아니면_예외가_발생한다() {
+        ItineraryItem pendingItem = pendingItineraryItem(1L);
+        VoteOption voteOption = new VoteOption(pendingItem, "스시", "설명", "AI", null, null);
+        when(voteOptionRepository.findById(1L)).thenReturn(Optional.of(voteOption));
+
+        assertThatThrownBy(() -> voteOptionService.updateVoteOption(999L, 1L, "라멘", "설명", null))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.NOT_TRIP_HOST));
+    }
+
+    @Test
+    @DisplayName("선택지 수정 시 투표가 이미 시작된 일정 항목이면 예외가 발생한다")
+    void 선택지_수정_시_투표가_이미_시작된_일정_항목이면_예외가_발생한다() {
+        User hostUser = new User("host", "hashed-password");
+        ReflectionTestUtils.setField(hostUser, "id", 1L);
+        Trip trip = new Trip(hostUser, "제주 여행",
+                LocalDateTime.of(2026, 9, 1, 9, 0), LocalDateTime.of(2026, 9, 3, 18, 0), 3, "invite-code");
+        TripDay tripDay = new TripDay(trip, 1, LocalDate.of(2026, 9, 1));
+        ItineraryItem votingItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
+        VoteOption voteOption = new VoteOption(votingItem, "스시", "설명", "AI", null, null);
+        when(voteOptionRepository.findById(1L)).thenReturn(Optional.of(voteOption));
+
+        assertThatThrownBy(() -> voteOptionService.updateVoteOption(1L, 1L, "라멘", "설명", null))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_ALREADY_STARTED));
     }
 
     private VoteOption voteOption(byte[] image, String contentType) {

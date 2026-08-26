@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Camera, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
   useCreateItineraryItem,
@@ -25,6 +25,71 @@ export const Route = createFileRoute('/trips/$tripId/items/new')({
 
 const CATEGORIES = ['숙소', '식사', '관광', '이동', '기타'] as const
 
+type OptionDraft = {
+  name: string
+  image: File | null
+}
+
+type OptionRowProps = {
+  option: OptionDraft
+  onNameChange: (name: string) => void
+  onImageChange: (image: File | null) => void
+  onDelete: () => void
+}
+
+function OptionRow({
+  option,
+  onNameChange,
+  onImageChange,
+  onDelete,
+}: OptionRowProps) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!option.image) {
+      setPreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(option.image)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [option.image])
+
+  return (
+    <div className="flex items-center gap-3 rounded-card border border-border px-3 py-2.5">
+      <button
+        type="button"
+        aria-label="사진 추가"
+        onClick={() => fileInputRef.current?.click()}
+        className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-card border-[1.5px] border-dashed border-border bg-muted"
+      >
+        {previewUrl ? (
+          <img src={previewUrl} alt="" className="size-full object-cover" />
+        ) : (
+          <Camera className="size-4 text-muted-foreground" />
+        )}
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => onImageChange(event.target.files?.[0] ?? null)}
+      />
+      <input
+        value={option.name}
+        onChange={(event) => onNameChange(event.target.value)}
+        placeholder="여행지를 입력해주세요"
+        className="flex-1 text-card-title text-foreground placeholder:text-[#bcbcbc] outline-none"
+      />
+      <button type="button" aria-label="선택지 삭제" onClick={onDelete}>
+        <X className="size-3.5 text-muted-foreground" />
+      </button>
+    </div>
+  )
+}
+
 function CreateItemPage() {
   const { tripId } = Route.useParams()
   const navigate = useNavigate()
@@ -40,7 +105,10 @@ function CreateItemPage() {
   const [decisionMethod, setDecisionMethod] = useState<'투표' | '내가 결정'>(
     '투표',
   )
-  const [options, setOptions] = useState<string[]>(['스시 오마카세 긴자점', ''])
+  const [options, setOptions] = useState<OptionDraft[]>([
+    { name: '', image: null },
+    { name: '', image: null },
+  ])
   const [decidedPlace, setDecidedPlace] = useState('')
 
   const currentDayId = selectedDayId ?? days[0]?.id ?? null
@@ -54,9 +122,14 @@ function CreateItemPage() {
     if (currentDayId === undefined || currentDayId === null) return
 
     const decisionType = decisionMethod === '투표' ? 'VOTE' : 'HOST_PICK'
-    const optionNames = options
-      .map((option) => option.trim())
-      .filter((option) => option.length > 0)
+    const filledOptions = options.filter(
+      (option) => option.name.trim().length > 0,
+    )
+    const optionNames = filledOptions.map((option) => option.name.trim())
+    // optionImages는 options와 같은 순서로 매칭되고, 사진이 없는 자리는 빈 파일로 채운다.
+    const optionImages = filledOptions.map(
+      (option) => option.image ?? new Blob([]),
+    )
 
     createItineraryItemMutation.mutate(
       {
@@ -69,6 +142,7 @@ function CreateItemPage() {
             decisionType,
             options: decisionType === 'VOTE' ? optionNames : undefined,
           }),
+          optionImages: decisionType === 'VOTE' ? optionImages : undefined,
         },
       },
       {
@@ -188,40 +262,30 @@ function CreateItemPage() {
             </p>
 
             {options.map((option, index) => (
-              <div
+              <OptionRow
                 key={index}
-                className="flex items-center gap-3 rounded-card border border-border px-3 py-2.5"
-              >
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-card border-[1.5px] border-dashed border-border bg-muted">
-                  <Camera className="size-4 text-muted-foreground" />
-                </div>
-                <input
-                  value={option}
-                  onChange={(event) =>
-                    setOptions((prev) =>
-                      prev.map((o, i) =>
-                        i === index ? event.target.value : o,
-                      ),
-                    )
-                  }
-                  placeholder="여행지를 입력해주세요"
-                  className="flex-1 text-card-title text-foreground placeholder:text-[#bcbcbc] outline-none"
-                />
-                <button
-                  type="button"
-                  aria-label="선택지 삭제"
-                  onClick={() =>
-                    setOptions((prev) => prev.filter((_, i) => i !== index))
-                  }
-                >
-                  <X className="size-3.5 text-muted-foreground" />
-                </button>
-              </div>
+                option={option}
+                onNameChange={(name) =>
+                  setOptions((prev) =>
+                    prev.map((o, i) => (i === index ? { ...o, name } : o)),
+                  )
+                }
+                onImageChange={(image) =>
+                  setOptions((prev) =>
+                    prev.map((o, i) => (i === index ? { ...o, image } : o)),
+                  )
+                }
+                onDelete={() =>
+                  setOptions((prev) => prev.filter((_, i) => i !== index))
+                }
+              />
             ))}
 
             <button
               type="button"
-              onClick={() => setOptions((prev) => [...prev, ''])}
+              onClick={() =>
+                setOptions((prev) => [...prev, { name: '', image: null }])
+              }
               className="flex h-13 w-full items-center justify-center rounded-card border-[1.5px] border-dashed border-primary-deep text-card-title text-primary-deep"
             >
               + 선택지 추가

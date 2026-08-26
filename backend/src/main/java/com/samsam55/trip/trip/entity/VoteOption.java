@@ -61,4 +61,12 @@ public class VoteOption extends BaseEntity {
         this.image = image;
         this.imageContentType = imageContentType;
     }
+
+    public void update(String name, String description, String descriptionSource, byte[] image, String imageContentType) {
+        this.name = name;
+        this.description = description;
+        this.descriptionSource = descriptionSource;
+        this.image = image;
+        this.imageContentType = imageContentType;
+    }
 }

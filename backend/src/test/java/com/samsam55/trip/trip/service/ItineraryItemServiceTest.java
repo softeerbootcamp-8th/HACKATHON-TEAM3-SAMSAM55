@@ -94,6 +94,7 @@ class ItineraryItemServiceTest {
         when(itineraryItemRepository.save(any(ItineraryItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(voteOptionRepository.save(any(VoteOption.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(descriptionGenerator.generate(anyString())).thenReturn("AI가 생성한 설명");
+        when(descriptionGenerator.getSource()).thenReturn("AI");
 
         ItineraryItemCreateResponseDto response = itineraryItemService.createItineraryItem(
                 1L, 10L,

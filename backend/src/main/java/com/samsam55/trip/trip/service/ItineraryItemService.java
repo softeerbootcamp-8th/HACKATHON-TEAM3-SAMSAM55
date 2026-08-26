@@ -101,7 +101,7 @@ public class ItineraryItemService {
                             itineraryItem,
                             optionName,
                             descriptionGenerator.generate(optionName),
-                            VoteOptionDescriptionGenerator.SOURCE,
+                            descriptionGenerator.getSource(),
                             hasContent(image) ? readBytes(image) : null,
                             hasContent(image) ? image.getContentType() : null
                     ));

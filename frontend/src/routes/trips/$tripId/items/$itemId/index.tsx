@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { User, Users } from 'lucide-react'
+import { TriangleAlert, User, Users } from 'lucide-react'
 import * as React from 'react'
 
 import {
@@ -18,7 +18,10 @@ import {
   useStartVote,
   useUnconfirm,
 } from '@/api/generated/vote-controller/vote-controller'
-import { useDeleteVoteOption } from '@/api/generated/vote-option-controller/vote-option-controller'
+import {
+  useDeleteVoteOption,
+  useUpdateVoteOption,
+} from '@/api/generated/vote-option-controller/vote-option-controller'
 import { AddOptionSheet } from '@/components/trip/add-option-sheet'
 import { EditOptionSheet } from '@/components/trip/edit-option-sheet'
 import { ItemMoreSheet } from '@/components/trip/item-more-sheet'
@@ -89,6 +92,7 @@ function ItemDetailPage() {
   const [deleteItemOpen, setDeleteItemOpen] = React.useState(false)
 
   const deleteVoteOptionMutation = useDeleteVoteOption()
+  const updateVoteOptionMutation = useUpdateVoteOption()
   const startVoteMutation = useStartVote()
   const createVoteOptionMutation = useCreateVoteOption()
   const confirmMutation = useConfirm()
@@ -182,6 +186,46 @@ function ItemDetailPage() {
                   }
                 : old,
           )
+        },
+      },
+    )
+  }
+
+  const handleEditOption = (
+    name: string,
+    description: string,
+    image: File | null,
+  ) => {
+    const optionId = editingOption?.id
+    if (optionId === undefined) return
+
+    updateVoteOptionMutation.mutate(
+      {
+        voteOptionId: optionId,
+        params: { name, description },
+        data: { image: image ?? undefined },
+      },
+      {
+        onSuccess: (updated) => {
+          const updatedOption = updated.data
+          if (!updatedOption) return
+
+          queryClient.setQueryData<CommonResponseItineraryItemDetailResponseDto>(
+            queryKey,
+            (old) =>
+              old?.data
+                ? {
+                    ...old,
+                    data: {
+                      ...old.data,
+                      voteOptions: old.data.voteOptions?.map((option) =>
+                        option.id === optionId ? updatedOption : option,
+                      ),
+                    },
+                  }
+                : old,
+          )
+          setEditingOption(null)
         },
       },
     )
@@ -312,13 +356,21 @@ function ItemDetailPage() {
                 {isEditingOptions ? '완료' : '편집'}
               </button>
             </div>
+            {!canStartVote && (
+              <div className="flex items-center gap-2 rounded-card bg-destructive/10 px-3.5 py-3">
+                <TriangleAlert className="size-4 shrink-0 text-destructive" />
+                <p className="text-[13px] text-destructive">
+                  선택지가 2개 이상이어야 투표가 가능해요.
+                </p>
+              </div>
+            )}
             <div className="flex flex-col gap-2.5">
               {options.map((option) => (
                 <OptionCard
                   key={option.id}
                   title={option.name ?? ''}
                   description={option.description}
-                  aiGenerated={option.descriptionSource === 'AI'}
+                  descriptionSource={option.descriptionSource}
                   editable={isEditingOptions}
                   imageSrc={
                     option.hasImage
@@ -368,6 +420,11 @@ function ItemDetailPage() {
                       (voter) => voter.roleName?.charAt(0) ?? '?',
                     )}
                     leading={(optionVotes?.voteCount ?? 0) > 0}
+                    imageSrc={
+                      option.hasImage
+                        ? `/api/vote-options/${option.id}/image`
+                        : undefined
+                    }
                   />
                 )
               })}
@@ -478,16 +535,16 @@ function ItemDetailPage() {
                   {options[0]?.name ?? '아직 선택지가 없어요'}
                 </p>
               </div>
-              {options[0]?.description && (
+              {options[0]?.description && options[0]?.descriptionSource && (
                 <div className="flex items-center gap-1.5">
                   <p className="flex-1 text-[12.5px] text-muted-foreground">
                     {options[0].description}
                   </p>
-                  {options[0].descriptionSource === 'AI' && (
-                    <span className="shrink-0 rounded-chip bg-primary-tint px-2 py-[3px] text-[11px] leading-none font-medium text-primary-deep">
-                      ✨ AI 작성
-                    </span>
-                  )}
+                  <span className="shrink-0 rounded-chip bg-primary-tint px-2 py-[3px] text-[11px] leading-none font-medium text-primary-deep">
+                    {options[0].descriptionSource === 'AI'
+                      ? '✨ AI 작성'
+                      : '✏️ 직접 작성'}
+                  </span>
                 </div>
               )}
             </div>
@@ -554,6 +611,13 @@ function ItemDetailPage() {
         onOpenChange={(open) => !open && setEditingOption(null)}
         initialName={editingOption?.name ?? ''}
         initialDescription={editingOption?.description ?? ''}
+        initialDescriptionSource={editingOption?.descriptionSource}
+        initialImageSrc={
+          editingOption?.hasImage
+            ? `/api/vote-options/${editingOption.id}/image`
+            : undefined
+        }
+        onSave={handleEditOption}
       />
       <ItemMoreSheet
         open={moreOpen}
