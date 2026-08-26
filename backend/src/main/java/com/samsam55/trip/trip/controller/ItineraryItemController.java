@@ -20,6 +20,7 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -96,6 +97,22 @@ public class ItineraryItemController {
             @PathVariable Long itemId
     ) {
         return CommonResponse.success(itineraryItemService.getItineraryItem(loginUserId, itemId));
+    }
+
+    /**
+     * 일정 항목을 삭제한다. 여행 방장만 호출할 수 있다. 상태와 무관하게 삭제할 수 있다.
+     *
+     * @param loginUserId 로그인한 회원의 식별자
+     * @param itemId 삭제할 일정 항목의 식별자
+     * @return 데이터가 없는 200 응답
+     */
+    @DeleteMapping("/api/itinerary-items/{itemId}")
+    public CommonResponse<Void> deleteItineraryItem(
+            @Login Long loginUserId,
+            @PathVariable Long itemId
+    ) {
+        itineraryItemService.deleteItineraryItem(loginUserId, itemId);
+        return CommonResponse.empty();
     }
 
     /**

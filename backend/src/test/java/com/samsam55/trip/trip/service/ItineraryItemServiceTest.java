@@ -278,4 +278,47 @@ class ItineraryItemServiceTest {
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
     }
 
+    @Test
+    @DisplayName("일정 항목을 삭제하면 투표 기록과 선택지도 함께 삭제된다")
+    void 일정_항목을_삭제하면_투표_기록과_선택지도_함께_삭제된다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.CONFIRMED, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        when(itineraryItemRepository.findByIdWithTripAndConfirmedOption(100L))
+                .thenReturn(Optional.of(itineraryItem));
+
+        itineraryItemService.deleteItineraryItem(1L, 100L);
+
+        verify(voteRepository).deleteAllByItineraryItemId(100L);
+        verify(itineraryItemRepository).clearConfirmedOptionByItemId(100L);
+        verify(voteOptionRepository).deleteAllByItineraryItemId(100L);
+        verify(itineraryItemRepository).delete(itineraryItem);
+    }
+
+    @Test
+    @DisplayName("일정 항목 삭제 시 항목을 찾을 수 없으면 예외가 발생한다")
+    void 일정_항목_삭제_시_항목을_찾을_수_없으면_예외가_발생한다() {
+        when(itineraryItemRepository.findByIdWithTripAndConfirmedOption(100L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> itineraryItemService.deleteItineraryItem(1L, 100L))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+        verify(itineraryItemRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("일정 항목 삭제 시 방장이 아니면 예외가 발생한다")
+    void 일정_항목_삭제_시_방장이_아니면_예외가_발생한다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        when(itineraryItemRepository.findByIdWithTripAndConfirmedOption(100L))
+                .thenReturn(Optional.of(itineraryItem));
+
+        assertThatThrownBy(() -> itineraryItemService.deleteItineraryItem(999L, 100L))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.NOT_TRIP_HOST));
+        verify(itineraryItemRepository, never()).delete(any());
+    }
+
 }

@@ -38,4 +38,8 @@ public interface VoteOptionRepository extends JpaRepository<VoteOption, Long> {
             where option.itineraryItem.tripDay.trip.id = :tripId
             """)
     int deleteAllByTripId(@Param("tripId") Long tripId);
+
+    @Modifying(flushAutomatically = true)
+    @Query("delete from VoteOption option where option.itineraryItem.id = :itemId")
+    int deleteAllByItineraryItemId(@Param("itemId") Long itemId);
 }

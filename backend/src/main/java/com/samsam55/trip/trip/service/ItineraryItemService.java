@@ -181,6 +181,30 @@ public class ItineraryItemService {
                 votedParticipantsById.size(), participants.size(), participantStatuses, optionStatuses);
     }
 
+    /**
+     * 일정 항목을 삭제한다. 투표 기록·선택지도 함께 삭제되며, 상태와 무관하게(투표 중이거나
+     * 확정된 항목도) 삭제할 수 있다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param itemId 삭제할 일정 항목의 식별자
+     * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     */
+    @Transactional
+    public void deleteItineraryItem(Long loginUserId, Long itemId) {
+        ItineraryItem itineraryItem = itineraryItemRepository.findByIdWithTripAndConfirmedOption(itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+
+        if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
+            throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+        }
+
+        voteRepository.deleteAllByItineraryItemId(itemId);
+        itineraryItemRepository.clearConfirmedOptionByItemId(itemId);
+        voteOptionRepository.deleteAllByItineraryItemId(itemId);
+        itineraryItemRepository.delete(itineraryItem);
+    }
+
     private boolean hasContent(MultipartFile file) {
         return file != null && !file.isEmpty();
     }
