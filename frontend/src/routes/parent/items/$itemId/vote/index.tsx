@@ -14,6 +14,12 @@ export const Route = createFileRoute('/parent/items/$itemId/vote/')({
   component: ParentVotePage,
 })
 
+const SKIPPABLE_ERROR_CODES = new Set([
+  'ITINERARY_ITEM_NOT_FOUND',
+  'ITINERARY_ITEM_NOT_VOTABLE',
+  'VOTE_ALREADY_CAST',
+])
+
 function ParentVotePage() {
   const navigate = useNavigate()
   const { itemId } = useParams({ from: '/parent/items/$itemId/vote/' })
@@ -54,11 +60,52 @@ function ParentVotePage() {
   const progress =
     votingCount > 0 ? Math.min((currentItemNumber / votingCount) * 100, 100) : 0
 
-  useEffect(() => {
-    if (!isValidItemId || errorCode === 'ITINERARY_ITEM_NOT_FOUND') {
-      void navigate({ to: '/parent', replace: true })
+  // 투표 도중 이 일정이 삭제되거나(자녀가 지움) 확정되면(자녀가 먼저 확정) 이
+  // 일정은 더 이상 투표 대상이 아니다 — 대상에서 빼고 다음 미투표 일정으로
+  // 넘어간다. 갈 곳이 없으면 완료 화면으로 보낸다.
+  const goToNextItem = async () => {
+    const refetched = await scheduleQuery.refetch()
+    const freshSchedule = refetched.data?.success
+      ? refetched.data.data
+      : undefined
+    const nextItem = (freshSchedule?.days ?? [])
+      .flatMap((day) => day.items ?? [])
+      .find((item) => item.needsVote)
+
+    if (nextItem?.id !== undefined) {
+      void navigate({
+        to: '/parent/items/$itemId/vote',
+        params: { itemId: String(nextItem.id) },
+        replace: true,
+      })
+      return
     }
-  }, [errorCode, isValidItemId, navigate])
+    void navigate({
+      to: '/parent/items/$itemId/vote/done',
+      params: { itemId },
+      replace: true,
+    })
+  }
+
+  useEffect(() => {
+    if (!isValidItemId) {
+      void navigate({ to: '/parent', replace: true })
+      return
+    }
+    if (errorCode === 'ITINERARY_ITEM_NOT_FOUND') {
+      void goToNextItem()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [errorCode, isValidItemId])
+
+  // 투표 화면에 머무는 동안 자녀가 먼저 확정해버리면 result는 정상 응답하지만
+  // status가 더 이상 VOTING이 아니다 — 이때도 다음 일정으로 넘긴다.
+  useEffect(() => {
+    if (result && result.status !== 'VOTING') {
+      void goToNextItem()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result?.status])
 
   // PUT /api/itinerary-items/my-votes — 한 번에 하나씩 제출한다(밸런스 게임 UX).
   // 응답의 nextItemId로 다음에 투표할 일정 항목을 안내받아 그대로 이어서 이동한다.
@@ -74,6 +121,14 @@ function ParentVotePage() {
           return
         }
         navigate({ to: '/parent/items/$itemId/vote/done', params: { itemId } })
+      },
+      onError: (error) => {
+        // 제출하는 사이 일정이 삭제·확정되거나(위 두 효과가 못 잡을 만큼 빠른
+        // 경합), 다른 경로로 이미 투표한 상태였다면 에러로 멈추지 않고 넘어간다.
+        const code = getApiError(error)?.code
+        if (code && SKIPPABLE_ERROR_CODES.has(code)) {
+          void goToNextItem()
+        }
       },
     },
   })
@@ -92,7 +147,8 @@ function ParentVotePage() {
   if (
     voteResultQuery.isLoading ||
     !isValidItemId ||
-    errorCode === 'ITINERARY_ITEM_NOT_FOUND'
+    errorCode === 'ITINERARY_ITEM_NOT_FOUND' ||
+    (result && result.status !== 'VOTING')
   ) {
     return (
       <MobileScreen>
