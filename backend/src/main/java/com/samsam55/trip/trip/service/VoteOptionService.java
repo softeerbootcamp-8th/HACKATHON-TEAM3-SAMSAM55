@@ -6,6 +6,7 @@ import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
 import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionSummaryDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
+import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
 import com.samsam55.trip.trip.entity.VoteOption;
 import com.samsam55.trip.trip.exception.TripErrorType;
@@ -114,7 +115,8 @@ public class VoteOptionService {
      * @throws ApplicationException 이름이 비어 있을 때(INVALID_INPUT_VALUE)
      * @throws ApplicationException 선택지를 찾을 수 없을 때(VOTE_OPTION_NOT_FOUND)
      * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
-     * @throws ApplicationException 투표가 이미 시작된 일정 항목의 선택지일 때(VOTE_ALREADY_STARTED)
+     * @throws ApplicationException 투표가 이미 시작된 일정 항목의 선택지일 때(VOTE_ALREADY_STARTED) —
+     *         단, 내가 결정(HOST_PICK) 방식은 투표를 거치지 않으므로 확정 후에도 수정할 수 있다
      */
     @Transactional
     public VoteOptionSummaryDto updateVoteOption(
@@ -130,7 +132,10 @@ public class VoteOptionService {
         if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
-        if (itineraryItem.getStatus() != ItineraryItemStatus.PENDING) {
+        boolean editable = itineraryItem.getStatus() == ItineraryItemStatus.PENDING
+                || (itineraryItem.getStatus() == ItineraryItemStatus.CONFIRMED
+                        && itineraryItem.getDecisionType() == ItineraryItemDecisionType.HOST_PICK);
+        if (!editable) {
             throw new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED);
         }
 

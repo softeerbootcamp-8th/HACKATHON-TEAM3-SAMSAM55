@@ -295,4 +295,42 @@ class VoteOptionServiceTest {
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_ALREADY_STARTED));
     }
+
+    @Test
+    @DisplayName("내가 결정 방식은 확정된 뒤에도 선택지를 수정할 수 있다")
+    void 내가_결정_방식은_확정된_뒤에도_선택지를_수정할_수_있다() {
+        User hostUser = new User("host", "hashed-password");
+        ReflectionTestUtils.setField(hostUser, "id", 1L);
+        Trip trip = new Trip(hostUser, "제주 여행",
+                LocalDateTime.of(2026, 9, 1, 9, 0), LocalDateTime.of(2026, 9, 3, 18, 0), 3, "invite-code");
+        TripDay tripDay = new TripDay(trip, 1, LocalDate.of(2026, 9, 1));
+        ItineraryItem confirmedHostPickItem = new ItineraryItem(
+                tripDay, "저녁 식사", "식사", ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.CONFIRMED, 1, null);
+        VoteOption voteOption = new VoteOption(confirmedHostPickItem, "스시집", "설명", "HOST", null);
+        when(voteOptionRepository.findById(1L)).thenReturn(Optional.of(voteOption));
+
+        VoteOptionSummaryDto response =
+                voteOptionService.updateVoteOption(1L, 1L, "초밥집", "수정한 설명", null);
+
+        assertThat(response.name()).isEqualTo("초밥집");
+        assertThat(response.description()).isEqualTo("수정한 설명");
+    }
+
+    @Test
+    @DisplayName("투표 방식은 확정된 뒤에는 선택지를 수정할 수 없다")
+    void 투표_방식은_확정된_뒤에는_선택지를_수정할_수_없다() {
+        User hostUser = new User("host", "hashed-password");
+        ReflectionTestUtils.setField(hostUser, "id", 1L);
+        Trip trip = new Trip(hostUser, "제주 여행",
+                LocalDateTime.of(2026, 9, 1, 9, 0), LocalDateTime.of(2026, 9, 3, 18, 0), 3, "invite-code");
+        TripDay tripDay = new TripDay(trip, 1, LocalDate.of(2026, 9, 1));
+        ItineraryItem confirmedVoteItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.CONFIRMED, 1, null);
+        VoteOption voteOption = new VoteOption(confirmedVoteItem, "스시", "설명", "AI", null);
+        when(voteOptionRepository.findById(1L)).thenReturn(Optional.of(voteOption));
+
+        assertThatThrownBy(() -> voteOptionService.updateVoteOption(1L, 1L, "라멘", "설명", null))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_ALREADY_STARTED));
+    }
 }
