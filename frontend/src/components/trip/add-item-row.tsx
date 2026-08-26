@@ -11,7 +11,7 @@ function AddItemRow({ onClick, className }: AddItemRowProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        'flex h-14 w-full items-center justify-center rounded-card border-[1.5px] border-dashed border-primary-deep text-card-title text-primary-deep',
+        'flex h-[50px] w-full items-center justify-center rounded-card border-[1.5px] border-dashed border-primary-deep text-card-title text-primary-deep',
         className,
       )}
     >
