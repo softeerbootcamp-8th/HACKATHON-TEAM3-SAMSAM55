@@ -1,8 +1,12 @@
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Menu, X } from 'lucide-react'
 
 import { StatusChip } from '@/components/ui/status-chip'
+import { cn } from '@/lib/utils'
 
 type EditRowProps = {
+  id: number
   title: string
   category: string
   meta?: string
@@ -10,12 +14,41 @@ type EditRowProps = {
   onDelete?: () => void
 }
 
-function EditRow({ title, category, meta, status, onDelete }: EditRowProps) {
+function EditRow({
+  id,
+  title,
+  category,
+  meta,
+  status,
+  onDelete,
+}: EditRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
   return (
-    <div className="flex w-full items-center gap-2.5">
-      <div className="flex size-6 shrink-0 items-center justify-center">
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        'flex w-full items-center gap-2.5',
+        isDragging && 'z-10 opacity-50',
+      )}
+    >
+      <button
+        type="button"
+        aria-label="드래그해서 순서 변경"
+        className="flex size-6 shrink-0 touch-none items-center justify-center"
+        {...attributes}
+        {...listeners}
+      >
         <Menu className="size-4 text-muted-foreground" />
-      </div>
+      </button>
       <div className="flex flex-1 items-center justify-between rounded-btn border border-border bg-background p-4">
         <div className="flex flex-col gap-1.5">
           <p className="text-body-strong text-foreground">{title}</p>

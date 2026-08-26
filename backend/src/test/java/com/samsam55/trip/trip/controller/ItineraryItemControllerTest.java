@@ -260,4 +260,49 @@ class ItineraryItemControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VOTE_OPTION_COUNT_EXCEEDED"));
     }
+
+    @Test
+    @DisplayName("일정 항목 순서 변경 요청은 200과 공통 응답 형식으로 반환한다")
+    void 일정_항목_순서_변경_요청은_200과_공통_응답_형식으로_반환한다() throws Exception {
+        mockMvc.perform(put("/api/trip-days/10/itinerary-items/order")
+                        .contentType("application/json")
+                        .content("""
+                                {"itemIds":[3,1,2]}
+                                """)
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isEmpty());
+
+        verify(itineraryItemService).reorderItineraryItems(1L, 10L, List.of(3L, 1L, 2L));
+    }
+
+    @Test
+    @DisplayName("일정 항목 순서 변경 시 목록이 일치하지 않으면 400 공통 에러 응답으로 반환한다")
+    void 일정_항목_순서_변경_시_목록이_일치하지_않으면_400_공통_에러_응답으로_반환한다() throws Exception {
+        doThrow(new ApplicationException(TripErrorType.ITINERARY_ITEM_ORDER_MISMATCH))
+                .when(itineraryItemService).reorderItineraryItems(1L, 10L, List.of(1L));
+
+        mockMvc.perform(put("/api/trip-days/10/itinerary-items/order")
+                        .contentType("application/json")
+                        .content("""
+                                {"itemIds":[1]}
+                                """)
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("ITINERARY_ITEM_ORDER_MISMATCH"));
+    }
+
+    @Test
+    @DisplayName("일정 항목 순서 변경 시 목록이 비어있으면 400 공통 에러 응답으로 반환한다")
+    void 일정_항목_순서_변경_시_목록이_비어있으면_400_공통_에러_응답으로_반환한다() throws Exception {
+        mockMvc.perform(put("/api/trip-days/10/itinerary-items/order")
+                        .contentType("application/json")
+                        .content("""
+                                {"itemIds":[]}
+                                """)
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"));
+    }
 }

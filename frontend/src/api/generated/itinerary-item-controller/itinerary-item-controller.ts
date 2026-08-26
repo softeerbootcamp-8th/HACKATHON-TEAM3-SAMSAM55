@@ -30,6 +30,7 @@ import type {
   CommonResponseVoteOptionCreateResponseDto,
   CommonResponseVoteStatusResponseDto,
   ItineraryItemCreateRequestDto,
+  ItineraryItemReorderRequestDto,
   ItineraryItemUpdateRequestDto,
   VoteOptionCreateRequestDto
 } from '../model';
@@ -54,7 +55,67 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export const getItineraryItem = (
+export const reorderItineraryItems = (
+    dayId: number,
+    itineraryItemReorderRequestDto: ItineraryItemReorderRequestDto,
+ signal?: AbortSignal
+) => {
+
+
+      return customInstance<CommonResponseVoid>(
+      {url: `/api/trip-days/${dayId}/itinerary-items/order`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: itineraryItemReorderRequestDto, signal
+    },
+      );
+    }
+
+
+
+
+export const getReorderItineraryItemsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderItineraryItems>>, TError,ReorderItineraryItemsMutationVariables, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof reorderItineraryItems>>, TError,ReorderItineraryItemsMutationVariables, TContext> => {
+
+const mutationKey = ['reorderItineraryItems'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reorderItineraryItems>>, ReorderItineraryItemsMutationVariables> = (props) => {
+          const {dayId,data} = props ?? {};
+
+          return  reorderItineraryItems(dayId,data,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReorderItineraryItemsMutationResult = NonNullable<Awaited<ReturnType<typeof reorderItineraryItems>>>
+    export type ReorderItineraryItemsMutationBody = ItineraryItemReorderRequestDto
+    export type ReorderItineraryItemsMutationError = unknown
+    export type ReorderItineraryItemsMutationVariables = {dayId: number;data: ItineraryItemReorderRequestDto}
+
+    export const useReorderItineraryItems = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderItineraryItems>>, TError,ReorderItineraryItemsMutationVariables, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof reorderItineraryItems>>,
+        TError,
+        ReorderItineraryItemsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReorderItineraryItemsMutationOptions(options), queryClient);
+    }
+    export const getItineraryItem = (
     itemId: number,
  signal?: AbortSignal
 ) => {

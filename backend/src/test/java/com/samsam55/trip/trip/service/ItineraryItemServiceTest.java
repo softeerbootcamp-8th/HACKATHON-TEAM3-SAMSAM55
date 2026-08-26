@@ -3,6 +3,7 @@ package com.samsam55.trip.trip.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -466,6 +467,91 @@ class ItineraryItemServiceTest {
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.NOT_TRIP_HOST));
         verify(itineraryItemRepository, never()).delete(any());
+    }
+
+    private ItineraryItem itemWithId(Long id) {
+        ItineraryItem item = new ItineraryItem(
+                tripDay, "일정 " + id, "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
+        ReflectionTestUtils.setField(item, "id", id);
+        return item;
+    }
+
+    @Test
+    @DisplayName("일정 항목 순서를 바꾸면 새 순서대로 sortOrder가 매겨진다")
+    void 일정_항목_순서를_바꾸면_새_순서대로_sortOrder가_매겨진다() {
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
+        when(itineraryItemRepository.findByTripDayIdOrderBySortOrderAsc(10L))
+                .thenReturn(List.of(itemWithId(1L), itemWithId(2L), itemWithId(3L)));
+
+        itineraryItemService.reorderItineraryItems(1L, 10L, List.of(3L, 1L, 2L));
+
+        verify(itineraryItemRepository).updateSortOrder(3L, 1);
+        verify(itineraryItemRepository).updateSortOrder(1L, 2);
+        verify(itineraryItemRepository).updateSortOrder(2L, 3);
+        // 재배치 전, 유니크 제약과 안 겹치는 임시 음수 값으로 먼저 밀어둬야 한다.
+        verify(itineraryItemRepository).updateSortOrder(3L, -1);
+        verify(itineraryItemRepository).updateSortOrder(1L, -2);
+        verify(itineraryItemRepository).updateSortOrder(2L, -3);
+    }
+
+    @Test
+    @DisplayName("순서 변경 시 일차를 찾을 수 없으면 예외가 발생한다")
+    void 순서_변경_시_일차를_찾을_수_없으면_예외가_발생한다() {
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> itineraryItemService.reorderItineraryItems(1L, 10L, List.of(1L)))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.TRIP_DAY_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("순서 변경 시 방장이 아니면 예외가 발생한다")
+    void 순서_변경_시_방장이_아니면_예외가_발생한다() {
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
+
+        assertThatThrownBy(() -> itineraryItemService.reorderItineraryItems(999L, 10L, List.of(1L)))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.NOT_TRIP_HOST));
+        verify(itineraryItemRepository, never()).updateSortOrder(any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("itemIds에 그 일차에 없는 항목이 섞여 있으면 예외가 발생한다")
+    void itemIds에_그_일차에_없는_항목이_섞여_있으면_예외가_발생한다() {
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
+        when(itineraryItemRepository.findByTripDayIdOrderBySortOrderAsc(10L))
+                .thenReturn(List.of(itemWithId(1L), itemWithId(2L)));
+
+        assertThatThrownBy(() -> itineraryItemService.reorderItineraryItems(1L, 10L, List.of(1L, 999L)))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_ORDER_MISMATCH));
+        verify(itineraryItemRepository, never()).updateSortOrder(any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("itemIds에서 항목이 빠지면 예외가 발생한다")
+    void itemIds에서_항목이_빠지면_예외가_발생한다() {
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
+        when(itineraryItemRepository.findByTripDayIdOrderBySortOrderAsc(10L))
+                .thenReturn(List.of(itemWithId(1L), itemWithId(2L), itemWithId(3L)));
+
+        assertThatThrownBy(() -> itineraryItemService.reorderItineraryItems(1L, 10L, List.of(1L, 2L)))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_ORDER_MISMATCH));
+        verify(itineraryItemRepository, never()).updateSortOrder(any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("itemIds에 같은 항목이 중복되면 예외가 발생한다")
+    void itemIds에_같은_항목이_중복되면_예외가_발생한다() {
+        when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
+        when(itineraryItemRepository.findByTripDayIdOrderBySortOrderAsc(10L))
+                .thenReturn(List.of(itemWithId(1L), itemWithId(2L), itemWithId(3L)));
+
+        assertThatThrownBy(() -> itineraryItemService.reorderItineraryItems(1L, 10L, List.of(1L, 2L, 2L)))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_ORDER_MISMATCH));
+        verify(itineraryItemRepository, never()).updateSortOrder(any(), anyInt());
     }
 
 }

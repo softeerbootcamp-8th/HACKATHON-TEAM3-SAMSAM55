@@ -1,8 +1,25 @@
 import { useEffect, useState } from 'react'
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
-import { useDeleteItineraryItem } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
+import {
+  useDeleteItineraryItem,
+  useReorderItineraryItems,
+} from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
+import type { CommonResponseTripDetailResponseDto } from '@/api/generated/model'
 import {
   getFindTripQueryKey,
   getFindTripsQueryKey,
@@ -74,6 +91,10 @@ function TripHomePage() {
   })
   const deleteTrip = useDeleteTrip()
   const deleteItineraryItemMutation = useDeleteItineraryItem()
+  const reorderItineraryItemsMutation = useReorderItineraryItems()
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  )
   const detail = tripQuery.data?.success ? tripQuery.data.data : undefined
   const days: TripDay[] = (detail?.days ?? []).flatMap((tripDay) => {
     if (tripDay.dayNumber === undefined) {
@@ -184,6 +205,58 @@ function TripHomePage() {
         getApiError(error)?.message ?? '일정을 삭제하지 못했습니다.',
       )
     }
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!day || !over || active.id === over.id) return
+
+    const oldIndex = day.items.findIndex((item) => item.id === active.id)
+    const newIndex = day.items.findIndex((item) => item.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const tripDayId = detail?.days?.find((d) => d.dayNumber === day.id)?.id
+    if (tripDayId === undefined) return
+
+    const reorderedIds = arrayMove(day.items, oldIndex, newIndex).map(
+      (item) => item.id,
+    )
+
+    // 서버 응답을 기다리지 않고 캐시를 먼저 새 순서로 바꿔서 바로 반영되게 하고,
+    // 요청이 실패하면 서버 상태로 다시 불러와 되돌린다.
+    queryClient.setQueryData<CommonResponseTripDetailResponseDto>(
+      getFindTripQueryKey(tripIdNumber),
+      (old) => {
+        if (!old?.data?.days) return old
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            days: old.data.days.map((d) =>
+              d.dayNumber === day.id
+                ? {
+                    ...d,
+                    items: reorderedIds
+                      .map((id) => d.items?.find((item) => item.id === id))
+                      .filter((item) => item !== undefined),
+                  }
+                : d,
+            ),
+          },
+        }
+      },
+    )
+
+    reorderItineraryItemsMutation.mutate(
+      { dayId: tripDayId, data: { itemIds: reorderedIds } },
+      {
+        onError: () => {
+          void queryClient.invalidateQueries({
+            queryKey: getFindTripQueryKey(tripIdNumber),
+          })
+        },
+      },
+    )
   }
 
   const handleDeleteTrip = async () => {
@@ -317,33 +390,48 @@ function TripHomePage() {
             </div>
           )}
 
+          {hasItems && isEditing && (
+            <DndContext
+              sensors={dragSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={day?.items.map((item) => item.id) ?? []}
+                strategy={verticalListSortingStrategy}
+              >
+                {day?.items.map((item) => (
+                  <EditRow
+                    key={item.id}
+                    id={item.id}
+                    title={item.title}
+                    category={item.category}
+                    meta={item.voteMeta}
+                    status={item.status}
+                    onDelete={() => setDeleteItemId(item.id)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
+
           {hasItems &&
-            day?.items.map((item) =>
-              isEditing ? (
-                <EditRow
-                  key={item.id}
-                  title={item.title}
-                  category={item.category}
-                  meta={item.voteMeta}
-                  status={item.status}
-                  onDelete={() => setDeleteItemId(item.id)}
-                />
-              ) : (
-                <ItemCard
-                  key={item.id}
-                  title={item.title}
-                  category={item.category}
-                  meta={item.voteMeta}
-                  status={item.status}
-                  onClick={() =>
-                    navigate({
-                      to: '/trips/$tripId/items/$itemId',
-                      params: { tripId, itemId: String(item.id) },
-                    })
-                  }
-                />
-              ),
-            )}
+            !isEditing &&
+            day?.items.map((item) => (
+              <ItemCard
+                key={item.id}
+                title={item.title}
+                category={item.category}
+                meta={item.voteMeta}
+                status={item.status}
+                onClick={() =>
+                  navigate({
+                    to: '/trips/$tripId/items/$itemId',
+                    params: { tripId, itemId: String(item.id) },
+                  })
+                }
+              />
+            ))}
 
           {/* 편집 중에 마지막 일정을 지우면 hasItems가 false가 되면서 편집/완료
               토글 버튼 자체가 사라져 isEditing을 끌 방법이 없어진다 — 그 상태에서도
