@@ -8,7 +8,6 @@ import {
   useCreateVoteOption,
 } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
 import { getFindTripQueryKey } from '@/api/generated/trip-controller/trip-controller'
-import { useConfirm } from '@/api/generated/vote-controller/vote-controller'
 import { AppBar } from '@/components/ui/app-bar'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Button } from '@/components/ui/button'
@@ -130,11 +129,10 @@ function CreateItemSheet({
   const decidedPlaceFileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  // HOST_PICK 생성은 일정 생성 → 선택지 등록 → 확정, 3번의 API 호출로 나뉜다.
-  // 중간에 실패하면 처음부터 다시 하지 않고 실패한 단계부터 이어가도록, 이미
-  // 성공한 단계의 id를 기억해둔다 (안 그러면 재시도할 때 일정이 중복 생성된다).
+  // HOST_PICK 생성은 일정 생성 → 선택지 등록, 2번의 API 호출로 나뉜다. 중간에
+  // 실패하면 처음부터 다시 하지 않고 선택지 등록부터 이어가도록, 이미 성공한
+  // 일정의 id를 기억해둔다 (안 그러면 재시도할 때 일정이 중복 생성된다).
   const [createdItemId, setCreatedItemId] = useState<number | null>(null)
-  const [createdOptionId, setCreatedOptionId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!decidedPlaceImage) {
@@ -159,7 +157,6 @@ function CreateItemSheet({
     setDecidedPlace('')
     setDecidedPlaceImage(null)
     setCreatedItemId(null)
-    setCreatedOptionId(null)
     setUploadError(null)
   }, [open])
 
@@ -169,35 +166,24 @@ function CreateItemSheet({
 
   const createItineraryItemMutation = useCreateItineraryItem()
   const createVoteOptionMutation = useCreateVoteOption()
-  const confirmMutation = useConfirm()
 
   const decisionType = decisionMethod === '투표' ? 'VOTE' : 'HOST_PICK'
   // HOST_PICK은 정한 곳이 곧 유일한 선택지라, 없으면 선택지 없는 일정이 그대로 만들어진다.
   const isMissingDecidedPlace =
     decisionType === 'HOST_PICK' && decidedPlace.trim().length === 0
 
-  const confirmHostPick = (itemId: number, optionId: number) => {
-    confirmMutation.mutate(
-      { itemId, data: { voteOptionId: optionId } },
-      {
-        onSuccess: () => onCreated(itemId),
-        onError: () => setUploadError('확정에 실패했어요. 다시 시도해주세요.'),
-      },
-    )
-  }
-
+  // HOST_PICK은 정한 곳을 선택지로 등록하는 것으로 끝난다. 일정은 준비 중
+  // 상태로 남고, 확정은 자녀가 상세 화면에서 "확정하기"를 직접 눌러야 이뤄진다.
   const createHostPickOption = (itemId: number, imageKey?: string) => {
     createVoteOptionMutation.mutate(
       { itemId, data: { name: decidedPlace.trim(), imageKey } },
       {
         onSuccess: (optionResponse) => {
-          const optionId = optionResponse.data?.id
-          if (optionId === undefined) {
+          if (optionResponse.data?.id === undefined) {
             setUploadError('선택지 등록에 실패했어요. 다시 시도해주세요.')
             return
           }
-          setCreatedOptionId(optionId)
-          confirmHostPick(itemId, optionId)
+          onCreated(itemId)
         },
         onError: () =>
           setUploadError('선택지 등록에 실패했어요. 다시 시도해주세요.'),
@@ -213,14 +199,10 @@ function CreateItemSheet({
     setUploadError(null)
 
     // 이전 시도에서 일정 생성까지는 성공했다면, 그 일정을 다시 만들지 않고
-    // 실패했던 다음 단계부터 이어간다.
+    // 실패했던 선택지 등록부터 이어간다.
     if (createdItemId !== null) {
       if (decisionType !== 'HOST_PICK') {
         onCreated(createdItemId)
-        return
-      }
-      if (createdOptionId !== null) {
-        confirmHostPick(createdItemId, createdOptionId)
         return
       }
       setIsUploading(true)
@@ -287,8 +269,8 @@ function CreateItemSheet({
           })
 
           // HOST_PICK은 생성 시점엔 선택지가 없으므로, 입력한 장소를 바로
-          // 선택지로 추가하고 그 자리에서 확정까지 시킨다. 확정을 안 하면
-          // 상세 화면이 PENDING 상태로 남아 수정 화면처럼 보인다.
+          // 선택지로 등록한다. 일정은 준비 중 상태로 남고, 확정은 자녀가
+          // 상세 화면에서 "확정하기"를 직접 눌러야 이뤄진다.
           if (decisionType === 'HOST_PICK' && decidedPlace.trim().length > 0) {
             createHostPickOption(created.id, decidedPlaceImageKey)
             return
@@ -303,8 +285,7 @@ function CreateItemSheet({
   const isSubmitting =
     isUploading ||
     createItineraryItemMutation.isPending ||
-    createVoteOptionMutation.isPending ||
-    confirmMutation.isPending
+    createVoteOptionMutation.isPending
 
   return (
     <BottomSheet
