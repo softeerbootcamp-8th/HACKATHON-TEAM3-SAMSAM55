@@ -102,6 +102,7 @@ function ParentHomePage() {
 
   return (
     <MobileScreen
+      floatingBottomBar
       bottomBar={
         <div className="border-t border-border px-5 pt-3 pb-7">
           <Button
