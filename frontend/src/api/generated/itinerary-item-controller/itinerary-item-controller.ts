@@ -29,8 +29,10 @@ import type {
   CommonResponseVoteOptionCreateResponseDto,
   CommonResponseVoteStatusResponseDto,
   CreateItineraryItemBody,
+  CreateItineraryItemParams,
   CreateVoteOptionBody,
-  CreateVoteOptionParams
+  CreateVoteOptionParams,
+  ItineraryItemUpdateRequestDto
 } from '../model';
 
 import { customInstance } from '../../mutator/custom-instance';
@@ -53,140 +55,7 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export const createItineraryItem = (
-    dayId: number,
-    createItineraryItemBody?: CreateItineraryItemBody,
- signal?: AbortSignal
-) => {
-
-      const formData = new FormData();
-if(createItineraryItemBody?.request !== undefined) {
- formData.append(`request`, JSON.stringify(createItineraryItemBody.request));
- }
-if(createItineraryItemBody?.optionImages !== undefined) {
- createItineraryItemBody?.optionImages.forEach(value => formData.append(`optionImages`, value));
- }
-
-      return customInstance<CommonResponseItineraryItemCreateResponseDto>(
-      {url: `/api/trip-days/${dayId}/itinerary-items`, method: 'POST',
-      headers: {'Content-Type': 'multipart/form-data', },
-       data: formData, signal
-    },
-      );
-    }
-
-
-
-
-export const getCreateItineraryItemMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createItineraryItem>>, TError,CreateItineraryItemMutationVariables, TContext>, }
-): UseMutationOptions<Awaited<ReturnType<typeof createItineraryItem>>, TError,CreateItineraryItemMutationVariables, TContext> => {
-
-const mutationKey = ['createItineraryItem'];
-const {mutation: mutationOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createItineraryItem>>, CreateItineraryItemMutationVariables> = (props) => {
-          const {dayId,data} = props ?? {};
-
-          return  createItineraryItem(dayId,data,)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateItineraryItemMutationResult = NonNullable<Awaited<ReturnType<typeof createItineraryItem>>>
-    export type CreateItineraryItemMutationBody = CreateItineraryItemBody | undefined
-    export type CreateItineraryItemMutationError = unknown
-    export type CreateItineraryItemMutationVariables = {dayId: number;data?: CreateItineraryItemBody}
-
-    export const useCreateItineraryItem = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createItineraryItem>>, TError,CreateItineraryItemMutationVariables, TContext>, }
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof createItineraryItem>>,
-        TError,
-        CreateItineraryItemMutationVariables,
-        TContext
-      > => {
-      return useMutation(getCreateItineraryItemMutationOptions(options), queryClient);
-    }
-    export const createVoteOption = (
-    itemId: number,
-    params: CreateVoteOptionParams,
-    createVoteOptionBody?: CreateVoteOptionBody,
- signal?: AbortSignal
-) => {
-
-      const formData = new FormData();
-if(createVoteOptionBody?.image !== undefined) {
- formData.append(`image`, createVoteOptionBody.image);
- }
-
-      return customInstance<CommonResponseVoteOptionCreateResponseDto>(
-      {url: `/api/itinerary-items/${itemId}/vote-options`, method: 'POST',
-      headers: {'Content-Type': 'multipart/form-data', },
-       data: formData,
-        params, signal
-    },
-      );
-    }
-
-
-
-
-export const getCreateVoteOptionMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createVoteOption>>, TError,CreateVoteOptionMutationVariables, TContext>, }
-): UseMutationOptions<Awaited<ReturnType<typeof createVoteOption>>, TError,CreateVoteOptionMutationVariables, TContext> => {
-
-const mutationKey = ['createVoteOption'];
-const {mutation: mutationOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createVoteOption>>, CreateVoteOptionMutationVariables> = (props) => {
-          const {itemId,params,data} = props ?? {};
-
-          return  createVoteOption(itemId,params,data,)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateVoteOptionMutationResult = NonNullable<Awaited<ReturnType<typeof createVoteOption>>>
-    export type CreateVoteOptionMutationBody = CreateVoteOptionBody | undefined
-    export type CreateVoteOptionMutationError = unknown
-    export type CreateVoteOptionMutationVariables = {itemId: number;params: CreateVoteOptionParams;data?: CreateVoteOptionBody}
-
-    export const useCreateVoteOption = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createVoteOption>>, TError,CreateVoteOptionMutationVariables, TContext>, }
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof createVoteOption>>,
-        TError,
-        CreateVoteOptionMutationVariables,
-        TContext
-      > => {
-      return useMutation(getCreateVoteOptionMutationOptions(options), queryClient);
-    }
-    export const getItineraryItem = (
+export const getItineraryItem = (
     itemId: number,
  signal?: AbortSignal
 ) => {
@@ -272,7 +141,199 @@ export function useGetItineraryItem<TData = Awaited<ReturnType<typeof getItinera
 
 
 
-export const getVoteStatus = (
+export const updateItineraryItem = (
+    itemId: number,
+    itineraryItemUpdateRequestDto: ItineraryItemUpdateRequestDto,
+ signal?: AbortSignal
+) => {
+
+
+      return customInstance<CommonResponseItineraryItemDetailResponseDto>(
+      {url: `/api/itinerary-items/${itemId}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: itineraryItemUpdateRequestDto, signal
+    },
+      );
+    }
+
+
+
+
+export const getUpdateItineraryItemMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateItineraryItem>>, TError,UpdateItineraryItemMutationVariables, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof updateItineraryItem>>, TError,UpdateItineraryItemMutationVariables, TContext> => {
+
+const mutationKey = ['updateItineraryItem'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateItineraryItem>>, UpdateItineraryItemMutationVariables> = (props) => {
+          const {itemId,data} = props ?? {};
+
+          return  updateItineraryItem(itemId,data,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateItineraryItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateItineraryItem>>>
+    export type UpdateItineraryItemMutationBody = ItineraryItemUpdateRequestDto
+    export type UpdateItineraryItemMutationError = unknown
+    export type UpdateItineraryItemMutationVariables = {itemId: number;data: ItineraryItemUpdateRequestDto}
+
+    export const useUpdateItineraryItem = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateItineraryItem>>, TError,UpdateItineraryItemMutationVariables, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateItineraryItem>>,
+        TError,
+        UpdateItineraryItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateItineraryItemMutationOptions(options), queryClient);
+    }
+    export const createItineraryItem = (
+    dayId: number,
+    params: CreateItineraryItemParams,
+    createItineraryItemBody?: CreateItineraryItemBody,
+ signal?: AbortSignal
+) => {
+
+      const formData = new FormData();
+if(createItineraryItemBody?.optionImages !== undefined) {
+ createItineraryItemBody?.optionImages.forEach(value => formData.append(`optionImages`, value));
+ }
+
+      return customInstance<CommonResponseItineraryItemCreateResponseDto>(
+      {url: `/api/trip-days/${dayId}/itinerary-items`, method: 'POST',
+      headers: {'Content-Type': 'multipart/form-data', },
+       data: formData,
+        params, signal
+    },
+      );
+    }
+
+
+
+
+export const getCreateItineraryItemMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createItineraryItem>>, TError,CreateItineraryItemMutationVariables, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof createItineraryItem>>, TError,CreateItineraryItemMutationVariables, TContext> => {
+
+const mutationKey = ['createItineraryItem'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createItineraryItem>>, CreateItineraryItemMutationVariables> = (props) => {
+          const {dayId,params,data} = props ?? {};
+
+          return  createItineraryItem(dayId,params,data,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateItineraryItemMutationResult = NonNullable<Awaited<ReturnType<typeof createItineraryItem>>>
+    export type CreateItineraryItemMutationBody = CreateItineraryItemBody | undefined
+    export type CreateItineraryItemMutationError = unknown
+    export type CreateItineraryItemMutationVariables = {dayId: number;params: CreateItineraryItemParams;data?: CreateItineraryItemBody}
+
+    export const useCreateItineraryItem = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createItineraryItem>>, TError,CreateItineraryItemMutationVariables, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createItineraryItem>>,
+        TError,
+        CreateItineraryItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateItineraryItemMutationOptions(options), queryClient);
+    }
+    export const createVoteOption = (
+    itemId: number,
+    params: CreateVoteOptionParams,
+    createVoteOptionBody?: CreateVoteOptionBody,
+ signal?: AbortSignal
+) => {
+
+      const formData = new FormData();
+if(createVoteOptionBody?.image !== undefined) {
+ formData.append(`image`, createVoteOptionBody.image);
+ }
+
+      return customInstance<CommonResponseVoteOptionCreateResponseDto>(
+      {url: `/api/itinerary-items/${itemId}/vote-options`, method: 'POST',
+      headers: {'Content-Type': 'multipart/form-data', },
+       data: formData,
+        params, signal
+    },
+      );
+    }
+
+
+
+
+export const getCreateVoteOptionMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createVoteOption>>, TError,CreateVoteOptionMutationVariables, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof createVoteOption>>, TError,CreateVoteOptionMutationVariables, TContext> => {
+
+const mutationKey = ['createVoteOption'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createVoteOption>>, CreateVoteOptionMutationVariables> = (props) => {
+          const {itemId,params,data} = props ?? {};
+
+          return  createVoteOption(itemId,params,data,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateVoteOptionMutationResult = NonNullable<Awaited<ReturnType<typeof createVoteOption>>>
+    export type CreateVoteOptionMutationBody = CreateVoteOptionBody | undefined
+    export type CreateVoteOptionMutationError = unknown
+    export type CreateVoteOptionMutationVariables = {itemId: number;params: CreateVoteOptionParams;data?: CreateVoteOptionBody}
+
+    export const useCreateVoteOption = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createVoteOption>>, TError,CreateVoteOptionMutationVariables, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createVoteOption>>,
+        TError,
+        CreateVoteOptionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateVoteOptionMutationOptions(options), queryClient);
+    }
+    export const getVoteStatus = (
     itemId: number,
  signal?: AbortSignal
 ) => {

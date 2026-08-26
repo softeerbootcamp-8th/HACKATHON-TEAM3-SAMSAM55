@@ -5,7 +5,7 @@
  * OpenAPI spec version: v0
  */
 
-export interface ItineraryItemCreateRequestDto {
+export interface ItineraryItemUpdateRequestDto {
   /**
      * @minLength 0
      * @maxLength 100
@@ -21,6 +21,4 @@ export interface ItineraryItemCreateRequestDto {
      * @pattern HOST_PICK|VOTE
      */
   decisionType: string;
-  /** @items.minLength 1 */
-  options?: string[];
 }

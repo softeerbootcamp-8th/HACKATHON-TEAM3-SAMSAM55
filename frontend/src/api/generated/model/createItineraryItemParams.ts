@@ -5,6 +5,6 @@
  * OpenAPI spec version: v0
  */
 
-export type CreateItineraryItemBody = {
-  optionImages?: Blob[];
+export type CreateItineraryItemParams = {
+request: string;
 };
