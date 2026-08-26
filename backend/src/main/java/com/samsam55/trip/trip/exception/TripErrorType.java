@@ -24,6 +24,7 @@ public enum TripErrorType implements ErrorType {
     ITINERARY_ITEM_NOT_CONFIRMED(HttpStatus.CONFLICT, "확정된 일정이 아닙니다."),
     TRIP_PARTICIPANT_MISMATCH(HttpStatus.FORBIDDEN, "다른 여행의 참여자입니다."),
     VOTE_ALREADY_STARTED(HttpStatus.CONFLICT, "투표가 시작된 항목은 수정할 수 없습니다."),
+    VOTE_ALREADY_CAST(HttpStatus.CONFLICT, "이미 투표한 일정은 다시 투표할 수 없습니다."),
     VOTE_OPTION_SELECTION_REQUIRED(HttpStatus.CONFLICT, "선택지가 여러 개일 때는 하나를 선택해야 합니다."),
     ITINERARY_ITEM_ORDER_MISMATCH(HttpStatus.BAD_REQUEST, "일차의 일정 항목 목록과 정확히 일치해야 합니다.");
 

@@ -56,9 +56,11 @@ function ParentHomePage() {
   const day = days.find((d) => d.id === selectedDayId)
   const items = day?.items ?? []
   const votingCount = schedule?.votingCount ?? 0
+  // status만 보면 다른 참여자가 이미 투표를 마친 일정까지 걸린다 — 재투표를 막았으니
+  // needsVote(이 참여자가 아직 투표하지 않은 VOTING 일정)로 걸러야 한다.
   const firstVotingItem = days
     .flatMap((scheduleDay) => scheduleDay.items ?? [])
-    .find((item) => item.status === 'VOTING')
+    .find((item) => item.needsVote)
   const dayScrollHandlers = useHorizontalDragScroll()
 
   useEffect(() => {

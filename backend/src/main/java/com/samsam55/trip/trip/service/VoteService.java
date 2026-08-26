@@ -80,7 +80,7 @@ public class VoteService {
     }
 
     /**
-     * 참여자가 여러 일정 항목에 한 번에 투표하거나 기존 투표를 변경한다.
+     * 참여자가 여러 일정 항목에 한 번에 투표를 기록한다. 기록된 투표는 변경할 수 없다.
      * 목록에 담긴 일정 항목 중 하나라도 조건을 만족하지 못하면 전체가 롤백된다.
      * 각 일정 항목에 트립의 모든 참여자가 투표를 마치면 상태를 VOTED로 전환한다.
      *
@@ -92,6 +92,7 @@ public class VoteService {
      * @throws ApplicationException 투표 중이거나 투표가 끝난 상태가 아닐 때(ITINERARY_ITEM_NOT_VOTABLE)
      * @throws ApplicationException 옵션이 해당 일정 항목의 선택지가 아닐 때(VOTE_OPTION_NOT_FOUND)
      * @throws ApplicationException 참여자를 찾을 수 없을 때(PARTICIPANT_NOT_FOUND)
+     * @throws ApplicationException 이미 투표를 기록한 일정일 때(VOTE_ALREADY_CAST)
      */
     @Transactional
     public MyVoteBatchResponseDto castVotes(ParticipantPrincipal principal, List<MyVoteItemRequestDto> voteItems) {
@@ -113,15 +114,14 @@ public class VoteService {
                     && itineraryItem.getStatus() != ItineraryItemStatus.VOTED) {
                 throw withItemId(TripErrorType.ITINERARY_ITEM_NOT_VOTABLE, itemId);
             }
+            if (voteRepository.findByItineraryItemIdAndParticipantId(itemId, principal.participantId()).isPresent()) {
+                throw withItemId(TripErrorType.VOTE_ALREADY_CAST, itemId);
+            }
 
             VoteOption voteOption = voteOptionRepository.findByIdAndItineraryItemId(voteOptionId, itemId)
                     .orElseThrow(() -> withItemId(TripErrorType.VOTE_OPTION_NOT_FOUND, itemId));
 
-            voteRepository.findByItineraryItemIdAndParticipantId(itemId, principal.participantId())
-                    .ifPresentOrElse(
-                            vote -> vote.changeOption(voteOption),
-                            () -> voteRepository.save(new Vote(voteOption, itineraryItem, participant))
-                    );
+            voteRepository.save(new Vote(voteOption, itineraryItem, participant));
 
             if (itineraryItem.getStatus() == ItineraryItemStatus.VOTING) {
                 long totalParticipantCount = participantRepository.countByTripId(principal.tripId());
