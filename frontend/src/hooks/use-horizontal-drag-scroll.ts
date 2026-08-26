@@ -15,7 +15,6 @@ function useHorizontalDragScroll() {
       return
     }
 
-    event.currentTarget.setPointerCapture(event.pointerId)
     dragRef.current = {
       startX: event.clientX,
       scrollLeft: event.currentTarget.scrollLeft,
@@ -35,6 +34,7 @@ function useHorizontalDragScroll() {
     }
 
     drag.moved = true
+    event.currentTarget.setPointerCapture(event.pointerId)
     event.preventDefault()
     event.currentTarget.scrollLeft = drag.scrollLeft - deltaX
   }
