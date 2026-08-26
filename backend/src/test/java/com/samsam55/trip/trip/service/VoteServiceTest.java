@@ -200,26 +200,23 @@ class VoteServiceTest {
     }
 
     @Test
-    @DisplayName("이미 투표한 참여자가 다시 투표하면 기존 투표의 옵션만 바꾼다")
-    void 내_투표_다시_투표하면_기존_투표의_옵션만_바꾼다() {
+    @DisplayName("이미 투표한 참여자가 다시 투표하면 예외가 발생한다")
+    void 내_투표_이미_투표한_참여자가_다시_투표하면_예외가_발생한다() {
         ItineraryItem item = itineraryItem(101L, ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING);
         VoteOption oldOption = voteOption(item, 1001L);
-        VoteOption newOption = voteOption(item, 1002L);
         Participant participant = participant(11L);
         Vote existingVote = new Vote(oldOption, item, participant);
         ParticipantPrincipal principal = new ParticipantPrincipal(11L, TRIP_ID);
 
         when(participantRepository.findById(11L)).thenReturn(Optional.of(participant));
         when(itineraryItemRepository.findById(101L)).thenReturn(Optional.of(item));
-        when(voteOptionRepository.findByIdAndItineraryItemId(1002L, 101L)).thenReturn(Optional.of(newOption));
         when(voteRepository.findByItineraryItemIdAndParticipantId(101L, 11L)).thenReturn(Optional.of(existingVote));
-        when(participantRepository.countByTripId(TRIP_ID)).thenReturn(2L);
-        when(voteRepository.countByItineraryItemId(101L)).thenReturn(1L);
-        when(itineraryItemRepository.findUnvotedVotingItemsOrderByDayAndSortOrder(TRIP_ID, 11L)).thenReturn(List.of());
 
-        voteService.castVotes(principal, List.of(new MyVoteItemRequestDto(101L, 1002L)));
-
-        assertThat(existingVote.getOption()).isEqualTo(newOption);
+        assertThatThrownBy(() ->
+                voteService.castVotes(principal, List.of(new MyVoteItemRequestDto(101L, 1002L))))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_ALREADY_CAST));
+        assertThat(existingVote.getOption()).isEqualTo(oldOption);
         verify(voteRepository, never()).save(any());
     }
 
@@ -248,19 +245,17 @@ class VoteServiceTest {
     @DisplayName("이미 VOTED 상태면 전원 투표 완료 여부를 다시 계산하지 않는다")
     void 내_투표_이미_VOTED_상태면_완료_여부를_다시_계산하지_않는다() {
         ItineraryItem item = itineraryItem(101L, ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTED);
-        VoteOption oldOption = voteOption(item, 1001L);
-        VoteOption newOption = voteOption(item, 1002L);
+        VoteOption option = voteOption(item, 1001L);
         Participant participant = participant(11L);
-        Vote existingVote = new Vote(oldOption, item, participant);
         ParticipantPrincipal principal = new ParticipantPrincipal(11L, TRIP_ID);
 
         when(participantRepository.findById(11L)).thenReturn(Optional.of(participant));
         when(itineraryItemRepository.findById(101L)).thenReturn(Optional.of(item));
-        when(voteOptionRepository.findByIdAndItineraryItemId(1002L, 101L)).thenReturn(Optional.of(newOption));
-        when(voteRepository.findByItineraryItemIdAndParticipantId(101L, 11L)).thenReturn(Optional.of(existingVote));
+        when(voteOptionRepository.findByIdAndItineraryItemId(1001L, 101L)).thenReturn(Optional.of(option));
+        when(voteRepository.findByItineraryItemIdAndParticipantId(101L, 11L)).thenReturn(Optional.empty());
         when(itineraryItemRepository.findUnvotedVotingItemsOrderByDayAndSortOrder(TRIP_ID, 11L)).thenReturn(List.of());
 
-        voteService.castVotes(principal, List.of(new MyVoteItemRequestDto(101L, 1002L)));
+        voteService.castVotes(principal, List.of(new MyVoteItemRequestDto(101L, 1001L)));
 
         assertThat(item.getStatus()).isEqualTo(ItineraryItemStatus.VOTED);
         verify(participantRepository, never()).countByTripId(anyLong());

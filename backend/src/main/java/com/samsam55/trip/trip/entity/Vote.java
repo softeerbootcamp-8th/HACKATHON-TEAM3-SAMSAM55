@@ -42,8 +42,4 @@ public class Vote extends BaseEntity {
         this.itineraryItem = itineraryItem;
         this.participant = participant;
     }
-
-    public void changeOption(VoteOption option) {
-        this.option = option;
-    }
 }
