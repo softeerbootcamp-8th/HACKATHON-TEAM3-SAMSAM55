@@ -313,6 +313,13 @@ function TripHomePage() {
               )
             : ''
         }
+        onInviteLink={() => {
+          setIsMoreSheetOpen(false)
+          void navigate({
+            to: '/trips/$tripId/invite',
+            params: { tripId },
+          })
+        }}
         onDeleteTrip={() => {
           setIsMoreSheetOpen(false)
           setIsDeleteTripOpen(true)
