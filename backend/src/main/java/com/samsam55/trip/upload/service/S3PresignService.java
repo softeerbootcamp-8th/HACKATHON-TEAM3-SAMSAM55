@@ -7,8 +7,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,34 +26,32 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 @RequiredArgsConstructor
 public class S3PresignService {
 
-    private static final Map<String, String> CONTENT_TYPES_BY_EXTENSION = Map.of(
-            "png", "image/png",
-            "jpg", "image/jpeg",
-            "jpeg", "image/jpeg",
-            "webp", "image/webp"
-    );
+    private static final Set<String> SUPPORTED_EXTENSIONS = Set.of("png", "jpg", "jpeg", "webp");
 
     private final S3Presigner presigner;
     private final UploadProperties uploadProperties;
 
     /**
-     * fileName으로 새 S3 key를 만들고, 그 key로 직접 PUT할 수 있는 presigned URL을 발급한다.
+     * fileName의 확장자로 새 S3 key를 만들고, 그 key로 직접 PUT할 수 있는 presigned URL을 발급한다.
+     * key에는 원본 파일명을 넣지 않는다 — 한글 등 비-ASCII 파일명이 S3 key/URL 인코딩 문제를 일으킬
+     * 수 있고, 이후 어디서도 원본 파일명을 다시 쓰지 않기 때문이다. Content-Type도 서명에 포함하지
+     * 않는다 — 서명에 포함하면 실제 업로드 시점에 브라우저가 보내는 Content-Type과 정확히 일치해야만
+     * S3가 요청을 받아주는데, 파일에 따라 브라우저가 판단하는 값이 달라 업로드가 종종 실패했다.
      *
-     * @param fileName 업로드할 파일의 원래 이름(확장자 포함)
+     * @param fileName 업로드할 파일의 원래 이름(확장자 판별에만 쓰고 key에는 포함하지 않는다)
      * @return 업로드용 presigned URL, key, 업로드 후 보여줄 공개 URL
      * @throws ApplicationException fileName이 비어있거나 경로 구분자가 섞여 있을 때(INVALID_FILE_NAME)
      * @throws ApplicationException 지원하지 않는 확장자일 때(UNSUPPORTED_FILE_TYPE)
      */
     public PresignedUrlResponseDto issueUploadUrl(String fileName) {
         validateFileName(fileName);
-        String contentType = resolveContentType(fileName);
+        String extension = resolveExtension(fileName);
 
-        String key = "uploads/vote-options/" + UUID.randomUUID() + "-" + fileName;
+        String key = "uploads/vote-options/" + UUID.randomUUID() + "." + extension;
 
         PutObjectRequest objectRequest = PutObjectRequest.builder()
                 .bucket(uploadProperties.bucketName())
                 .key(key)
-                .contentType(contentType)
                 .build();
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
                 .signatureDuration(Duration.ofMinutes(10))
@@ -93,13 +90,15 @@ public class S3PresignService {
         }
     }
 
-    private String resolveContentType(String fileName) {
+    private String resolveExtension(String fileName) {
         int dotIndex = fileName.lastIndexOf('.');
         if (dotIndex == -1 || dotIndex == fileName.length() - 1) {
             throw new ApplicationException(UploadErrorType.UNSUPPORTED_FILE_TYPE);
         }
         String extension = fileName.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
-        return Optional.ofNullable(CONTENT_TYPES_BY_EXTENSION.get(extension))
-                .orElseThrow(() -> new ApplicationException(UploadErrorType.UNSUPPORTED_FILE_TYPE));
+        if (!SUPPORTED_EXTENSIONS.contains(extension)) {
+            throw new ApplicationException(UploadErrorType.UNSUPPORTED_FILE_TYPE);
+        }
+        return extension;
     }
 }
