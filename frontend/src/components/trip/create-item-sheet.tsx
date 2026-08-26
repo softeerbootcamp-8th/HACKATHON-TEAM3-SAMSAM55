@@ -53,7 +53,7 @@ function OptionRow({
   }, [option.image])
 
   return (
-    <div className="flex items-center gap-3 rounded-card border border-border px-3 py-2.5">
+    <div className="flex min-w-0 items-center gap-3 rounded-card border border-border px-3 py-2.5">
       <button
         type="button"
         aria-label="사진 추가"
@@ -77,9 +77,14 @@ function OptionRow({
         value={option.name}
         onChange={(event) => onNameChange(event.target.value)}
         placeholder="여행지를 입력해주세요"
-        className="flex-1 text-card-title text-foreground placeholder:text-[#bcbcbc] outline-none"
+        className="min-w-0 flex-1 text-card-title text-foreground placeholder:text-[#bcbcbc] outline-none"
       />
-      <button type="button" aria-label="선택지 삭제" onClick={onDelete}>
+      <button
+        type="button"
+        aria-label="선택지 삭제"
+        onClick={onDelete}
+        className="shrink-0"
+      >
         <X className="size-3.5 text-muted-foreground" />
       </button>
     </div>
@@ -284,7 +289,7 @@ function CreateItemSheet({
 
         <div className="flex flex-col gap-2">
           <p className="text-caption text-muted-foreground">카테고리</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             {CATEGORIES.map((c) => (
               <button
                 key={c}
@@ -305,7 +310,7 @@ function CreateItemSheet({
 
         <div className="flex flex-col gap-2.5">
           <p className="text-caption text-muted-foreground">누가 정할까요?</p>
-          <div className="flex gap-2.5">
+          <div className="flex justify-center gap-2.5">
             {(['투표', '내가 결정'] as const).map((method) => (
               <button
                 key={method}
