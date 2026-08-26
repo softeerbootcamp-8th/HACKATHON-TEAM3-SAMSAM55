@@ -13,6 +13,8 @@ import { MobileScreen } from '@/components/layout/mobile-screen'
 import { TextInput } from '@/components/ui/text-input'
 import { getApiError } from '@/features/auth/auth'
 
+const PASSWORD_PATTERN = /^[\x21-\x7e]+$/
+
 export const Route = createFileRoute('/login')({
   component: LoginPage,
 })
@@ -23,17 +25,35 @@ function LoginPage() {
   const login = useLogin()
   const [loginId, setLoginId] = useState('')
   const [password, setPassword] = useState('')
-  const [errorMessage, setErrorMessage] = useState<string>()
+  const [loginIdError, setLoginIdError] = useState<string>()
+  const [passwordError, setPasswordError] = useState<string>()
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setErrorMessage(undefined)
+
+    const nextLoginIdError = loginId.trim()
+      ? undefined
+      : '아이디를 입력해주세요'
+    const nextPasswordError = !password.trim()
+      ? '비밀번호를 입력해주세요'
+      : !PASSWORD_PATTERN.test(password)
+        ? '비밀번호는 영문, 숫자, 특수문자만 사용할 수 있습니다.'
+        : password.length > 72
+          ? '비밀번호는 72자 이하여야 합니다.'
+          : undefined
+
+    setLoginIdError(nextLoginIdError)
+    setPasswordError(nextPasswordError)
+
+    if (nextLoginIdError || nextPasswordError) {
+      return
+    }
 
     try {
       const response = await login.mutateAsync({ data: { loginId, password } })
 
       if (!response.success || !response.data) {
-        setErrorMessage(
+        setPasswordError(
           response.error?.message ?? '로그인 중 오류가 발생했습니다.',
         )
         return
@@ -43,7 +63,7 @@ function LoginPage() {
       await navigate({ to: '/trips', replace: true })
     } catch (error) {
       const apiError = getApiError(error)
-      setErrorMessage(
+      setPasswordError(
         apiError?.code === 'INVALID_CREDENTIALS'
           ? (apiError.message ?? '아이디 또는 비밀번호가 올바르지 않습니다.')
           : (apiError?.message ?? '로그인 중 오류가 발생했습니다.'),
@@ -59,13 +79,21 @@ function LoginPage() {
         <p className="text-title-1 whitespace-pre-line text-foreground">
           {'가족이 함께\n정하는 여행'}
         </p>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <TextInput
             label="아이디"
             name="loginId"
             autoComplete="username"
             value={loginId}
-            onChange={(event) => setLoginId(event.target.value)}
+            onChange={(event) => {
+              setLoginId(event.target.value)
+              setLoginIdError(undefined)
+            }}
+            error={loginIdError}
             required
           />
           <TextInput
@@ -75,8 +103,11 @@ function LoginPage() {
             autoComplete="current-password"
             placeholder="비밀번호를 입력하세요"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            error={errorMessage}
+            onChange={(event) => {
+              setPassword(event.target.value)
+              setPasswordError(undefined)
+            }}
+            error={passwordError}
             maxLength={72}
             required
           />
