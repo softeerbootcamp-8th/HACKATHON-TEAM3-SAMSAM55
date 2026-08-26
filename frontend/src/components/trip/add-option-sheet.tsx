@@ -1,9 +1,9 @@
-import { Plus } from 'lucide-react'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { TextInput } from '@/components/ui/text-input'
+import { defaultOptionImageSquare } from '@/lib/default-option-image'
 
 type AddOptionSheetProps = {
   open: boolean
@@ -41,15 +41,11 @@ function AddOptionSheet({ open, onOpenChange, onAdd }: AddOptionSheetProps) {
           onClick={() => fileInputRef.current?.click()}
           className="flex size-[74px] shrink-0 items-center justify-center overflow-hidden rounded-card border-[1.5px] border-dashed border-border bg-muted"
         >
-          {previewUrl ? (
-            <img
-              src={previewUrl}
-              alt="선택지 이미지 미리보기"
-              className="size-full object-cover"
-            />
-          ) : (
-            <Plus className="size-4 text-muted-foreground" />
-          )}
+          <img
+            src={previewUrl ?? defaultOptionImageSquare}
+            alt="선택지 이미지 미리보기"
+            className="size-full object-cover"
+          />
         </button>
         <input
           ref={fileInputRef}

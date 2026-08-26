@@ -32,6 +32,10 @@ import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { MobileScreen } from '@/components/layout/mobile-screen'
+import {
+  defaultOptionImageSquare,
+  defaultOptionImageWide,
+} from '@/lib/default-option-image'
 import { uploadImage } from '@/lib/upload-image'
 
 export const Route = createFileRoute('/trips/$tripId/items/$itemId/')({
@@ -489,15 +493,11 @@ function ItemDetailPage() {
         {isVote && isConfirmed && (
           <>
             <div className="flex flex-col gap-2 overflow-hidden rounded-[18px] border border-border">
-              {confirmedOption?.imageUrl ? (
-                <img
-                  src={confirmedOption.imageUrl}
-                  alt=""
-                  className="h-[233px] w-full object-cover"
-                />
-              ) : (
-                <div className="h-[233px] w-full bg-muted" />
-              )}
+              <img
+                src={confirmedOption?.imageUrl ?? defaultOptionImageWide}
+                alt=""
+                className="h-[233px] w-full object-cover"
+              />
               <div className="flex flex-col gap-2.5 p-4">
                 <p className="text-title-2 text-foreground">
                   {confirmedOption?.name}
@@ -581,15 +581,11 @@ function ItemDetailPage() {
               className="flex flex-col gap-2.5 rounded-card border border-border p-3 text-left"
             >
               <div className="flex w-full items-center gap-3">
-                {options[0]?.imageUrl ? (
-                  <img
-                    src={options[0].imageUrl}
-                    alt=""
-                    className="size-11 shrink-0 rounded-card object-cover"
-                  />
-                ) : (
-                  <div className="size-11 shrink-0 rounded-card border-[1.5px] border-dashed border-border bg-muted" />
-                )}
+                <img
+                  src={options[0]?.imageUrl ?? defaultOptionImageSquare}
+                  alt=""
+                  className="size-11 shrink-0 rounded-card object-cover"
+                />
                 <p className="flex-1 text-card-title text-foreground">
                   {options[0]?.name ?? '아직 선택지가 없어요'}
                 </p>
