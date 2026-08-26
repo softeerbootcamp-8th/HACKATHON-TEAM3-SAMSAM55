@@ -374,7 +374,7 @@ function ItemDetailPage() {
                 (isVote ? 'text-primary-deep' : 'text-muted-foreground')
               }
             >
-              {isVote ? '부모님과 투표' : '내가 결정'}
+              {isVote ? '투표' : '내가 결정'}
             </p>
           </div>
           <span
