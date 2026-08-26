@@ -179,8 +179,8 @@ public class VoteService {
     }
 
     /**
-     * 확정된 일정 항목을 다시 투표 상태로 되돌린다. 기존에 쌓인 투표는 그대로 유지되고
-     * 확정된 선택지만 지워진다.
+     * 확정된 일정 항목을 다시 투표 상태로 되돌린다. 확정된 선택지를 지우고, 기존에
+     * 쌓인 투표도 함께 지워서 깨끗한 상태로 다시 투표를 받을 수 있게 한다.
      *
      * @param loginUserId 요청한 회원의 식별자
      * @param itemId 확정을 해제할 일정 항목의 식별자
@@ -202,6 +202,7 @@ public class VoteService {
         }
 
         itineraryItem.unconfirm();
+        voteRepository.deleteAllByItineraryItemId(itemId);
 
         return ItineraryItemStatusDto.from(itineraryItem);
     }

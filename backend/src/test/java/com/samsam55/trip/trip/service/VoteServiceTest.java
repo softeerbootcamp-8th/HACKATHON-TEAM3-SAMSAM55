@@ -435,7 +435,7 @@ class VoteServiceTest {
         assertThat(response.status()).isEqualTo("VOTING");
         assertThat(item.getStatus()).isEqualTo(ItineraryItemStatus.VOTING);
         assertThat(item.getConfirmedOption()).isNull();
-        verifyNoInteractions(voteRepository);
+        verify(voteRepository).deleteAllByItineraryItemId(101L);
     }
 
     @Test
