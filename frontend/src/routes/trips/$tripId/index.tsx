@@ -31,6 +31,9 @@ type TripSearch = {
   day?: number
 }
 
+// 서버(startVote)가 요구하는 것과 같은 규칙 — 선택지가 2개 미만이면 투표를 시작할 수 없다.
+const MIN_VOTE_OPTION_COUNT = 2
+
 export const Route = createFileRoute('/trips/$tripId/')({
   validateSearch: (search: Record<string, unknown>): TripSearch => {
     const day = Number(search.day)
@@ -48,6 +51,7 @@ type TripItem = {
   category: string
   status: 'draft' | 'voting' | 'confirmed' | 'voteDone'
   decisionType?: string
+  optionCount?: number
   voteMeta?: string
 }
 
@@ -94,6 +98,7 @@ function TripHomePage() {
               category: item.category ?? '기타',
               status,
               decisionType: item.decisionType,
+              optionCount: item.optionCount,
             },
           ]
         }),
@@ -132,10 +137,13 @@ function TripHomePage() {
     days.find((d) => d.id === selectedDayParam)?.id ?? days[0]?.id
   const day = days.find((d) => d.id === selectedDay)
   const dayScrollHandlers = useHorizontalDragScroll()
-  // HOST_PICK(내가 결정) 항목은 방장이 직접 확정하는 방식이라 투표에 올릴 수 없다 —
-  // 서버(startVote)가 VOTE가 아닌 항목이 하나라도 섞여 있으면 배치 전체를 거부한다.
+  // HOST_PICK(내가 결정) 항목은 방장이 직접 확정하는 방식이라 투표에 올릴 수 없고,
+  // 선택지가 2개 미만인 VOTE 항목도 투표를 시작할 수 없다 — 서버(startVote)가 이 조건을
+  // 하나라도 못 채우는 항목이 섞여 있으면 배치 전체를 거부한다.
   const isDraftItem = (item: TripItem) =>
-    item.status === 'draft' && item.decisionType === 'VOTE'
+    item.status === 'draft' &&
+    item.decisionType === 'VOTE' &&
+    (item.optionCount ?? 0) >= MIN_VOTE_OPTION_COUNT
   const draftItems = days.flatMap((d) => d.items).filter(isDraftItem)
   const draftCount = draftItems.length
   const hasItems = (day?.items.length ?? 0) > 0
@@ -337,7 +345,10 @@ function TripHomePage() {
               ),
             )}
 
-          {!isEditing && (
+          {/* 편집 중에 마지막 일정을 지우면 hasItems가 false가 되면서 편집/완료
+              토글 버튼 자체가 사라져 isEditing을 끌 방법이 없어진다 — 그 상태에서도
+              일정 추가는 항상 보여야 한다. */}
+          {(!isEditing || !hasItems) && (
             <AddItemRow onClick={() => setIsCreateItemOpen(true)} />
           )}
         </div>

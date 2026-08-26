@@ -245,7 +245,8 @@ class TripControllerTest {
                                 "점심 식사",
                                 "식사",
                                 "VOTING",
-                                "VOTE"
+                                "VOTE",
+                                2
                         ))
                 ))
         ));
