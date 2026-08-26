@@ -14,6 +14,7 @@ import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { AddItemRow } from '@/components/trip/add-item-row'
+import { CreateItemSheet } from '@/components/trip/create-item-sheet'
 import { DayTab } from '@/components/trip/day-tab'
 import { EditRow } from '@/components/trip/edit-row'
 import { ItemCard } from '@/components/trip/item-card'
@@ -89,6 +90,7 @@ function TripHomePage() {
   const [selectedDay, setSelectedDay] = useState(1)
   const [isEditing, setIsEditing] = useState(false)
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false)
+  const [isCreateItemOpen, setIsCreateItemOpen] = useState(false)
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null)
   const [isDeleteTripOpen, setIsDeleteTripOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string>()
@@ -322,11 +324,7 @@ function TripHomePage() {
             )}
 
           {!isEditing && (
-            <AddItemRow
-              onClick={() =>
-                navigate({ to: '/trips/$tripId/items/new', params: { tripId } })
-              }
-            />
+            <AddItemRow onClick={() => setIsCreateItemOpen(true)} />
           )}
         </div>
       </div>
@@ -354,6 +352,21 @@ function TripHomePage() {
         onDeleteTrip={() => {
           setIsMoreSheetOpen(false)
           setIsDeleteTripOpen(true)
+        }}
+      />
+
+      <CreateItemSheet
+        tripId={tripId}
+        open={isCreateItemOpen}
+        onOpenChange={setIsCreateItemOpen}
+        days={detail.days ?? []}
+        initialDayNumber={selectedDay}
+        onCreated={(itemId) => {
+          setIsCreateItemOpen(false)
+          void navigate({
+            to: '/trips/$tripId/items/$itemId',
+            params: { tripId, itemId: String(itemId) },
+          })
         }}
       />
 
