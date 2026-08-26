@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { X } from 'lucide-react'
+import { Camera, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import type { TripDayResponseDto } from '@/api/generated/model'
@@ -13,7 +13,6 @@ import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Button } from '@/components/ui/button'
 import { TextInput } from '@/components/ui/text-input'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { defaultOptionImageSquare } from '@/lib/default-option-image'
 import { uploadImage } from '@/lib/upload-image'
 import { cn } from '@/lib/utils'
 
@@ -59,11 +58,11 @@ function OptionRow({
         onClick={() => fileInputRef.current?.click()}
         className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-card border-[1.5px] border-dashed border-border bg-muted"
       >
-        <img
-          src={previewUrl ?? defaultOptionImageSquare}
-          alt=""
-          className="size-full object-cover"
-        />
+        {previewUrl ? (
+          <img src={previewUrl} alt="" className="size-full object-cover" />
+        ) : (
+          <Camera className="size-4 text-muted-foreground" />
+        )}
       </button>
       <input
         ref={fileInputRef}
@@ -413,11 +412,15 @@ function CreateItemSheet({
                 onClick={() => decidedPlaceFileInputRef.current?.click()}
                 className="flex size-[75px] items-center justify-center overflow-hidden rounded-card border-[1.5px] border-dashed border-border bg-muted"
               >
-                <img
-                  src={decidedPlacePreviewUrl ?? defaultOptionImageSquare}
-                  alt=""
-                  className="size-full object-cover"
-                />
+                {decidedPlacePreviewUrl ? (
+                  <img
+                    src={decidedPlacePreviewUrl}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <Camera className="size-5 text-muted-foreground" />
+                )}
               </button>
               <input
                 ref={decidedPlaceFileInputRef}
