@@ -13,7 +13,11 @@ import type {
   CommonResponseItineraryItemDetailResponseDto,
   VoteOptionSummaryDto,
 } from '@/api/generated/model'
-import { useStartVote } from '@/api/generated/vote-controller/vote-controller'
+import {
+  useConfirm,
+  useStartVote,
+  useUnconfirm,
+} from '@/api/generated/vote-controller/vote-controller'
 import { useDeleteVoteOption } from '@/api/generated/vote-option-controller/vote-option-controller'
 import { AddOptionSheet } from '@/components/trip/add-option-sheet'
 import { EditOptionSheet } from '@/components/trip/edit-option-sheet'
@@ -60,10 +64,12 @@ function ItemDetailPage() {
   const options = detail?.voteOptions ?? []
   const status = detail?.status
   const isVoting = status === 'VOTING' || status === 'VOTED'
+  const isConfirmed = status === 'CONFIRMED'
 
   const { data: voteStatusResponse } = useGetVoteStatus(itemIdNumber, {
     query: {
-      enabled: isVoting,
+      // 확정된 뒤에도 최종 득표수를 보여줘야 해서 조회는 계속하지만, 더는 안 바뀌니 폴링은 멈춘다.
+      enabled: isVoting || isConfirmed,
       refetchInterval: isVoting ? VOTE_STATUS_POLLING_INTERVAL_MS : false,
     },
   })
@@ -83,6 +89,8 @@ function ItemDetailPage() {
   const deleteVoteOptionMutation = useDeleteVoteOption()
   const startVoteMutation = useStartVote()
   const createVoteOptionMutation = useCreateVoteOption()
+  const confirmMutation = useConfirm()
+  const unconfirmMutation = useUnconfirm()
 
   if (isLoading || !detail) {
     return (
@@ -99,7 +107,7 @@ function ItemDetailPage() {
   const isVote = detail.decisionType === 'VOTE'
   const badge = STATUS_BADGE[status ?? 'PENDING']
   const canStartVote = options.length >= MIN_VOTE_OPTION_COUNT
-  const leadingOptionName = options.reduce<VoteOptionSummaryDto | undefined>(
+  const leadingOption = options.reduce<VoteOptionSummaryDto | undefined>(
     (leading, option) => {
       const votes = voteStatusByOptionId.get(option.id)?.voteCount ?? 0
       const leadingVotes = leading
@@ -108,7 +116,12 @@ function ItemDetailPage() {
       return votes > leadingVotes ? option : leading
     },
     undefined,
-  )?.name
+  )
+  const confirmedOption = options.find(
+    (option) => option.id === detail.confirmedOptionId,
+  )
+  const confirmedOptionVoters =
+    voteStatusByOptionId.get(confirmedOption?.id ?? -1)?.voters ?? []
 
   const handleDeleteOption = () => {
     const optionId = deletingOption?.id
@@ -182,6 +195,61 @@ function ItemDetailPage() {
             (old) =>
               old?.data
                 ? { ...old, data: { ...old.data, status: 'VOTING' } }
+                : old,
+          )
+        },
+      },
+    )
+  }
+
+  const handleConfirm = () => {
+    if (leadingOption?.id === undefined) return
+
+    confirmMutation.mutate(
+      { itemId: itemIdNumber, data: { voteOptionId: leadingOption.id } },
+      {
+        onSuccess: (response) => {
+          const confirmed = response.data
+          if (!confirmed) return
+
+          queryClient.setQueryData<CommonResponseItineraryItemDetailResponseDto>(
+            queryKey,
+            (old) =>
+              old?.data
+                ? {
+                    ...old,
+                    data: {
+                      ...old.data,
+                      status: confirmed.status ?? old.data.status,
+                      confirmedOptionId: confirmed.confirmedOptionId,
+                    },
+                  }
+                : old,
+          )
+        },
+      },
+    )
+  }
+
+  const handleUnconfirm = () => {
+    unconfirmMutation.mutate(
+      { itemId: itemIdNumber },
+      {
+        onSuccess: (response) => {
+          const result = response.data
+          if (!result) return
+
+          queryClient.setQueryData<CommonResponseItineraryItemDetailResponseDto>(
+            queryKey,
+            (old) =>
+              old?.data
+                ? {
+                    ...old,
+                    data: {
+                      ...old.data,
+                      status: result.status ?? old.data.status,
+                    },
+                  }
                 : old,
           )
         },
@@ -305,6 +373,92 @@ function ItemDetailPage() {
           </>
         )}
 
+        {isVote && isConfirmed && (
+          <>
+            <div className="flex flex-col gap-2 overflow-hidden rounded-[18px] border border-border">
+              {confirmedOption?.hasImage ? (
+                <img
+                  src={`/api/vote-options/${confirmedOption.id}/image`}
+                  alt=""
+                  className="h-[233px] w-full object-cover"
+                />
+              ) : (
+                <div className="h-[233px] w-full bg-muted" />
+              )}
+              <div className="flex flex-col gap-2.5 p-4">
+                <p className="text-title-2 text-foreground">
+                  {confirmedOption?.name}
+                </p>
+                {confirmedOption?.description && (
+                  <p className="text-caption text-muted-foreground">
+                    {confirmedOption.description}
+                  </p>
+                )}
+                {confirmedOptionVoters.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center -space-x-1.5">
+                      {confirmedOptionVoters.map((voter, index) => (
+                        <span
+                          key={voter.participantId ?? index}
+                          className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-medium text-foreground"
+                        >
+                          {voter.roleName?.charAt(0) ?? '?'}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-[14px] font-medium text-primary-deep">
+                      {confirmedOptionVoters
+                        .map((voter) => voter.roleName)
+                        .filter(Boolean)
+                        .join(', ')}
+                      가 골랐어요
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <p className="text-subtitle text-foreground">최종 투표 결과</p>
+            <div className="flex flex-col gap-2">
+              {options.map((option) => {
+                const isOptionConfirmed = option.id === detail.confirmedOptionId
+                const voteCount =
+                  voteStatusByOptionId.get(option.id)?.voteCount ?? 0
+                return (
+                  <div
+                    key={option.id}
+                    className={
+                      'flex h-[50px] items-center justify-between rounded-thumb px-3.5 ' +
+                      (isOptionConfirmed
+                        ? 'border-2 border-primary-deep bg-primary-tint'
+                        : 'bg-muted')
+                    }
+                  >
+                    <p
+                      className={
+                        isOptionConfirmed
+                          ? 'text-[14px] font-medium text-foreground'
+                          : 'text-[14px] text-muted-foreground'
+                      }
+                    >
+                      {option.name}
+                    </p>
+                    <p
+                      className={
+                        'text-[14px] font-bold ' +
+                        (isOptionConfirmed
+                          ? 'text-primary-deep'
+                          : 'text-muted-foreground')
+                      }
+                    >
+                      {voteCount}표
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+
         {!isVote && (
           <div className="flex flex-col gap-2.5">
             <div className="flex flex-col gap-2.5 rounded-card border border-border p-3">
@@ -341,12 +495,22 @@ function ItemDetailPage() {
 
       <div className="flex flex-col gap-2 border-t border-border px-5 pt-3 pb-7">
         {status === 'CONFIRMED' ? (
-          <Button variant="dangerOutline" size="cta">
+          <Button
+            variant="dangerOutline"
+            size="cta"
+            disabled={unconfirmMutation.isPending}
+            onClick={handleUnconfirm}
+          >
             확정 해제하기
           </Button>
         ) : isVote && isVoting ? (
-          // 확정하기 버튼의 실제 API 연동은 다른 팀원이 작업 중이라 onClick을 비워둔다.
-          <Button size="cta">{leadingOptionName}로 확정하기</Button>
+          <Button
+            size="cta"
+            disabled={!leadingOption || confirmMutation.isPending}
+            onClick={handleConfirm}
+          >
+            {leadingOption?.name}로 확정하기
+          </Button>
         ) : isVote ? (
           <Button size="cta" disabled={!canStartVote} onClick={handleStartVote}>
             이 일정만 투표 올리기
