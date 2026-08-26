@@ -91,7 +91,11 @@ public class ItineraryItem extends BaseEntity {
     }
 
     public void unconfirm() {
-        this.status = ItineraryItemStatus.VOTING;
+        // HOST_PICK은 투표를 거친 적이 없으므로(선택지 추가 즉시 확정됨) VOTING이 아니라
+        // 처음 만들었을 때와 같은 PENDING으로 되돌린다.
+        this.status = decisionType == ItineraryItemDecisionType.HOST_PICK
+                ? ItineraryItemStatus.PENDING
+                : ItineraryItemStatus.VOTING;
         this.confirmedOption = null;
     }
 }
