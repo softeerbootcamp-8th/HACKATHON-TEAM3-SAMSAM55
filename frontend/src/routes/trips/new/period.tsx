@@ -66,6 +66,7 @@ function NewTripPeriodPage() {
     endDate: initialEndDate,
   } = Route.useSearch()
   const today = new Date()
+  const todayValue = toDateString(today)
   const [month, setMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   )
@@ -77,6 +78,10 @@ function NewTripPeriodPage() {
 
   const handleDateClick = (date: Date) => {
     const value = toDateString(date)
+    if (value < todayValue) {
+      return
+    }
+
     if (!startDate || endDate) {
       setStartDate(value)
       setEndDate(undefined)
@@ -201,6 +206,7 @@ function NewTripPeriodPage() {
               ))}
               {calendarDays.map((day) => {
                 const value = toDateString(day.date)
+                const isPast = value < todayValue
                 const isStart = value === startDate
                 const isEnd = value === endDate
                 const isInRange =
@@ -217,11 +223,13 @@ function NewTripPeriodPage() {
                     <button
                       type="button"
                       onClick={() => handleDateClick(day.date)}
+                      disabled={isPast}
                       aria-label={`${value} 선택`}
                       className={cn(
                         'flex size-9 items-center justify-center rounded-full text-body',
                         !day.currentMonth && 'text-text-disabled',
                         day.currentMonth && 'text-foreground',
+                        isPast && 'text-text-disabled',
                         isInRange && 'bg-primary-tint text-primary-deep',
                         (isStart || isEnd) &&
                           'bg-primary-deep font-medium text-white',

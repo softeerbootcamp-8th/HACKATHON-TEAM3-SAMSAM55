@@ -181,9 +181,34 @@ class TripServiceTest {
     }
 
     @Test
+    @DisplayName("시작일이 오늘보다 이전이면 여행을 생성하지 않는다")
+    void 시작일이_오늘보다_이전이면_여행을_생성하지_않는다() {
+        LocalDate today = LocalDate.now();
+        TripCreateRequestDto request = new TripCreateRequestDto(
+                "지난 여행",
+                today.minusDays(1),
+                today,
+                List.of("엄마")
+        );
+
+        assertThatThrownBy(() -> service().createTrip(1L, request))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType().getCode()).isEqualTo("INVALID_TRIP_PERIOD"));
+        verifyNoInteractions(
+                userRepository,
+                tripRepository,
+                tripDayRepository,
+                participantRepository,
+                itineraryItemRepository,
+                voteOptionRepository,
+                voteRepository
+        );
+    }
+
+    @Test
     @DisplayName("여행 기간이 최대 365일을 초과하면 여행을 생성하지 않는다")
     void 여행_기간이_최대_365일을_초과하면_여행을_생성하지_않는다() {
-        LocalDate startDate = LocalDate.of(2026, 1, 1);
+        LocalDate startDate = LocalDate.now().plusDays(1);
         TripCreateRequestDto request = new TripCreateRequestDto(
                 "너무 긴 여행",
                 startDate,
