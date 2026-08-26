@@ -24,6 +24,7 @@ export const Route = createFileRoute('/trips/$tripId/items/new')({
 })
 
 const CATEGORIES = ['숙소', '식사', '관광', '이동', '기타'] as const
+const MAX_VOTE_OPTION_COUNT = 4
 
 type OptionDraft = {
   name: string
@@ -274,7 +275,7 @@ function CreateItemPage() {
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
               <p className="text-caption text-muted-foreground">선택지</p>
-              <p className="text-caption-sm text-muted-foreground">2개 이상</p>
+              <p className="text-caption-sm text-muted-foreground">2~4개</p>
             </div>
             <p className="text-caption-sm text-muted-foreground">
               사진은 선택이에요 · 넣으면 부모님이 고르기 쉬워요
@@ -302,12 +303,20 @@ function CreateItemPage() {
 
             <button
               type="button"
+              disabled={options.length >= MAX_VOTE_OPTION_COUNT}
               onClick={() =>
                 setOptions((prev) => [...prev, { name: '', image: null }])
               }
-              className="flex h-13 w-full items-center justify-center rounded-card border-[1.5px] border-dashed border-primary-deep text-card-title text-primary-deep"
+              className={cn(
+                'flex h-13 w-full items-center justify-center rounded-card border-[1.5px] border-dashed text-card-title',
+                options.length >= MAX_VOTE_OPTION_COUNT
+                  ? 'border-border text-muted-foreground'
+                  : 'border-primary-deep text-primary-deep',
+              )}
             >
-              + 선택지 추가
+              {options.length >= MAX_VOTE_OPTION_COUNT
+                ? '선택지는 최대 4개까지예요'
+                : '+ 선택지 추가'}
             </button>
           </div>
         ) : (
