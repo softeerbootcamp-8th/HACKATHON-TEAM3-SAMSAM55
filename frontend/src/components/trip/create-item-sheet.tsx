@@ -271,7 +271,7 @@ function CreateItemSheet({
     <BottomSheet
       open={open}
       onOpenChange={onOpenChange}
-      className="flex max-h-[92svh] flex-col gap-3 px-0"
+      className="flex h-[calc(100svh-12px)] flex-col gap-3 px-0"
     >
       <AppBar
         type="close"
