@@ -9,6 +9,7 @@ import { MobileScreen } from '@/components/layout/mobile-screen'
 import { getApiError } from '@/features/auth/auth'
 import { formatDateRange } from '@/lib/date'
 import { toItemStatus } from '@/lib/itinerary-item-status'
+import { useHorizontalDragScroll } from '@/hooks/use-horizontal-drag-scroll'
 
 export const Route = createFileRoute('/parent/')({
   component: ParentHomePage,
@@ -32,6 +33,7 @@ function ParentHomePage() {
   const firstVotingItem = days
     .flatMap((scheduleDay) => scheduleDay.items ?? [])
     .find((item) => item.status === 'VOTING')
+  const dayScrollHandlers = useHorizontalDragScroll()
 
   if (scheduleQuery.isLoading) {
     return (
@@ -87,7 +89,10 @@ function ParentHomePage() {
           )}
         </div>
 
-        <div className="mt-5 flex min-w-0 flex-nowrap gap-2 overflow-x-auto">
+        <div
+          {...dayScrollHandlers}
+          className="mt-5 flex w-full min-w-0 flex-nowrap gap-2 overflow-x-auto overflow-y-hidden touch-pan-x"
+        >
           {days.map((d) =>
             d.id === undefined ? null : (
               <DayTab
