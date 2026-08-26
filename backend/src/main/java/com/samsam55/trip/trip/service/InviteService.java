@@ -1,6 +1,7 @@
 package com.samsam55.trip.trip.service;
 
 import com.samsam55.trip.auth.service.AuthService;
+import com.samsam55.trip.auth.service.ParticipantSessionResolver;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.trip.dto.InviteJoinRequestDto;
 import com.samsam55.trip.trip.dto.InviteJoinResponseDto;
@@ -32,6 +33,7 @@ public class InviteService {
     private final TripRepository tripRepository;
     private final ParticipantRepository participantRepository;
     private final ParticipantCookieSigner cookieSigner;
+    private final ParticipantSessionResolver participantSessionResolver;
 
     /**
      * 초대 코드로 여행과 참여자 슬롯 선점 현황을 조회한다.
@@ -57,7 +59,7 @@ public class InviteService {
      * @param servletRequest 세션을 생성할 현재 HTTP 요청
      * @param servletResponse 복구용 쿠키를 내려줄 현재 HTTP 응답
      * @return 선점한 참여자 정보
-     * @throws ApplicationException 현재 세션에 이미 참여자 정보가 있을 때(ALREADY_PARTICIPANT),
+     * @throws ApplicationException 현재 참여자 세션 또는 유효한 복구 쿠키가 있을 때(ALREADY_PARTICIPANT),
      * @throws ApplicationException 초대 코드에 해당하는 여행이 없을 때(INVITE_CODE_NOT_FOUND),
      *         participantId가 그 여행 소속이 아닐 때(PARTICIPANT_NOT_FOUND),
      *         이미 다른 사람이 선점한 슬롯일 때(PARTICIPANT_ALREADY_JOINED)
@@ -69,8 +71,7 @@ public class InviteService {
             HttpServletRequest servletRequest,
             HttpServletResponse servletResponse
     ) {
-        HttpSession session = servletRequest.getSession(false);
-        if (session != null && session.getAttribute(PARTICIPANT_ID_SESSION_ATTRIBUTE) != null) {
+        if (participantSessionResolver.resolve(servletRequest).isPresent()) {
             throw new ApplicationException(TripErrorType.ALREADY_PARTICIPANT);
         }
 
