@@ -134,8 +134,7 @@ public class ItineraryItemController {
 
     /**
      * 일정 항목에 투표 선택지를 추가한다. 여행 방장만 호출할 수 있다.
-     * decisionType과 무관하게 추가된 선택지는 PENDING 상태로 남고, 방장이 별도로
-     * 확정 API를 호출해야 일정이 확정된다.
+     * decisionType이 HOST_PICK이면 추가된 선택지가 즉시 확정된다.
      *
      * @param loginUserId 로그인한 회원의 식별자
      * @param itemId 선택지를 추가할 일정 항목의 식별자

@@ -130,8 +130,7 @@ function ItemEditPage() {
 
           // HOST_PICK인데 아직 선택지가 없으면(= PENDING 상태에서만 수정 가능하므로
           // 있을 수 있는 유일한 경우), 입력한 장소를 선택지로 추가한다 — 서버가
-          // HOST_PICK 선택지를 추가해도 PENDING 상태로 남으므로, 상세 화면의 확정 버튼으로
-          // 명시적으로 확정한다.
+          // HOST_PICK 선택지 추가 시 즉시 확정한다.
           const hasNoOption = existingOptions.length === 0
           if (
             decisionType === 'HOST_PICK' &&
