@@ -237,6 +237,7 @@ class VoteOptionServiceTest {
         when(itineraryItemRepository.findById(10L)).thenReturn(Optional.of(pendingItem));
         when(voteOptionRepository.countByItineraryItem(pendingItem)).thenReturn(1L);
         when(descriptionGenerator.generate(anyString())).thenReturn("AI가 생성한 설명");
+        when(descriptionGenerator.getSource()).thenReturn("AI");
         when(voteOptionRepository.save(any(VoteOption.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         MockMultipartFile image = new MockMultipartFile(
