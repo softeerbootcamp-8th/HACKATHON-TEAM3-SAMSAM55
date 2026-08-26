@@ -1,5 +1,7 @@
 ![SAMSAM55](docs/banner.png)
 
+![SAMSAM55 서비스 흐름](docs/service-flow.png)
+
 # 삼삼오오
 
 > 부모님과 자녀가 함께 여행 일정을 정하는 서비스
@@ -7,8 +9,6 @@
 ---
 
 ## 서비스 설명
-
-![SAMSAM55 서비스 흐름](docs/service-flow.png)
 
 부모님과 함께 떠나는 여행. 하지만 자녀가 모든 결정을 혼자서 하기에 부담을 느낍니다
 
