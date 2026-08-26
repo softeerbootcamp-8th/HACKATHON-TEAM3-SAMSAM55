@@ -10,6 +10,7 @@ public enum TripErrorType implements ErrorType {
     INVITE_CODE_NOT_FOUND(HttpStatus.NOT_FOUND, "유효하지 않은 초대 코드입니다."),
     PARTICIPANT_NOT_FOUND(HttpStatus.NOT_FOUND, "참여자를 찾을 수 없습니다."),
     PARTICIPANT_ALREADY_JOINED(HttpStatus.CONFLICT, "이미 다른 사람이 참여한 역할입니다."),
+    ALREADY_PARTICIPANT(HttpStatus.CONFLICT, "이미 다른 역할로 참여했습니다."),
     PARTICIPANT_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "참여자 인증이 필요합니다."),
     TRIP_DAY_NOT_FOUND(HttpStatus.NOT_FOUND, "일차를 찾을 수 없습니다."),
     ITINERARY_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "일정 항목을 찾을 수 없습니다."),
