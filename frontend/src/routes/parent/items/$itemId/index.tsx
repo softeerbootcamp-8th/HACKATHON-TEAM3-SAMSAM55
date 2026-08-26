@@ -137,11 +137,7 @@ function ParentItemDetailPage() {
                 voteCount={option.voteCount}
                 voters={option.voters?.map((v) => v.roleName?.charAt(0) ?? '?')}
                 leading={maxVoteCount > 0 && option.voteCount === maxVoteCount}
-                imageSrc={
-                  option.hasImage
-                    ? `/api/vote-options/${option.optionId}/image`
-                    : undefined
-                }
+                imageSrc={option.imageUrl}
               />
             ))}
           </div>
@@ -149,9 +145,9 @@ function ParentItemDetailPage() {
       ) : (
         <div className="flex flex-col gap-4 px-5 pt-4">
           <div className="flex flex-col overflow-hidden rounded-[18px] border border-border">
-            {confirmedOption?.hasImage ? (
+            {confirmedOption?.imageUrl ? (
               <img
-                src={`/api/vote-options/${confirmedOption.optionId}/image`}
+                src={confirmedOption.imageUrl}
                 alt=""
                 className="h-[233px] w-full object-cover"
               />

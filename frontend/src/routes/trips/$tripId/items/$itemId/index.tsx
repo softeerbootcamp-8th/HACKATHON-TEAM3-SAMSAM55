@@ -32,6 +32,7 @@ import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { MobileScreen } from '@/components/layout/mobile-screen'
+import { uploadImage } from '@/lib/upload-image'
 
 export const Route = createFileRoute('/trips/$tripId/items/$itemId/')({
   component: ItemDetailPage,
@@ -172,12 +173,12 @@ function ItemDetailPage() {
     )
   }
 
-  const handleAddOption = (name: string, image: File | null) => {
+  const handleAddOption = async (name: string, image: File | null) => {
+    const imageKey = image ? await uploadImage(image) : undefined
     createVoteOptionMutation.mutate(
       {
         itemId: itemIdNumber,
-        params: { name },
-        data: { image: image ?? undefined },
+        data: { name, imageKey },
       },
       {
         onSuccess: (created) => {
@@ -205,7 +206,7 @@ function ItemDetailPage() {
     )
   }
 
-  const handleEditOption = (
+  const handleEditOption = async (
     name: string,
     description: string,
     image: File | null,
@@ -213,11 +214,11 @@ function ItemDetailPage() {
     const optionId = editingOption?.id
     if (optionId === undefined) return
 
+    const imageKey = image ? await uploadImage(image) : undefined
     updateVoteOptionMutation.mutate(
       {
         voteOptionId: optionId,
-        params: { name, description },
-        data: { image: image ?? undefined },
+        data: { name, description, imageKey },
       },
       {
         onSuccess: (updated) => {
@@ -386,11 +387,7 @@ function ItemDetailPage() {
                   description={option.description}
                   descriptionSource={option.descriptionSource}
                   editable={isEditingOptions}
-                  imageSrc={
-                    option.hasImage
-                      ? `/api/vote-options/${option.id}/image`
-                      : undefined
-                  }
+                  imageSrc={option.imageUrl}
                   onClick={() => setEditingOption(option)}
                   onDelete={() => setDeletingOption(option)}
                 />
@@ -434,11 +431,7 @@ function ItemDetailPage() {
                       (voter) => voter.roleName?.charAt(0) ?? '?',
                     )}
                     leading={(optionVotes?.voteCount ?? 0) > 0}
-                    imageSrc={
-                      option.hasImage
-                        ? `/api/vote-options/${option.id}/image`
-                        : undefined
-                    }
+                    imageSrc={option.imageUrl}
                   />
                 )
               })}
@@ -449,9 +442,9 @@ function ItemDetailPage() {
         {isVote && isConfirmed && (
           <>
             <div className="flex flex-col gap-2 overflow-hidden rounded-[18px] border border-border">
-              {confirmedOption?.hasImage ? (
+              {confirmedOption?.imageUrl ? (
                 <img
-                  src={`/api/vote-options/${confirmedOption.id}/image`}
+                  src={confirmedOption.imageUrl}
                   alt=""
                   className="h-[233px] w-full object-cover"
                 />
@@ -536,9 +529,9 @@ function ItemDetailPage() {
           <div className="flex flex-col gap-2.5">
             <div className="flex flex-col gap-2.5 rounded-card border border-border p-3">
               <div className="flex w-full items-center gap-3">
-                {options[0]?.hasImage ? (
+                {options[0]?.imageUrl ? (
                   <img
-                    src={`/api/vote-options/${options[0].id}/image`}
+                    src={options[0].imageUrl}
                     alt=""
                     className="size-11 shrink-0 rounded-card object-cover"
                   />
@@ -626,11 +619,7 @@ function ItemDetailPage() {
         initialName={editingOption?.name ?? ''}
         initialDescription={editingOption?.description ?? ''}
         initialDescriptionSource={editingOption?.descriptionSource}
-        initialImageSrc={
-          editingOption?.hasImage
-            ? `/api/vote-options/${editingOption.id}/image`
-            : undefined
-        }
+        initialImageSrc={editingOption?.imageUrl}
         onSave={handleEditOption}
       />
       <ItemMoreSheet

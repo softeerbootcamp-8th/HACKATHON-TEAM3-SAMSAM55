@@ -15,6 +15,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+
 @Entity
 @Table(name = "vote_option")
 @Getter
@@ -39,34 +40,27 @@ public class VoteOption extends BaseEntity {
     @Column(name = "description_source", length = 20, nullable = false)
     private String descriptionSource;
 
-    @Lob
-    @Column(name = "image", columnDefinition = "LONGBLOB")
-    private byte[] image;
-
-    @Column(name = "image_content_type", length = 100)
-    private String imageContentType;
+    @Column(name = "image_key", length = 500)
+    private String imageKey;
 
     public VoteOption(
             ItineraryItem itineraryItem,
             String name,
             String description,
             String descriptionSource,
-            byte[] image,
-            String imageContentType
+            String imageKey
     ) {
         this.itineraryItem = itineraryItem;
         this.name = name;
         this.description = description;
         this.descriptionSource = descriptionSource;
-        this.image = image;
-        this.imageContentType = imageContentType;
+        this.imageKey = imageKey;
     }
 
-    public void update(String name, String description, String descriptionSource, byte[] image, String imageContentType) {
+    public void update(String name, String description, String descriptionSource, String imageKey) {
         this.name = name;
         this.description = description;
         this.descriptionSource = descriptionSource;
-        this.image = image;
-        this.imageContentType = imageContentType;
+        this.imageKey = imageKey;
     }
 }

@@ -17,7 +17,6 @@ public enum TripErrorType implements ErrorType {
     VOTE_OPTION_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "선택지는 최대 4개까지 등록할 수 있습니다."),
     VOTE_OPTION_COUNT_INSUFFICIENT(HttpStatus.CONFLICT, "선택지가 2개 이상이어야 투표를 시작할 수 있습니다."),
     VOTE_OPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "선택지를 찾을 수 없습니다."),
-    VOTE_OPTION_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "선택지에 등록된 이미지가 없습니다."),
     ITINERARY_ITEM_NOT_VOTE_TYPE(HttpStatus.CONFLICT, "부모님과 투표로 정하는 일정만 투표를 시작할 수 있습니다."),
     ITINERARY_ITEM_ALREADY_OPENED(HttpStatus.CONFLICT, "이미 투표가 시작된 일정입니다."),
     ITINERARY_ITEM_NOT_VOTABLE(HttpStatus.CONFLICT, "아직 투표를 시작하지 않았거나 이미 확정된 일정입니다."),

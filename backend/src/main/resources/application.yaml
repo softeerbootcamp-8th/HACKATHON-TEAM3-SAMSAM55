@@ -3,10 +3,6 @@ spring:
     import: optional:file:.env[.properties]
   application:
     name: trip
-  servlet:
-    multipart:
-      max-file-size: 5MB
-      max-request-size: 25MB
   datasource:
     url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: ${DB_USERNAME}
@@ -19,3 +15,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+upload:
+  bucket-name: ${S3_BUCKET_NAME}
+  region: ${AWS_REGION:ap-northeast-2}

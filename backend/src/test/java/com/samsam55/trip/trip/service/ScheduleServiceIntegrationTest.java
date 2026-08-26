@@ -93,12 +93,11 @@ class ScheduleServiceIntegrationTest extends AbstractMySqlContainerTest {
                 secondDay, "저녁 식사", "식사", ItineraryItemDecisionType.VOTE,
                 ItineraryItemStatus.CONFIRMED, 1, null));
         VoteOption votingOption = voteOptionRepository.saveAndFlush(new VoteOption(
-                voting, "긴자 스시", "스시 코스", "AI", null, null));
+                voting, "긴자 스시", "스시 코스", "AI", null));
         VoteOption confirmedOption = voteOptionRepository.saveAndFlush(new VoteOption(
-                confirmed, "신주쿠 라멘", "진한 돈코츠 라멘", "AI",
-                new byte[]{1, 2, 3}, "image/jpeg"));
+                confirmed, "신주쿠 라멘", "진한 돈코츠 라멘", "AI", "uploads/vote-options/a-ramen.jpg"));
         VoteOption alternative = voteOptionRepository.saveAndFlush(new VoteOption(
-                confirmed, "시부야 우동", "수타 우동", "AI", null, null));
+                confirmed, "시부야 우동", "수타 우동", "AI", null));
         ReflectionTestUtils.setField(confirmed, "confirmedOption", confirmedOption);
         itineraryItemRepository.flush();
 

@@ -5,9 +5,9 @@
  * OpenAPI spec version: v0
  */
 
-export interface ScheduleConfirmedOptionResponseDto {
-  id?: number;
-  name?: string;
+export interface VoteOptionUpdateRequestDto {
+  /** @minLength 1 */
+  name: string;
   description?: string;
-  imageUrl?: string;
+  imageKey?: string;
 }

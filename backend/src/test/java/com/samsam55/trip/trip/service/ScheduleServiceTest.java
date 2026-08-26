@@ -29,7 +29,8 @@ import com.samsam55.trip.trip.repository.TripDayRepository;
 import com.samsam55.trip.trip.repository.TripRepository;
 import com.samsam55.trip.trip.repository.VoteOptionRepository;
 import com.samsam55.trip.trip.repository.VoteRepository;
-import java.nio.charset.StandardCharsets;
+import com.samsam55.trip.upload.service.S3PresignService;
+import com.samsam55.trip.upload.service.UploadProperties;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -63,6 +64,10 @@ class ScheduleServiceTest {
     @Mock
     private VoteOptionRepository voteOptionRepository;
 
+    // toPublicUrl은 S3 호출 없이 key만으로 URL 문자열을 만드는 순수 로직이라, 목 대신 실제 인스턴스를 쓴다.
+    private final S3PresignService s3PresignService =
+            new S3PresignService(null, new UploadProperties("test-bucket", "ap-northeast-2"));
+
     private ScheduleService scheduleService;
 
     @BeforeEach
@@ -73,7 +78,8 @@ class ScheduleServiceTest {
                 itineraryItemRepository,
                 participantRepository,
                 voteRepository,
-                voteOptionRepository
+                voteOptionRepository,
+                s3PresignService
         );
     }
 
@@ -336,7 +342,7 @@ class ScheduleServiceTest {
                 confirmed,
                 "스시 오마카세 긴자점",
                 "신선한 제철 재료로 만든 프리미엄 스시 코스",
-                "image".getBytes(StandardCharsets.UTF_8)
+                "uploads/vote-options/a-sushi.jpg"
         );
         VoteOption confirmedAlternative = option(305L, confirmed, "라멘 이치란 신주쿠점", "라멘 설명", null);
         ReflectionTestUtils.setField(confirmed, "confirmedOption", confirmedOption);
@@ -419,9 +425,9 @@ class ScheduleServiceTest {
             ItineraryItem item,
             String name,
             String description,
-            byte[] image
+            String imageKey
     ) {
-        VoteOption option = new VoteOption(item, name, description, "AI", image, image == null ? null : "image/jpeg");
+        VoteOption option = new VoteOption(item, name, description, "AI", imageKey);
         ReflectionTestUtils.setField(option, "id", id);
         return option;
     }

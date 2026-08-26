@@ -97,7 +97,6 @@ class TripDeletionIntegrationTest extends AbstractMySqlContainerTest {
                 "성산일출봉",
                 "일출 명소",
                 "AI",
-                null,
                 null
         ));
         entityManager.createQuery("""
