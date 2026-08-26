@@ -30,7 +30,7 @@ function ItemCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex w-full items-center justify-between rounded-btn border border-border bg-background p-4 text-left',
+        'flex h-[85px] w-full items-center justify-between rounded-btn border border-border bg-background p-4 text-left',
         className,
       )}
     >
