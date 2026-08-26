@@ -138,7 +138,7 @@ function ItemEditPage() {
             decidedPlace.trim().length > 0
           ) {
             createVoteOptionMutation.mutate(
-              { itemId: itemIdNumber, params: { name: decidedPlace.trim() } },
+              { itemId: itemIdNumber, data: { name: decidedPlace.trim() } },
               { onSuccess: goBack, onError: goBack },
             )
             return

@@ -10,5 +10,5 @@ export interface VoteOptionSummaryDto {
   name?: string;
   description?: string;
   descriptionSource?: string;
-  hasImage?: boolean;
+  imageUrl?: string;
 }

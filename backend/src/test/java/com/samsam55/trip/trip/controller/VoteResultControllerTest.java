@@ -105,7 +105,7 @@ class VoteResultControllerTest {
                         201L,
                         "스시 오마카세 긴자점",
                         "신선한 제철 재료로 만든 프리미엄 스시 코스",
-                        true,
+                        "https://samsam55-trip-images.s3.ap-northeast-2.amazonaws.com/uploads/vote-options/a-sushi.jpg",
                         2,
                         false,
                         List.of(mother, child)

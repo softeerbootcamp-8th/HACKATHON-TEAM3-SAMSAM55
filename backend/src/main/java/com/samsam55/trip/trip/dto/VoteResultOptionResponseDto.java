@@ -8,7 +8,7 @@ public record VoteResultOptionResponseDto(
         Long optionId,
         String name,
         String description,
-        boolean hasImage,
+        String imageUrl,
         int voteCount,
         boolean isConfirmed,
         List<VoteResultParticipantResponseDto> voters
@@ -16,6 +16,7 @@ public record VoteResultOptionResponseDto(
 
     public static VoteResultOptionResponseDto of(
             VoteOption option,
+            String imageUrl,
             List<Participant> voters,
             boolean isConfirmed
     ) {
@@ -23,7 +24,7 @@ public record VoteResultOptionResponseDto(
                 option.getId(),
                 option.getName(),
                 option.getDescription(),
-                option.getImage() != null,
+                imageUrl,
                 voters.size(),
                 isConfirmed,
                 voters.stream()

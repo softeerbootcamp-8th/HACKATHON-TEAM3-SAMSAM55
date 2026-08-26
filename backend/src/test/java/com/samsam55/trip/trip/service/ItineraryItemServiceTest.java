@@ -9,12 +9,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.member.entity.User;
 import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemUpdateRequestDto;
+import com.samsam55.trip.trip.dto.VoteOptionCreateItemDto;
 import com.samsam55.trip.trip.dto.VoteStatusResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
 import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
@@ -30,8 +32,8 @@ import com.samsam55.trip.trip.repository.ParticipantRepository;
 import com.samsam55.trip.trip.repository.TripDayRepository;
 import com.samsam55.trip.trip.repository.VoteOptionRepository;
 import com.samsam55.trip.trip.repository.VoteRepository;
-import com.samsam55.trip.global.exception.ApplicationException;
-import java.nio.charset.StandardCharsets;
+import com.samsam55.trip.upload.service.S3PresignService;
+import com.samsam55.trip.upload.service.UploadProperties;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -43,7 +45,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,6 +68,10 @@ class ItineraryItemServiceTest {
     @Mock
     private VoteRepository voteRepository;
 
+    // toPublicUrl은 S3 호출 없이 key만으로 URL 문자열을 만드는 순수 로직이라, 목 대신 실제 인스턴스를 쓴다.
+    private final S3PresignService s3PresignService =
+            new S3PresignService(null, new UploadProperties("test-bucket", "ap-northeast-2"));
+
     private ItineraryItemService itineraryItemService;
 
     private User hostUser;
@@ -76,7 +81,7 @@ class ItineraryItemServiceTest {
     void setUp() {
         itineraryItemService = new ItineraryItemService(
                 tripDayRepository, itineraryItemRepository, voteOptionRepository, descriptionGenerator,
-                participantRepository, voteRepository);
+                participantRepository, voteRepository, s3PresignService);
 
         hostUser = new User("host", "hashed-password");
         ReflectionTestUtils.setField(hostUser, "id", 1L);
@@ -98,8 +103,9 @@ class ItineraryItemServiceTest {
 
         ItineraryItemCreateResponseDto response = itineraryItemService.createItineraryItem(
                 1L, 10L,
-                new ItineraryItemCreateRequestDto("점심 메뉴", "식사", "VOTE", List.of("스시", "라멘")),
-                null);
+                new ItineraryItemCreateRequestDto("점심 메뉴", "식사", "VOTE", List.of(
+                        new VoteOptionCreateItemDto("스시", null),
+                        new VoteOptionCreateItemDto("라멘", null))));
 
         assertThat(response.name()).isEqualTo("점심 메뉴");
         assertThat(response.decisionType()).isEqualTo("VOTE");
@@ -109,35 +115,31 @@ class ItineraryItemServiceTest {
         assertThat(response.voteOptions().get(0).name()).isEqualTo("스시");
         assertThat(response.voteOptions().get(0).description()).isEqualTo("AI가 생성한 설명");
         assertThat(response.voteOptions().get(0).descriptionSource()).isEqualTo("AI");
-        assertThat(response.voteOptions().get(0).hasImage()).isFalse();
+        assertThat(response.voteOptions().get(0).imageUrl()).isNull();
     }
 
     @Test
-    @DisplayName("선택지에 이미지가 있으면 바이트와 콘텐츠 타입을 함께 저장한다")
-    void 선택지에_이미지가_있으면_바이트와_콘텐츠_타입을_함께_저장한다() {
+    @DisplayName("선택지에 이미지 key가 있으면 함께 저장하고 공개 URL을 응답에 담는다")
+    void 선택지에_이미지_key가_있으면_함께_저장하고_공개_URL을_응답에_담는다() {
         when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
         when(itineraryItemRepository.findMaxSortOrderByTripDayId(10L)).thenReturn(0);
         when(itineraryItemRepository.save(any(ItineraryItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(voteOptionRepository.save(any(VoteOption.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(descriptionGenerator.generate(anyString())).thenReturn("AI가 생성한 설명");
 
-        MockMultipartFile image = new MockMultipartFile(
-                "optionImages", "sushi.jpg", "image/jpeg", "image-bytes".getBytes(StandardCharsets.UTF_8));
-        MockMultipartFile noImage = new MockMultipartFile("optionImages", new byte[0]);
-
         ItineraryItemCreateResponseDto response = itineraryItemService.createItineraryItem(
                 1L, 10L,
-                new ItineraryItemCreateRequestDto("점심 메뉴", "식사", "VOTE", List.of("스시", "라멘")),
-                List.of(image, noImage));
+                new ItineraryItemCreateRequestDto("점심 메뉴", "식사", "VOTE", List.of(
+                        new VoteOptionCreateItemDto("스시", "uploads/vote-options/a-sushi.jpg"),
+                        new VoteOptionCreateItemDto("라멘", null))));
 
-        assertThat(response.voteOptions().get(0).hasImage()).isTrue();
-        assertThat(response.voteOptions().get(1).hasImage()).isFalse();
+        assertThat(response.voteOptions().get(0).imageUrl()).contains("uploads/vote-options/a-sushi.jpg");
+        assertThat(response.voteOptions().get(1).imageUrl()).isNull();
 
         ArgumentCaptor<VoteOption> captor = ArgumentCaptor.forClass(VoteOption.class);
         verify(voteOptionRepository, times(2)).save(captor.capture());
-        assertThat(captor.getAllValues().get(0).getImage()).isEqualTo("image-bytes".getBytes(StandardCharsets.UTF_8));
-        assertThat(captor.getAllValues().get(0).getImageContentType()).isEqualTo("image/jpeg");
-        assertThat(captor.getAllValues().get(1).getImage()).isNull();
+        assertThat(captor.getAllValues().get(0).getImageKey()).isEqualTo("uploads/vote-options/a-sushi.jpg");
+        assertThat(captor.getAllValues().get(1).getImageKey()).isNull();
     }
 
     @Test
@@ -149,8 +151,8 @@ class ItineraryItemServiceTest {
 
         ItineraryItemCreateResponseDto response = itineraryItemService.createItineraryItem(
                 1L, 10L,
-                new ItineraryItemCreateRequestDto("숙소", "숙박", "HOST_PICK", List.of("무시될 옵션")),
-                null);
+                new ItineraryItemCreateRequestDto("숙소", "숙박", "HOST_PICK",
+                        List.of(new VoteOptionCreateItemDto("무시될 옵션", null))));
 
         assertThat(response.voteOptions()).isEmpty();
         verify(voteOptionRepository, never()).save(any());
@@ -162,7 +164,7 @@ class ItineraryItemServiceTest {
         when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> itineraryItemService.createItineraryItem(
-                1L, 10L, new ItineraryItemCreateRequestDto("점심 메뉴", "식사", "VOTE", List.of()), null))
+                1L, 10L, new ItineraryItemCreateRequestDto("점심 메뉴", "식사", "VOTE", List.of())))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.TRIP_DAY_NOT_FOUND));
     }
@@ -173,7 +175,7 @@ class ItineraryItemServiceTest {
         when(tripDayRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(tripDay));
 
         assertThatThrownBy(() -> itineraryItemService.createItineraryItem(
-                999L, 10L, new ItineraryItemCreateRequestDto("점심 메뉴", "식사", "VOTE", List.of()), null))
+                999L, 10L, new ItineraryItemCreateRequestDto("점심 메뉴", "식사", "VOTE", List.of())))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.NOT_TRIP_HOST));
     }
@@ -186,8 +188,12 @@ class ItineraryItemServiceTest {
         assertThatThrownBy(() -> itineraryItemService.createItineraryItem(
                 1L, 10L,
                 new ItineraryItemCreateRequestDto("점심 메뉴", "식사", "VOTE",
-                        List.of("1", "2", "3", "4", "5")),
-                null))
+                        List.of(
+                                new VoteOptionCreateItemDto("1", null),
+                                new VoteOptionCreateItemDto("2", null),
+                                new VoteOptionCreateItemDto("3", null),
+                                new VoteOptionCreateItemDto("4", null),
+                                new VoteOptionCreateItemDto("5", null)))))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_OPTION_COUNT_EXCEEDED));
     }
@@ -256,9 +262,9 @@ class ItineraryItemServiceTest {
         ItineraryItem itineraryItem = new ItineraryItem(
                 tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
         ReflectionTestUtils.setField(itineraryItem, "id", 100L);
-        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null);
         ReflectionTestUtils.setField(sushi, "id", 1L);
-        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null, null);
+        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null);
         ReflectionTestUtils.setField(ramen, "id", 2L);
         when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
         when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of(sushi, ramen));
@@ -275,9 +281,9 @@ class ItineraryItemServiceTest {
         ItineraryItem itineraryItem = new ItineraryItem(
                 tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
         ReflectionTestUtils.setField(itineraryItem, "id", 100L);
-        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null);
         ReflectionTestUtils.setField(sushi, "id", 1L);
-        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null, null);
+        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null);
         ReflectionTestUtils.setField(ramen, "id", 2L);
         when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
         when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of(sushi, ramen));
@@ -294,9 +300,9 @@ class ItineraryItemServiceTest {
         ItineraryItem itineraryItem = new ItineraryItem(
                 tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
         ReflectionTestUtils.setField(itineraryItem, "id", 100L);
-        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null);
         ReflectionTestUtils.setField(sushi, "id", 1L);
-        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null, null);
+        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null);
         ReflectionTestUtils.setField(ramen, "id", 2L);
         when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
         when(voteOptionRepository.findByItineraryItem(itineraryItem))
@@ -319,7 +325,7 @@ class ItineraryItemServiceTest {
         ItineraryItem itineraryItem = new ItineraryItem(
                 tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
         ReflectionTestUtils.setField(itineraryItem, "id", 100L);
-        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null);
         ReflectionTestUtils.setField(sushi, "id", 1L);
         when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
         when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of(sushi));
@@ -338,7 +344,7 @@ class ItineraryItemServiceTest {
         ItineraryItem itineraryItem = new ItineraryItem(
                 tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
         ReflectionTestUtils.setField(itineraryItem, "id", 100L);
-        VoteOption voteOption = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        VoteOption voteOption = new VoteOption(itineraryItem, "스시", "설명", "AI", null);
         when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
         when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of(voteOption));
 
@@ -367,9 +373,9 @@ class ItineraryItemServiceTest {
         ItineraryItem itineraryItem = new ItineraryItem(
                 tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
         ReflectionTestUtils.setField(itineraryItem, "id", 100L);
-        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null);
         ReflectionTestUtils.setField(sushi, "id", 1L);
-        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null, null);
+        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null);
         ReflectionTestUtils.setField(ramen, "id", 2L);
 
         Participant mom = new Participant(tripDay.getTrip(), "엄마", LocalDateTime.now());

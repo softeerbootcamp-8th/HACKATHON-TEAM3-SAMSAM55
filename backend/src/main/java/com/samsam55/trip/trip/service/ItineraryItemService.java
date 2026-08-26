@@ -6,6 +6,7 @@ import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemUpdateRequestDto;
+import com.samsam55.trip.trip.dto.VoteOptionCreateItemDto;
 import com.samsam55.trip.trip.dto.VoteOptionSummaryDto;
 import com.samsam55.trip.trip.dto.VoteResultParticipantResponseDto;
 import com.samsam55.trip.trip.dto.VoteStatusOptionResponseDto;
@@ -25,17 +26,14 @@ import com.samsam55.trip.trip.repository.ParticipantRepository;
 import com.samsam55.trip.trip.repository.TripDayRepository;
 import com.samsam55.trip.trip.repository.VoteOptionRepository;
 import com.samsam55.trip.trip.repository.VoteRepository;
-import java.io.IOException;
-import java.io.UncheckedIOException;
+import com.samsam55.trip.upload.service.S3PresignService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +47,7 @@ public class ItineraryItemService {
     private final VoteOptionDescriptionGenerator descriptionGenerator;
     private final ParticipantRepository participantRepository;
     private final VoteRepository voteRepository;
+    private final S3PresignService s3PresignService;
 
     /**
      * 일차에 새 일정 항목을 생성한다. 결정 방식이 VOTE이고 선택지가 있으면
@@ -56,9 +55,7 @@ public class ItineraryItemService {
      *
      * @param loginUserId 요청한 회원의 식별자
      * @param tripDayId 일정 항목을 추가할 일차의 식별자
-     * @param request 이름·카테고리·결정 방식·선택지가 담긴 생성 요청
-     * @param optionImages 선택지별 이미지. {@code options}와 같은 순서로 매칭되며, 특정 선택지에
-     *                      이미지가 없으면 그 자리에 빈 파일이 오거나 리스트가 더 짧을 수 있다.
+     * @param request 이름·카테고리·결정 방식·선택지(사진은 미리 업로드한 S3 key로 전달)가 담긴 생성 요청
      * @return 생성된 일정 항목과 선택지 목록
      * @throws ApplicationException 일차를 찾을 수 없을 때(TRIP_DAY_NOT_FOUND)
      * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
@@ -66,7 +63,7 @@ public class ItineraryItemService {
      */
     @Transactional
     public ItineraryItemCreateResponseDto createItineraryItem(
-            Long loginUserId, Long tripDayId, ItineraryItemCreateRequestDto request, List<MultipartFile> optionImages) {
+            Long loginUserId, Long tripDayId, ItineraryItemCreateRequestDto request) {
         // 같은 일차에 동시에 생성 요청이 오면 sortOrder가 겹칠 수 있어 TripDay row를 잠그고 진행
         TripDay tripDay = tripDayRepository.findByIdForUpdate(tripDayId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.TRIP_DAY_NOT_FOUND));
@@ -77,10 +74,10 @@ public class ItineraryItemService {
 
         // HOST_PICK은 선택지를 무시하고, VOTE는 최대 4개까지만 허용
         ItineraryItemDecisionType decisionType = ItineraryItemDecisionType.valueOf(request.decisionType());
-        List<String> optionNames = decisionType == ItineraryItemDecisionType.VOTE
+        List<VoteOptionCreateItemDto> options = decisionType == ItineraryItemDecisionType.VOTE
                 ? Optional.ofNullable(request.options()).orElseGet(List::of)
                 : List.of();
-        if (optionNames.size() > MAX_VOTE_OPTION_COUNT) {
+        if (options.size() > MAX_VOTE_OPTION_COUNT) {
             throw new ApplicationException(TripErrorType.VOTE_OPTION_COUNT_EXCEEDED);
         }
 
@@ -91,22 +88,17 @@ public class ItineraryItemService {
                 ItineraryItemStatus.PENDING, sortOrder, null
         ));
 
-        // 선택지별로 AI 설명을 동기 생성하고, 있으면 이미지도 함께 저장
-        List<MultipartFile> images = optionImages != null ? optionImages : List.of();
-        List<VoteOptionSummaryDto> voteOptions = IntStream.range(0, optionNames.size())
-                .mapToObj(i -> {
-                    String optionName = optionNames.get(i);
-                    MultipartFile image = i < images.size() ? images.get(i) : null;
-                    return voteOptionRepository.save(new VoteOption(
-                            itineraryItem,
-                            optionName,
-                            descriptionGenerator.generate(optionName),
-                            descriptionGenerator.getSource(),
-                            hasContent(image) ? readBytes(image) : null,
-                            hasContent(image) ? image.getContentType() : null
-                    ));
-                })
-                .map(VoteOptionSummaryDto::from)
+        // 선택지별로 AI 설명을 동기 생성하고, 있으면 이미지 key도 함께 저장
+        List<VoteOptionSummaryDto> voteOptions = options.stream()
+                .map(option -> voteOptionRepository.save(new VoteOption(
+                        itineraryItem,
+                        option.name(),
+                        descriptionGenerator.generate(option.name()),
+                        descriptionGenerator.getSource(),
+                        option.imageKey()
+                )))
+                .map(voteOption -> VoteOptionSummaryDto.from(
+                        voteOption, s3PresignService.toPublicUrl(voteOption.getImageKey())))
                 .toList();
 
         return ItineraryItemCreateResponseDto.from(itineraryItem, voteOptions);
@@ -169,7 +161,8 @@ public class ItineraryItemService {
         itineraryItem.update(request.name(), request.category(), newDecisionType);
 
         List<VoteOptionSummaryDto> voteOptions = voteOptionRepository.findByItineraryItem(itineraryItem).stream()
-                .map(VoteOptionSummaryDto::from)
+                .map(voteOption -> VoteOptionSummaryDto.from(
+                        voteOption, s3PresignService.toPublicUrl(voteOption.getImageKey())))
                 .toList();
         return ItineraryItemDetailResponseDto.from(itineraryItem, voteOptions);
     }
@@ -193,7 +186,8 @@ public class ItineraryItemService {
         }
 
         List<VoteOptionSummaryDto> voteOptions = voteOptionRepository.findByItineraryItem(itineraryItem).stream()
-                .map(VoteOptionSummaryDto::from)
+                .map(voteOption -> VoteOptionSummaryDto.from(
+                        voteOption, s3PresignService.toPublicUrl(voteOption.getImageKey())))
                 .toList();
 
         return ItineraryItemDetailResponseDto.from(itineraryItem, voteOptions);
@@ -266,17 +260,5 @@ public class ItineraryItemService {
         itineraryItemRepository.clearConfirmedOptionByItemId(itemId);
         voteOptionRepository.deleteAllByItineraryItemId(itemId);
         itineraryItemRepository.delete(itineraryItem);
-    }
-
-    private boolean hasContent(MultipartFile file) {
-        return file != null && !file.isEmpty();
-    }
-
-    private byte[] readBytes(MultipartFile file) {
-        try {
-            return file.getBytes();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 }

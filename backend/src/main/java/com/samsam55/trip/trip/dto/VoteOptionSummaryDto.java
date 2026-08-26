@@ -7,16 +7,16 @@ public record VoteOptionSummaryDto(
         String name,
         String description,
         String descriptionSource,
-        boolean hasImage
+        String imageUrl
 ) {
 
-    public static VoteOptionSummaryDto from(VoteOption voteOption) {
+    public static VoteOptionSummaryDto from(VoteOption voteOption, String imageUrl) {
         return new VoteOptionSummaryDto(
                 voteOption.getId(),
                 voteOption.getName(),
                 voteOption.getDescription(),
                 voteOption.getDescriptionSource(),
-                voteOption.getImage() != null
+                imageUrl
         );
     }
 }

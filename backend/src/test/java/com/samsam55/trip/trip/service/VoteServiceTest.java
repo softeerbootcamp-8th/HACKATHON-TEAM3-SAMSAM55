@@ -85,7 +85,7 @@ class VoteServiceTest {
     }
 
     private VoteOption voteOption(ItineraryItem item, Long id) {
-        VoteOption option = new VoteOption(item, "스시", "설명", "AI", null, null);
+        VoteOption option = new VoteOption(item, "스시", "설명", "AI", null);
         ReflectionTestUtils.setField(option, "id", id);
         return option;
     }

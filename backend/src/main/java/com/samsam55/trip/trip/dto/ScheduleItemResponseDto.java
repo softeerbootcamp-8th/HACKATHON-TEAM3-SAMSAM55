@@ -17,7 +17,8 @@ public record ScheduleItemResponseDto(
     public static ScheduleItemResponseDto of(
             ItineraryItem item,
             int votedCount,
-            long totalParticipants
+            long totalParticipants,
+            String confirmedOptionImageUrl
     ) {
         return new ScheduleItemResponseDto(
                 item.getId(),
@@ -28,7 +29,7 @@ public record ScheduleItemResponseDto(
                 item.getSortOrder(),
                 votedCount,
                 totalParticipants,
-                ScheduleConfirmedOptionResponseDto.from(item.getConfirmedOption())
+                ScheduleConfirmedOptionResponseDto.from(item.getConfirmedOption(), confirmedOptionImageUrl)
         );
     }
 }

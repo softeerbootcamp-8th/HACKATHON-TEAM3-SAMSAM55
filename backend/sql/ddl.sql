@@ -32,8 +32,7 @@ CREATE TABLE `vote_option` (
                                `name`	VARCHAR(100)	NOT NULL,
                                `description`	TEXT	NULL,
                                `description_source`	VARCHAR(20)	NOT NULL,
-                               `image`	LONGBLOB	NULL,
-                               `image_content_type`	VARCHAR(100)	NULL,
+                               `image_key`	VARCHAR(500)	NULL,
                                `tags`	TEXT	NULL,
                                `created_at`	DATETIME	NOT NULL,
                                `updated_at`	DATETIME	NOT NULL

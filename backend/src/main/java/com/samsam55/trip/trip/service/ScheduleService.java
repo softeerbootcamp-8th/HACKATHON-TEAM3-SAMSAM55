@@ -20,6 +20,7 @@ import com.samsam55.trip.trip.repository.TripDayRepository;
 import com.samsam55.trip.trip.repository.TripRepository;
 import com.samsam55.trip.trip.repository.VoteOptionRepository;
 import com.samsam55.trip.trip.repository.VoteRepository;
+import com.samsam55.trip.upload.service.S3PresignService;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -40,6 +41,7 @@ public class ScheduleService {
     private final ParticipantRepository participantRepository;
     private final VoteRepository voteRepository;
     private final VoteOptionRepository voteOptionRepository;
+    private final S3PresignService s3PresignService;
 
     /**
      * 현재 참여자가 속한 여행의 날짜별 일정 목록을 조회한다. 응답의 {@code votingCount}는
@@ -75,7 +77,10 @@ public class ScheduleService {
                                 item -> ScheduleItemResponseDto.of(
                                         item,
                                         votedCounts.getOrDefault(item.getId(), 0),
-                                        totalParticipants
+                                        totalParticipants,
+                                        item.getConfirmedOption() == null
+                                                ? null
+                                                : s3PresignService.toPublicUrl(item.getConfirmedOption().getImageKey())
                                 ),
                                 Collectors.toList()
                         )
@@ -139,6 +144,7 @@ public class ScheduleService {
         List<VoteResultOptionResponseDto> optionResults = options.stream()
                 .map(option -> VoteResultOptionResponseDto.of(
                         option,
+                        s3PresignService.toPublicUrl(option.getImageKey()),
                         findVoters(option, participants, votesByParticipantId),
                         option.getId().equals(confirmedOptionId)
                 ))

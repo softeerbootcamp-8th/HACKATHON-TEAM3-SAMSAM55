@@ -5,7 +5,8 @@
  * OpenAPI spec version: v0
  */
 
-export interface ItineraryItemCreateForm {
-  request?: string;
-  optionImages?: Blob[];
+export interface PresignedUrlResponseDto {
+  uploadUrl?: string;
+  key?: string;
+  imageUrl?: string;
 }

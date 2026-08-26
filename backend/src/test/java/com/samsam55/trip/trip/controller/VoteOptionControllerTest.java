@@ -1,38 +1,31 @@
 package com.samsam55.trip.trip.controller;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samsam55.trip.auth.argumentresolver.LoginUserArgumentResolver;
-import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.global.exception.GlobalErrorType;
 import com.samsam55.trip.global.exception.GlobalExceptionHandler;
-import com.samsam55.trip.trip.dto.VoteOptionImageDto;
 import com.samsam55.trip.trip.dto.VoteOptionSummaryDto;
 import com.samsam55.trip.trip.exception.TripErrorType;
 import com.samsam55.trip.trip.service.VoteOptionService;
-import jakarta.servlet.http.HttpServletRequest;
-import java.nio.charset.StandardCharsets;
+import jakarta.validation.Validation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.SpringValidatorAdapter;
 
 @ExtendWith(MockitoExtension.class)
 class VoteOptionControllerTest {
@@ -40,56 +33,15 @@ class VoteOptionControllerTest {
     @Mock
     private VoteOptionService voteOptionService;
 
-    @Mock
-    private AuthService authService;
-
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new VoteOptionController(voteOptionService, authService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new VoteOptionController(voteOptionService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new LoginUserArgumentResolver())
+                .setValidator(new SpringValidatorAdapter(Validation.buildDefaultValidatorFactory().getValidator()))
                 .build();
-    }
-
-    @Test
-    @DisplayName("선택지 이미지 요청은 이미지 바이트를 그대로 반환한다")
-    void 선택지_이미지_요청은_이미지_바이트를_그대로_반환한다() throws Exception {
-        byte[] bytes = "image-bytes".getBytes(StandardCharsets.UTF_8);
-        AuthMeResponseDto actor = AuthMeResponseDto.ofHost(1L);
-        when(authService.me(any(HttpServletRequest.class))).thenReturn(actor);
-        when(voteOptionService.getImage(eq(actor), eq(1L)))
-                .thenReturn(new VoteOptionImageDto(bytes, "image/jpeg"));
-
-        mockMvc.perform(get("/api/vote-options/1/image"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.IMAGE_JPEG))
-                .andExpect(content().bytes(bytes));
-
-        verify(voteOptionService).getImage(actor, 1L);
-    }
-
-    @Test
-    @DisplayName("이미지가 없는 선택지는 404 공통 에러 응답으로 반환한다")
-    void 이미지가_없는_선택지는_404_공통_에러_응답으로_반환한다() throws Exception {
-        AuthMeResponseDto actor = AuthMeResponseDto.ofHost(1L);
-        when(authService.me(any(HttpServletRequest.class))).thenReturn(actor);
-        when(voteOptionService.getImage(eq(actor), eq(1L)))
-                .thenThrow(new ApplicationException(TripErrorType.VOTE_OPTION_IMAGE_NOT_FOUND));
-
-        mockMvc.perform(get("/api/vote-options/1/image"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("인증하지 않은 요청은 401로 반환한다")
-    void 인증하지_않은_요청은_401로_반환한다() throws Exception {
-        when(authService.me(any(HttpServletRequest.class)))
-                .thenThrow(new ApplicationException(com.samsam55.trip.auth.exception.AuthErrorType.UNAUTHENTICATED));
-
-        mockMvc.perform(get("/api/vote-options/1/image"))
-                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -107,7 +59,7 @@ class VoteOptionControllerTest {
     @Test
     @DisplayName("투표가 시작된 선택지 삭제 요청은 409 공통 에러 응답으로 반환한다")
     void 투표가_시작된_선택지_삭제_요청은_409_공통_에러_응답으로_반환한다() throws Exception {
-        org.mockito.Mockito.doThrow(new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED))
+        Mockito.doThrow(new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED))
                 .when(voteOptionService).deleteVoteOption(1L, 1L);
 
         mockMvc.perform(delete("/api/vote-options/1")
@@ -120,11 +72,13 @@ class VoteOptionControllerTest {
     @DisplayName("선택지 수정 요청은 200과 공통 응답 형식으로 반환한다")
     void 선택지_수정_요청은_200과_공통_응답_형식으로_반환한다() throws Exception {
         when(voteOptionService.updateVoteOption(1L, 1L, "라멘", "설명", null))
-                .thenReturn(new VoteOptionSummaryDto(1L, "라멘", "설명", "HOST", false));
+                .thenReturn(new VoteOptionSummaryDto(1L, "라멘", "설명", "HOST", null));
 
-        mockMvc.perform(multipart(HttpMethod.PUT, "/api/vote-options/1")
-                        .param("name", "라멘")
-                        .param("description", "설명")
+        mockMvc.perform(put("/api/vote-options/1")
+                        .contentType("application/json")
+                        .content("""
+                                {"name":"라멘","description":"설명","imageKey":null}
+                                """)
                         .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -135,11 +89,11 @@ class VoteOptionControllerTest {
     @Test
     @DisplayName("이름 없이 선택지 수정 요청을 보내면 400 공통 에러 응답으로 반환한다")
     void 이름_없이_선택지_수정_요청을_보내면_400_공통_에러_응답으로_반환한다() throws Exception {
-        when(voteOptionService.updateVoteOption(1L, 1L, "  ", null, null))
-                .thenThrow(new ApplicationException(GlobalErrorType.INVALID_INPUT_VALUE));
-
-        mockMvc.perform(multipart(HttpMethod.PUT, "/api/vote-options/1")
-                        .param("name", "  ")
+        mockMvc.perform(put("/api/vote-options/1")
+                        .contentType("application/json")
+                        .content("""
+                                {"name":"  ","description":null,"imageKey":null}
+                                """)
                         .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"));
@@ -151,9 +105,11 @@ class VoteOptionControllerTest {
         when(voteOptionService.updateVoteOption(1L, 1L, "라멘", "설명", null))
                 .thenThrow(new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED));
 
-        mockMvc.perform(multipart(HttpMethod.PUT, "/api/vote-options/1")
-                        .param("name", "라멘")
-                        .param("description", "설명")
+        mockMvc.perform(put("/api/vote-options/1")
+                        .contentType("application/json")
+                        .content("""
+                                {"name":"라멘","description":"설명","imageKey":null}
+                                """)
                         .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("VOTE_ALREADY_STARTED"));
