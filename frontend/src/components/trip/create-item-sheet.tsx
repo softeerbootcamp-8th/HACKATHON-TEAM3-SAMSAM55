@@ -8,6 +8,7 @@ import {
   useCreateVoteOption,
 } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
 import { getFindTripQueryKey } from '@/api/generated/trip-controller/trip-controller'
+import { useConfirm } from '@/api/generated/vote-controller/vote-controller'
 import { AppBar } from '@/components/ui/app-bar'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Button } from '@/components/ui/button'
@@ -153,6 +154,7 @@ function CreateItemSheet({
 
   const createItineraryItemMutation = useCreateItineraryItem()
   const createVoteOptionMutation = useCreateVoteOption()
+  const confirmMutation = useConfirm()
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
@@ -216,7 +218,8 @@ function CreateItemSheet({
           const finish = () => onCreated(created.id!)
 
           // HOST_PICK은 생성 시점엔 선택지가 없으므로, 입력한 장소를 바로
-          // 선택지로 추가한다.
+          // 선택지로 추가하고 그 자리에서 확정까지 시킨다. 확정을 안 하면
+          // 상세 화면이 PENDING 상태로 남아 수정 화면처럼 보인다.
           if (decisionType === 'HOST_PICK' && decidedPlace.trim().length > 0) {
             createVoteOptionMutation.mutate(
               {
@@ -226,7 +229,23 @@ function CreateItemSheet({
                   imageKey: decidedPlaceImageKey,
                 },
               },
-              { onSuccess: finish, onError: finish },
+              {
+                onSuccess: (optionResponse) => {
+                  const optionId = optionResponse.data?.id
+                  if (optionId === undefined) {
+                    finish()
+                    return
+                  }
+                  confirmMutation.mutate(
+                    {
+                      itemId: created.id!,
+                      data: { voteOptionId: optionId },
+                    },
+                    { onSuccess: finish, onError: finish },
+                  )
+                },
+                onError: finish,
+              },
             )
             return
           }
@@ -240,7 +259,8 @@ function CreateItemSheet({
   const isSubmitting =
     isUploading ||
     createItineraryItemMutation.isPending ||
-    createVoteOptionMutation.isPending
+    createVoteOptionMutation.isPending ||
+    confirmMutation.isPending
 
   return (
     <BottomSheet
