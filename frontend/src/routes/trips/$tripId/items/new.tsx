@@ -110,6 +110,21 @@ function CreateItemPage() {
     { name: '', image: null },
   ])
   const [decidedPlace, setDecidedPlace] = useState('')
+  const [decidedPlaceImage, setDecidedPlaceImage] = useState<File | null>(null)
+  const [decidedPlacePreviewUrl, setDecidedPlacePreviewUrl] = useState<
+    string | null
+  >(null)
+  const decidedPlaceFileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!decidedPlaceImage) {
+      setDecidedPlacePreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(decidedPlaceImage)
+    setDecidedPlacePreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [decidedPlaceImage])
 
   const currentDayId = selectedDayId ?? days[0]?.id ?? null
 
@@ -164,7 +179,11 @@ function CreateItemPage() {
           // 선택지로 추가한다 — 서버가 HOST_PICK 선택지 추가 시 즉시 확정한다.
           if (decisionType === 'HOST_PICK' && decidedPlace.trim().length > 0) {
             createVoteOptionMutation.mutate(
-              { itemId: created.id, params: { name: decidedPlace.trim() } },
+              {
+                itemId: created.id,
+                params: { name: decidedPlace.trim() },
+                data: { image: decidedPlaceImage ?? undefined },
+              },
               { onSuccess: goToItem, onError: goToItem },
             )
             return
@@ -301,9 +320,31 @@ function CreateItemPage() {
             />
             <div className="flex flex-col gap-2">
               <p className="text-caption text-muted-foreground">사진</p>
-              <div className="flex size-[75px] items-center justify-center rounded-card border-[1.5px] border-dashed border-border bg-muted">
-                <Camera className="size-4 text-muted-foreground" />
-              </div>
+              <button
+                type="button"
+                aria-label="사진 추가"
+                onClick={() => decidedPlaceFileInputRef.current?.click()}
+                className="flex size-[75px] items-center justify-center overflow-hidden rounded-card border-[1.5px] border-dashed border-border bg-muted"
+              >
+                {decidedPlacePreviewUrl ? (
+                  <img
+                    src={decidedPlacePreviewUrl}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <Camera className="size-4 text-muted-foreground" />
+                )}
+              </button>
+              <input
+                ref={decidedPlaceFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) =>
+                  setDecidedPlaceImage(event.target.files?.[0] ?? null)
+                }
+              />
               <p className="text-caption-sm text-muted-foreground">
                 사진을 넣으면 부모님이 확정 일정표에서 보기 편해요
               </p>
