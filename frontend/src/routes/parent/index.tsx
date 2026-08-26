@@ -1,6 +1,13 @@
+import { useEffect, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
+import {
+  getMeQueryKey,
+  useLogout,
+} from '@/api/generated/auth-controller/auth-controller'
 import { useFindSchedule } from '@/api/generated/schedule-controller/schedule-controller'
+import { InviteErrorState } from '@/components/invite/invite-error-state'
 import { Button } from '@/components/ui/button'
 import { DayTab } from '@/components/trip/day-tab'
 import { ItemCard } from '@/components/trip/item-card'
@@ -27,12 +34,19 @@ export const Route = createFileRoute('/parent/')({
 
 function ParentHomePage() {
   const navigate = useNavigate({ from: '/parent/' })
+  const queryClient = useQueryClient()
   const { day: selectedDayParam } = Route.useSearch()
   const { tripId } = Route.useRouteContext()
+  const { mutate: logoutParticipant } = useLogout()
+  const logoutStartedRef = useRef(false)
 
   const scheduleQuery = useFindSchedule(tripId ?? 0, {
     query: { enabled: tripId !== undefined, retry: false },
   })
+  const scheduleErrorCode =
+    scheduleQuery.data?.error?.code ?? getApiError(scheduleQuery.error)?.code
+  const shouldClearParticipantSession =
+    scheduleQuery.isError && scheduleErrorCode === 'TRIP_NOT_FOUND'
   const schedule = scheduleQuery.data?.success
     ? scheduleQuery.data.data
     : undefined
@@ -47,6 +61,21 @@ function ParentHomePage() {
     .find((item) => item.status === 'VOTING')
   const dayScrollHandlers = useHorizontalDragScroll()
 
+  useEffect(() => {
+    if (!shouldClearParticipantSession || logoutStartedRef.current) {
+      return
+    }
+
+    // 삭제된 여행의 참여자 세션과 복구 쿠키가 남아 있으면 초대 링크 접근 시
+    // 삭제된 여행의 /parent로 다시 이동하므로, 만료된 인증을 함께 정리한다.
+    logoutStartedRef.current = true
+    logoutParticipant(undefined, {
+      onSettled: () => {
+        queryClient.removeQueries({ queryKey: getMeQueryKey() })
+      },
+    })
+  }, [logoutParticipant, queryClient, shouldClearParticipantSession])
+
   if (scheduleQuery.isLoading) {
     return (
       <MobileScreen>
@@ -60,11 +89,13 @@ function ParentHomePage() {
   if (scheduleQuery.isError || !schedule) {
     return (
       <MobileScreen>
-        <p className="px-5 pt-4 text-[14px] text-destructive">
-          {getApiError(scheduleQuery.error)?.message ??
-            scheduleQuery.data?.error?.message ??
-            '일정을 불러오지 못했습니다.'}
-        </p>
+        <InviteErrorState
+          error={scheduleQuery.error}
+          errorCode={scheduleQuery.data?.error?.code}
+          variant={
+            scheduleErrorCode === 'TRIP_NOT_FOUND' ? 'invite' : 'generic'
+          }
+        />
       </MobileScreen>
     )
   }
