@@ -127,6 +127,24 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("로그아웃 시 현재 세션과 참여자 복구 쿠키를 무효화한다")
+    void 로그아웃_시_현재_세션과_참여자_복구_쿠키를_무효화한다() {
+        when(servletRequest.getSession(false)).thenReturn(session);
+
+        authService.logout(servletRequest, servletResponse);
+
+        verify(session).invalidate();
+        ArgumentCaptor<Cookie> cookieCaptor = ArgumentCaptor.forClass(Cookie.class);
+        verify(servletResponse).addCookie(cookieCaptor.capture());
+        Cookie cookie = cookieCaptor.getValue();
+        assertThat(cookie.getName()).isEqualTo(InviteService.RECOVERY_COOKIE_NAME);
+        assertThat(cookie.getValue()).isEmpty();
+        assertThat(cookie.getPath()).isEqualTo("/");
+        assertThat(cookie.isHttpOnly()).isTrue();
+        assertThat(cookie.getMaxAge()).isZero();
+    }
+
+    @Test
     @DisplayName("HOST도 PARTICIPANT도 아니면 UNAUTHENTICATED 에러를 던진다")
     void HOST도_참여자도_아니면_에러를_던진다() {
         when(servletRequest.getSession(false)).thenReturn(null);

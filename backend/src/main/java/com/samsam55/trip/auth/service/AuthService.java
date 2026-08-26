@@ -91,15 +91,17 @@ public class AuthService {
     }
 
     /**
-     * 현재 요청의 세션을 무효화한다.
+     * 현재 세션과 참여자 복구용 쿠키를 함께 무효화한다.
      *
      * @param servletRequest 현재 HTTP 요청
+     * @param servletResponse 복구용 쿠키를 만료시킬 현재 HTTP 응답
      */
-    public void logout(HttpServletRequest servletRequest) {
+    public void logout(HttpServletRequest servletRequest, HttpServletResponse servletResponse) {
         HttpSession session = servletRequest.getSession(false);
         if (session != null) {
             session.invalidate();
         }
+        expireParticipantRecoveryCookie(servletResponse);
     }
 
     /**

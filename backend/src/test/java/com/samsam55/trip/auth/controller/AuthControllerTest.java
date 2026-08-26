@@ -165,7 +165,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data").isEmpty())
                 .andExpect(jsonPath("$.error").isEmpty());
 
-        verify(authService).logout(any(HttpServletRequest.class));
+        verify(authService).logout(any(HttpServletRequest.class), any(HttpServletResponse.class));
     }
 
     @Test
