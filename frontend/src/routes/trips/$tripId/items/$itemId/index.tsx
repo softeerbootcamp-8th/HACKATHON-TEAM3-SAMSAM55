@@ -27,6 +27,7 @@ import { AddOptionSheet } from '@/components/trip/add-option-sheet'
 import { EditOptionSheet } from '@/components/trip/edit-option-sheet'
 import { ItemMoreSheet } from '@/components/trip/item-more-sheet'
 import { OptionCard } from '@/components/trip/option-card'
+import { SelectOptionDialog } from '@/components/trip/select-option-dialog'
 import { VoteStatusRow } from '@/components/trip/vote-status-row'
 import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
@@ -91,6 +92,10 @@ function ItemDetailPage() {
     React.useState<VoteOptionSummaryDto | null>(null)
   const [moreOpen, setMoreOpen] = React.useState(false)
   const [deleteItemOpen, setDeleteItemOpen] = React.useState(false)
+  const [confirmDialogOpen, setConfirmDialogOpen] = React.useState(false)
+  const [selectedConfirmOptionId, setSelectedConfirmOptionId] = React.useState<
+    number | null
+  >(null)
 
   const deleteVoteOptionMutation = useDeleteVoteOption()
   const updateVoteOptionMutation = useUpdateVoteOption()
@@ -261,11 +266,9 @@ function ItemDetailPage() {
     )
   }
 
-  const handleConfirm = () => {
-    if (leadingOption?.id === undefined) return
-
+  const handleConfirm = (optionId: number) => {
     confirmMutation.mutate(
-      { itemId: itemIdNumber, data: { voteOptionId: leadingOption.id } },
+      { itemId: itemIdNumber, data: { voteOptionId: optionId } },
       {
         onSuccess: (response) => {
           const confirmed = response.data
@@ -285,9 +288,15 @@ function ItemDetailPage() {
                   }
                 : old,
           )
+          setConfirmDialogOpen(false)
         },
       },
     )
+  }
+
+  const openConfirmDialog = () => {
+    setSelectedConfirmOptionId(leadingOption?.id ?? null)
+    setConfirmDialogOpen(true)
   }
 
   const handleUnconfirm = () => {
@@ -579,7 +588,7 @@ function ItemDetailPage() {
           <Button
             size="cta"
             disabled={!leadingOption || confirmMutation.isPending}
-            onClick={handleConfirm}
+            onClick={openConfirmDialog}
           >
             {leadingOption?.name}로 확정하기
           </Button>
@@ -591,7 +600,9 @@ function ItemDetailPage() {
           <Button
             size="cta"
             disabled={!leadingOption || confirmMutation.isPending}
-            onClick={handleConfirm}
+            onClick={() =>
+              leadingOption?.id !== undefined && handleConfirm(leadingOption.id)
+            }
           >
             {leadingOption?.name
               ? `${leadingOption.name}로 확정하기`
@@ -664,6 +675,37 @@ function ItemDetailPage() {
         confirmLabel="삭제하기"
         danger
         onConfirm={handleDeleteItem}
+      />
+      <SelectOptionDialog
+        open={confirmDialogOpen}
+        onOpenChange={setConfirmDialogOpen}
+        options={options}
+        selectedOptionId={selectedConfirmOptionId}
+        onSelect={setSelectedConfirmOptionId}
+        onConfirm={() =>
+          selectedConfirmOptionId !== null &&
+          handleConfirm(selectedConfirmOptionId)
+        }
+        title="어떤 선택지로 확정할까요?"
+        description="득표수가 가장 많은 선택지가 미리 선택돼 있어요"
+        confirmLabel="확정하기"
+        voteCounts={Object.fromEntries(
+          options.flatMap((option) => {
+            if (option.id === undefined) return []
+            const optionVotes = voteStatusByOptionId.get(option.id)
+            return [
+              [
+                option.id,
+                {
+                  voteCount: optionVotes?.voteCount ?? 0,
+                  voters: (optionVotes?.voters ?? []).map(
+                    (voter) => voter.roleName?.charAt(0) ?? '?',
+                  ),
+                },
+              ],
+            ]
+          }),
+        )}
       />
     </MobileScreen>
   )

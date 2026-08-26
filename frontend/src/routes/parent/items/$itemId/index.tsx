@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Users } from 'lucide-react'
+import { User, Users } from 'lucide-react'
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
 
 import { useFindVoteResult } from '@/api/generated/vote-result-controller/vote-result-controller'
@@ -69,6 +69,7 @@ function ParentItemDetailPage() {
   }
 
   const isConfirmed = result.status === 'CONFIRMED'
+  const isVote = result.decisionType === 'VOTE'
   const confirmedOption = result.options?.find(
     (option) => option.optionId === result.confirmedOptionId,
   )
@@ -100,8 +101,14 @@ function ParentItemDetailPage() {
         <p className="text-[24px] font-bold text-foreground">{result.name}</p>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <Users className="size-4 text-primary-deep" />
-            <span className="text-card-title text-primary-deep">투표</span>
+            {isVote ? (
+              <Users className="size-4 text-primary-deep" />
+            ) : (
+              <User className="size-4 text-primary-deep" />
+            )}
+            <span className="text-card-title text-primary-deep">
+              {isVote ? '투표' : '자녀가 결정'}
+            </span>
           </div>
           {isConfirmed ? (
             <span className="rounded-chip bg-[#e6f6e9] px-2.5 py-1 text-[12px] leading-none font-medium text-[#37b24d]">
