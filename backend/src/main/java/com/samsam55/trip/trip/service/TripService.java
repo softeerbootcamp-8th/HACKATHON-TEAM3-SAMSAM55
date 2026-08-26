@@ -151,7 +151,8 @@ public class TripService {
     }
 
     private void validateTripPeriod(LocalDate startDate, LocalDate endDate) {
-        if (startDate.isAfter(endDate)) {
+        LocalDate today = LocalDate.now();
+        if (startDate.isBefore(today) || startDate.isAfter(endDate)) {
             throw new ApplicationException(TripErrorType.INVALID_TRIP_PERIOD);
         }
         long tripLength = ChronoUnit.DAYS.between(startDate, endDate) + 1;

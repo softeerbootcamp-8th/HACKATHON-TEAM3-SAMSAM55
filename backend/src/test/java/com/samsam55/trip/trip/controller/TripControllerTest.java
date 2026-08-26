@@ -244,7 +244,8 @@ class TripControllerTest {
                                 100L,
                                 "점심 식사",
                                 "식사",
-                                "VOTING"
+                                "VOTING",
+                                "VOTE"
                         ))
                 ))
         ));

@@ -116,7 +116,9 @@ class ScheduleServiceIntegrationTest extends AbstractMySqlContainerTest {
         assertThat(schedule.days().getFirst().items().getFirst().votedCount()).isEqualTo(1);
         assertThat(schedule.days().getLast().items().getFirst().confirmedOption().id())
                 .isEqualTo(confirmedOption.getId());
-        assertThat(schedule.votingCount()).isEqualTo(1);
+        // mother는 voting 항목에 이미 투표했으므로, 항목 상태가 아직 VOTING이어도
+        // mother 본인 기준 votingCount에는 잡히지 않는다.
+        assertThat(schedule.votingCount()).isZero();
         assertThat(result.totalParticipants()).isEqualTo(3);
         assertThat(result.votedCount()).isEqualTo(2);
         assertThat(result.pendingParticipants()).extracting("participantId")

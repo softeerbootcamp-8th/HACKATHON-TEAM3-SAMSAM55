@@ -12,6 +12,7 @@ import com.samsam55.trip.trip.dto.TripCreateRequestDto;
 import com.samsam55.trip.trip.dto.TripDetailResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
+import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
@@ -181,9 +182,34 @@ class TripServiceTest {
     }
 
     @Test
+    @DisplayName("시작일이 오늘보다 이전이면 여행을 생성하지 않는다")
+    void 시작일이_오늘보다_이전이면_여행을_생성하지_않는다() {
+        LocalDate today = LocalDate.now();
+        TripCreateRequestDto request = new TripCreateRequestDto(
+                "지난 여행",
+                today.minusDays(1),
+                today,
+                List.of("엄마")
+        );
+
+        assertThatThrownBy(() -> service().createTrip(1L, request))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType().getCode()).isEqualTo("INVALID_TRIP_PERIOD"));
+        verifyNoInteractions(
+                userRepository,
+                tripRepository,
+                tripDayRepository,
+                participantRepository,
+                itineraryItemRepository,
+                voteOptionRepository,
+                voteRepository
+        );
+    }
+
+    @Test
     @DisplayName("여행 기간이 최대 365일을 초과하면 여행을 생성하지 않는다")
     void 여행_기간이_최대_365일을_초과하면_여행을_생성하지_않는다() {
-        LocalDate startDate = LocalDate.of(2026, 1, 1);
+        LocalDate startDate = LocalDate.now().plusDays(1);
         TripCreateRequestDto request = new TripCreateRequestDto(
                 "너무 긴 여행",
                 startDate,
@@ -302,6 +328,7 @@ class TripServiceTest {
         when(itineraryItem.getName()).thenReturn("점심 식사");
         when(itineraryItem.getCategory()).thenReturn("식사");
         when(itineraryItem.getStatus()).thenReturn(ItineraryItemStatus.VOTING);
+        when(itineraryItem.getDecisionType()).thenReturn(ItineraryItemDecisionType.VOTE);
 
         TripDetailResponseDto response = service().findTrip(1L, 1L);
 
@@ -314,6 +341,7 @@ class TripServiceTest {
         assertThat(response.days().getFirst().items().getFirst().name()).isEqualTo("점심 식사");
         assertThat(response.days().getFirst().items().getFirst().category()).isEqualTo("식사");
         assertThat(response.days().getFirst().items().getFirst().status()).isEqualTo("VOTING");
+        assertThat(response.days().getFirst().items().getFirst().decisionType()).isEqualTo("VOTE");
         verify(tripDayRepository).findAllByTripIdOrderByDayNumberAsc(1L);
         verify(itineraryItemRepository).findAllByTripIdOrderByDayAndSortOrder(1L);
     }

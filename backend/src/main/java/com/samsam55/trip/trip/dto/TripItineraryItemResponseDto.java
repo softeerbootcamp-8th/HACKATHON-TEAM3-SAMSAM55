@@ -6,7 +6,8 @@ public record TripItineraryItemResponseDto(
         Long id,
         String name,
         String category,
-        String status
+        String status,
+        String decisionType
 ) {
 
     public static TripItineraryItemResponseDto from(ItineraryItem itineraryItem) {
@@ -14,7 +15,8 @@ public record TripItineraryItemResponseDto(
                 itineraryItem.getId(),
                 itineraryItem.getName(),
                 itineraryItem.getCategory(),
-                itineraryItem.getStatus().name()
+                itineraryItem.getStatus().name(),
+                itineraryItem.getDecisionType().name()
         );
     }
 }

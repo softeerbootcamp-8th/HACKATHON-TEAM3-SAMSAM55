@@ -44,11 +44,13 @@ public class ScheduleService {
     private final S3PresignService s3PresignService;
 
     /**
-     * 현재 참여자가 속한 여행의 날짜별 일정 목록을 조회한다.
+     * 현재 참여자가 속한 여행의 날짜별 일정 목록을 조회한다. 응답의 {@code votingCount}는
+     * 이 참여자가 아직 투표하지 않은 VOTING 항목 개수다 — 다른 참여자의 투표 여부와는
+     * 무관하다.
      *
      * @param participant 현재 참여자
      * @param tripId 조회할 여행의 식별자
-     * @return 날짜별 일정과 투표 진행 현황
+     * @return 날짜별 일정과 이 참여자의 투표 진행 현황
      * @throws ApplicationException 여행이 없거나 조회 권한이 없을 때(TRIP_NOT_FOUND)
      */
     @Transactional(readOnly = true)
@@ -91,9 +93,11 @@ public class ScheduleService {
                         itemsByDayId.getOrDefault(day.getId(), List.of())
                 ))
                 .toList();
-        int votingCount = (int) items.stream()
-                .filter(item -> item.getStatus() == ItineraryItemStatus.VOTING)
-                .count();
+        // 트립 전체의 VOTING 개수가 아니라, 이 참여자가 아직 투표하지 않은 개수여야 한다 —
+        // 다른 참여자가 투표를 마쳐도 이 참여자 본인이 투표하기 전까지는 항목이 계속 남는다.
+        int votingCount = itineraryItemRepository
+                .findUnvotedVotingItemsOrderByDayAndSortOrder(tripId, participant.participantId())
+                .size();
 
         return ScheduleResponseDto.of(trip, votingCount, days);
     }

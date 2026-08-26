@@ -145,8 +145,8 @@ class VoteOptionServiceTest {
     }
 
     @Test
-    @DisplayName("HOST_PICK 항목에 선택지를 추가하면 즉시 확정된다")
-    void HOST_PICK_항목에_선택지를_추가하면_즉시_확정된다() {
+    @DisplayName("HOST_PICK 항목에 선택지를 추가해도 자동으로 확정되지 않는다")
+    void HOST_PICK_항목에_선택지를_추가해도_자동으로_확정되지_않는다() {
         User hostUser = new User("host", "hashed-password");
         ReflectionTestUtils.setField(hostUser, "id", 1L);
         Trip trip = new Trip(hostUser, "제주 여행",
@@ -161,9 +161,8 @@ class VoteOptionServiceTest {
 
         voteOptionService.createVoteOption(1L, 10L, "스시", null);
 
-        assertThat(hostPickItem.getStatus()).isEqualTo(ItineraryItemStatus.CONFIRMED);
-        assertThat(hostPickItem.getConfirmedOption()).isNotNull();
-        assertThat(hostPickItem.getConfirmedOption().getName()).isEqualTo("스시");
+        assertThat(hostPickItem.getStatus()).isEqualTo(ItineraryItemStatus.PENDING);
+        assertThat(hostPickItem.getConfirmedOption()).isNull();
     }
 
     @Test

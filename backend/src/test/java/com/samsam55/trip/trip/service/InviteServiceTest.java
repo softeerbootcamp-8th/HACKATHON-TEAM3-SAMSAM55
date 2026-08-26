@@ -126,6 +126,22 @@ class InviteServiceTest {
     }
 
     @Test
+    @DisplayName("이미 참여한 세션으로 입장하면 ALREADY_PARTICIPANT를 던진다")
+    void 이미_참여한_세션으로_입장하면_에러를_던진다() {
+        inviteService = newInviteService();
+        when(servletRequest.getSession(false)).thenReturn(session);
+        when(session.getAttribute(InviteService.PARTICIPANT_ID_SESSION_ATTRIBUTE)).thenReturn(12L);
+
+        assertThatThrownBy(() -> inviteService.join(
+                "valid", new InviteJoinRequestDto(99L), servletRequest, servletResponse
+        ))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ALREADY_PARTICIPANT));
+
+        verify(tripRepository, never()).findByInviteCode(any());
+    }
+
+    @Test
     @DisplayName("이미 선점된 슬롯을 다시 선택하면 PARTICIPANT_ALREADY_JOINED를 던진다")
     void 이미_선점된_슬롯을_다시_선택하면_에러를_던진다() {
         inviteService = newInviteService();
@@ -153,6 +169,7 @@ class InviteServiceTest {
         when(participant.getTrip()).thenReturn(trip);
         when(participant.getRoleName()).thenReturn("외할머니");
         when(trip.getId()).thenReturn(1L);
+        when(servletRequest.getSession(false)).thenReturn(null);
         when(servletRequest.getSession(true)).thenReturn(session);
         when(cookieSigner.sign(12L)).thenReturn("12.signature");
 

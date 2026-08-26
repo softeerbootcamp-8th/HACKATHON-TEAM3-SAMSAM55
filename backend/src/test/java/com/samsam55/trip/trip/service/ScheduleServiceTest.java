@@ -107,6 +107,25 @@ class ScheduleServiceTest {
     }
 
     @Test
+    @DisplayName("votingCount는 다른 참여자의 투표 여부와 무관하게 이 참여자가 아직 투표하지 않은 개수다")
+    void votingCount는_이_참여자가_아직_투표하지_않은_개수다() {
+        ScheduleFixture fixture = fixture();
+        List<ItineraryItem> items = List.of(fixture.votingItem);
+        when(tripRepository.findById(1L)).thenReturn(Optional.of(fixture.trip));
+        when(participantRepository.findByIdAndTrip(101L, fixture.trip))
+                .thenReturn(Optional.of(participantById(fixture, 101L)));
+        stubScheduleData(fixture, items, List.of());
+        // 다른 참여자는 아직 투표를 안 끝내서 항목 상태는 여전히 VOTING이지만,
+        // 이 참여자(101L) 본인은 이미 투표를 마쳐서 미투표 목록엔 없다.
+        when(itineraryItemRepository.findUnvotedVotingItemsOrderByDayAndSortOrder(1L, 101L))
+                .thenReturn(List.of());
+
+        ScheduleResponseDto response = scheduleService.findSchedule(participantActor(101L, 1L), 1L);
+
+        assertThat(response.votingCount()).isZero();
+    }
+
+    @Test
     @DisplayName("일정 목록은 DB에서 집계한 일정별 투표 참여자 수를 반환한다")
     void 일정_목록은_DB에서_집계한_일정별_투표_참여자_수를_반환한다() {
         ScheduleFixture fixture = fixture();
@@ -266,6 +285,12 @@ class ScheduleServiceTest {
         when(participantRepository.findByIdAndTrip(participantId, fixture.trip))
                 .thenReturn(Optional.of(participantById(fixture, participantId)));
         stubScheduleData(fixture, items, voteCounts);
+
+        List<ItineraryItem> unvotedVotingItems = items.stream()
+                .filter(item -> item.getStatus() == ItineraryItemStatus.VOTING)
+                .toList();
+        when(itineraryItemRepository.findUnvotedVotingItemsOrderByDayAndSortOrder(1L, participantId))
+                .thenReturn(unvotedVotingItems);
     }
 
     private void stubScheduleData(

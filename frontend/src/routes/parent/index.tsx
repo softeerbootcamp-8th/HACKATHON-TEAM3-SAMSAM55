@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
 import { useFindSchedule } from '@/api/generated/schedule-controller/schedule-controller'
@@ -11,14 +10,25 @@ import { formatDateRange } from '@/lib/date'
 import { toItemStatus } from '@/lib/itinerary-item-status'
 import { useHorizontalDragScroll } from '@/hooks/use-horizontal-drag-scroll'
 
+type ParentSearch = {
+  day?: number
+}
+
 export const Route = createFileRoute('/parent/')({
+  validateSearch: (search: Record<string, unknown>): ParentSearch => {
+    const day = Number(search.day)
+
+    return {
+      day: Number.isInteger(day) && day > 0 ? day : undefined,
+    }
+  },
   component: ParentHomePage,
 })
 
 function ParentHomePage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate({ from: '/parent/' })
+  const { day: selectedDayParam } = Route.useSearch()
   const { tripId } = Route.useRouteContext()
-  const [selectedDayId, setSelectedDayId] = useState<number | null>(null)
 
   const scheduleQuery = useFindSchedule(tripId ?? 0, {
     query: { enabled: tripId !== undefined, retry: false },
@@ -27,7 +37,9 @@ function ParentHomePage() {
     ? scheduleQuery.data.data
     : undefined
   const days = schedule?.days ?? []
-  const day = days.find((d) => d.id === selectedDayId) ?? days[0]
+  const selectedDayId =
+    days.find((d) => d.id === selectedDayParam)?.id ?? days[0]?.id
+  const day = days.find((d) => d.id === selectedDayId)
   const items = day?.items ?? []
   const votingCount = schedule?.votingCount ?? 0
   const firstVotingItem = days
@@ -100,7 +112,7 @@ function ParentHomePage() {
                 label={`${d.dayNumber}일차`}
                 pending={d.items?.some((item) => item.status === 'VOTING')}
                 selected={d.id === day?.id}
-                onClick={() => setSelectedDayId(d.id ?? null)}
+                onClick={() => void navigate({ search: { day: d.id } })}
               />
             ),
           )}
