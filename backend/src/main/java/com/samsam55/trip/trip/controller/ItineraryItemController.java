@@ -6,6 +6,7 @@ import com.samsam55.trip.auth.annotation.Login;
 import com.samsam55.trip.global.common.CommonResponse;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.global.exception.GlobalErrorType;
+import com.samsam55.trip.trip.dto.ItineraryItemCreateForm;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
@@ -17,18 +18,17 @@ import com.samsam55.trip.trip.service.VoteOptionService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
 import jakarta.validation.Validator;
-import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -48,26 +48,27 @@ public class ItineraryItemController {
      * 일차에 새 일정 항목을 생성한다. 여행 방장만 호출할 수 있다.
      * {@code request}는 JSON 문자열 폼 필드로 받는다 — 브라우저가 만드는 multipart 요청에서
      * 문자열 파트는 Content-Type이 없어(application/octet-stream으로 취급됨) {@code @RequestPart}로
-     * DTO에 바로 바인딩하면 415가 난다. 그래서 문자열로 받아 직접 파싱·검증한다.
+     * DTO에 바로 바인딩하면 415가 난다. {@code optionImages}와 함께 {@code @ModelAttribute}로
+     * 묶어서 받아 직접 파싱·검증한다 — springdoc이 이 필드를 멀티파트 바디의 일부로
+     * 문서화하게 하려는 목적도 있다({@code @RequestParam} 단독으로 받으면 쿼리 파라미터로
+     * 잘못 문서화된다).
      *
      * @param loginUserId 로그인한 회원의 식별자
      * @param dayId 일정 항목을 추가할 일차의 식별자
-     * @param requestJson 일정 항목 생성 요청(JSON 문자열)
-     * @param optionImages 선택지별 이미지(선택), {@code request.options}와 같은 순서로 매칭된다
+     * @param form 일정 항목 생성 요청(JSON 문자열)과 선택지별 이미지
      * @return 생성된 일정 항목이 담긴 201 응답
-     * @throws ApplicationException {@code requestJson}이 올바른 JSON이 아니거나 필드 검증에 실패했을 때(INVALID_INPUT_VALUE)
+     * @throws ApplicationException {@code form.request()}가 올바른 JSON이 아니거나 필드 검증에 실패했을 때(INVALID_INPUT_VALUE)
      */
     @PostMapping(value = "/api/trip-days/{dayId}/itinerary-items", consumes = "multipart/form-data")
     public ResponseEntity<CommonResponse<ItineraryItemCreateResponseDto>> createItineraryItem(
             @Login Long loginUserId,
             @PathVariable Long dayId,
-            @RequestParam("request") String requestJson,
-            @RequestPart(value = "optionImages", required = false) List<MultipartFile> optionImages
+            @ModelAttribute ItineraryItemCreateForm form
     ) {
-        ItineraryItemCreateRequestDto request = parseAndValidate(requestJson);
+        ItineraryItemCreateRequestDto request = parseAndValidate(form.request());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(CommonResponse.success(
-                        itineraryItemService.createItineraryItem(loginUserId, dayId, request, optionImages)));
+                        itineraryItemService.createItineraryItem(loginUserId, dayId, request, form.optionImages())));
     }
 
     private ItineraryItemCreateRequestDto parseAndValidate(String requestJson) {
@@ -101,14 +102,6 @@ public class ItineraryItemController {
         return CommonResponse.success(itineraryItemService.getItineraryItem(loginUserId, itemId));
     }
 
-    // NOTE: 이 엔드포인트 자체는 멀티파트가 아니라 순수 JSON body라 아래 불안정성과 무관하다.
-    // 다만 이 컨트롤러에 새 핸들러 메서드가 하나 늘어나는 것만으로도(내용과 무관하게),
-    // createItineraryItem()의 request 파라미터가 springdoc 문서상 멀티파트 body 대신
-    // 쿼리 파라미터로 잘못 분류되는 기존 버그 때문에, Orval이 생성하는
-    // CreateItineraryItemBody 모양이 바뀔 수 있다 — 이 PR이 머지된 뒤 pnpm build가
-    // frontend/src/routes/trips/$tripId/items/new.tsx에서 깨지면 이게 원인일 가능성이 높다.
-    // 근본 원인(springdoc이 @RequestParam String을 멀티파트 엔드포인트에서 오분류하는 문제)은
-    // 일정 만들기 담당자가 별도로 고치기로 했다.
     /**
      * 일정 항목의 이름·카테고리·결정 방식을 수정한다. 여행 방장만 호출할 수 있고,
      * 투표가 시작되기 전(PENDING)에만 수정할 수 있다.

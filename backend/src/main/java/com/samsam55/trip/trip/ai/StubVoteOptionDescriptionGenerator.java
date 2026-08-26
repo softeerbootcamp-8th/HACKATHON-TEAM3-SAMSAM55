@@ -10,6 +10,6 @@ public class StubVoteOptionDescriptionGenerator implements VoteOptionDescription
 
     @Override
     public String generate(String optionName) {
-        return optionName + "에 대한 AI STUB 응답";
+        return optionName;
     }
 }

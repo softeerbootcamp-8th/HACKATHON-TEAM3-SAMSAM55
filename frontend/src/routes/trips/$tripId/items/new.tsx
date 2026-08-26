@@ -58,19 +58,11 @@ function CreateItemPage() {
       .map((option) => option.trim())
       .filter((option) => option.length > 0)
 
-    // TODO(일정 만들기 담당자, 임시 조치): createItineraryItem이 받는 "request" 필드가
-    // 백엔드의 기존 springdoc 오분류 버그(멀티파트 body인데 쿼리 파라미터로 문서화됨) 때문에
-    // Orval이 생성하는 모양이 안정적이지 않다. 지금은 CreateItineraryItemParams.request
-    // (문자열, params로 전달)로 생성되지만, 이전엔 CreateItineraryItemBody.request(객체,
-    // data로 전달)로도 생성된 적이 있다 — 이 API에 아무 관련 없는 다른 엔드포인트가
-    // 추가/삭제되기만 해도 모양이 바뀔 수 있다 (자세한 원인은
-    // ItineraryItemController.updateItineraryItem 위 주석 참고).
-    // 백엔드의 근본 원인(springdoc 멀티파트 파라미터 분류)을 고치고 나면, 재생성된 타입에
-    // 맞춰 아래 params/JSON.stringify를 다시 원래 형태(data.request 객체)로 되돌려야 한다.
     createItineraryItemMutation.mutate(
       {
         dayId: currentDayId,
-        params: {
+        data: {
+          // request는 멀티파트 폼 필드(문자열)로 보내야 해서 JSON으로 직접 직렬화한다.
           request: JSON.stringify({
             name: title,
             category,

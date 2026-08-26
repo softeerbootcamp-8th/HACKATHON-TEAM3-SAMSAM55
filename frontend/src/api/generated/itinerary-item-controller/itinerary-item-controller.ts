@@ -28,10 +28,9 @@ import type {
   CommonResponseItineraryItemDetailResponseDto,
   CommonResponseVoteOptionCreateResponseDto,
   CommonResponseVoteStatusResponseDto,
-  CreateItineraryItemBody,
-  CreateItineraryItemParams,
   CreateVoteOptionBody,
   CreateVoteOptionParams,
+  ItineraryItemCreateForm,
   ItineraryItemUpdateRequestDto
 } from '../model';
 
@@ -203,21 +202,22 @@ const {mutation: mutationOptions} = options ?
     }
     export const createItineraryItem = (
     dayId: number,
-    params: CreateItineraryItemParams,
-    createItineraryItemBody?: CreateItineraryItemBody,
+    itineraryItemCreateForm?: ItineraryItemCreateForm,
  signal?: AbortSignal
 ) => {
 
       const formData = new FormData();
-if(createItineraryItemBody?.optionImages !== undefined) {
- createItineraryItemBody?.optionImages.forEach(value => formData.append(`optionImages`, value));
+if(itineraryItemCreateForm?.request !== undefined) {
+ formData.append(`request`, itineraryItemCreateForm.request);
+ }
+if(itineraryItemCreateForm?.optionImages !== undefined) {
+ itineraryItemCreateForm?.optionImages.forEach(value => formData.append(`optionImages`, value));
  }
 
       return customInstance<CommonResponseItineraryItemCreateResponseDto>(
       {url: `/api/trip-days/${dayId}/itinerary-items`, method: 'POST',
       headers: {'Content-Type': 'multipart/form-data', },
-       data: formData,
-        params, signal
+       data: formData, signal
     },
       );
     }
@@ -240,9 +240,9 @@ const {mutation: mutationOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof createItineraryItem>>, CreateItineraryItemMutationVariables> = (props) => {
-          const {dayId,params,data} = props ?? {};
+          const {dayId,data} = props ?? {};
 
-          return  createItineraryItem(dayId,params,data,)
+          return  createItineraryItem(dayId,data,)
         }
 
 
@@ -253,9 +253,9 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateItineraryItemMutationResult = NonNullable<Awaited<ReturnType<typeof createItineraryItem>>>
-    export type CreateItineraryItemMutationBody = CreateItineraryItemBody | undefined
+    export type CreateItineraryItemMutationBody = ItineraryItemCreateForm | undefined
     export type CreateItineraryItemMutationError = unknown
-    export type CreateItineraryItemMutationVariables = {dayId: number;params: CreateItineraryItemParams;data?: CreateItineraryItemBody}
+    export type CreateItineraryItemMutationVariables = {dayId: number;data?: ItineraryItemCreateForm}
 
     export const useCreateItineraryItem = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createItineraryItem>>, TError,CreateItineraryItemMutationVariables, TContext>, }
