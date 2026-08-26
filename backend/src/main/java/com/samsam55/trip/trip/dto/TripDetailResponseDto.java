@@ -15,6 +15,7 @@ public record TripDetailResponseDto(
         LocalDate startDate,
         LocalDate endDate,
         Integer companionCount,
+        String inviteCode,
         List<TripDayResponseDto> days
 ) {
 
@@ -36,6 +37,7 @@ public record TripDetailResponseDto(
                 trip.getStartDate().toLocalDate(),
                 trip.getEndDate().toLocalDate(),
                 trip.getCompanionCount(),
+                trip.getInviteCode(),
                 tripDays.stream()
                         .map(tripDay -> TripDayResponseDto.from(
                                 tripDay,

@@ -23,6 +23,7 @@ import { formatTripPeriod } from '@/features/trip/trip-format'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { toItemStatus } from '@/lib/itinerary-item-status'
 import { cn } from '@/lib/utils'
+import { useHorizontalDragScroll } from '@/hooks/use-horizontal-drag-scroll'
 
 export const Route = createFileRoute('/trips/$tripId/')({
   component: TripHomePage,
@@ -111,6 +112,7 @@ function TripHomePage() {
   })
 
   const day = days.find((d) => d.id === selectedDay) ?? days[0]
+  const dayScrollHandlers = useHorizontalDragScroll()
   const draftItems = days
     .flatMap((d) => d.items)
     .filter((item) => item.status === 'draft')
@@ -221,7 +223,10 @@ function TripHomePage() {
           </p>
         )}
 
-        <div className="mt-5 flex gap-2 overflow-x-auto">
+        <div
+          {...dayScrollHandlers}
+          className="scrollbar-none mt-5 flex w-full min-w-0 flex-nowrap gap-2 overflow-x-auto overflow-y-hidden touch-pan-x"
+        >
           {days.map((d) => (
             <DayTab
               key={d.id}
@@ -313,6 +318,13 @@ function TripHomePage() {
               )
             : ''
         }
+        onInviteLink={() => {
+          setIsMoreSheetOpen(false)
+          void navigate({
+            to: '/trips/$tripId/invite',
+            params: { tripId },
+          })
+        }}
         onDeleteTrip={() => {
           setIsMoreSheetOpen(false)
           setIsDeleteTripOpen(true)

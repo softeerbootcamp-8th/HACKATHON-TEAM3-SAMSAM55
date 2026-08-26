@@ -235,6 +235,7 @@ class TripControllerTest {
                 LocalDate.of(2026, 9, 1),
                 LocalDate.of(2026, 9, 3),
                 2,
+                "invite-code",
                 List.of(new TripDayResponseDto(
                         10L,
                         1,
@@ -256,6 +257,7 @@ class TripControllerTest {
                 .andExpect(jsonPath("$.data.startDate").value("2026-09-01"))
                 .andExpect(jsonPath("$.data.endDate").value("2026-09-03"))
                 .andExpect(jsonPath("$.data.companionCount").value(2))
+                .andExpect(jsonPath("$.data.inviteCode").value("invite-code"))
                 .andExpect(jsonPath("$.data.days[0].id").value(10))
                 .andExpect(jsonPath("$.data.days[0].dayNumber").value(1))
                 .andExpect(jsonPath("$.data.days[0].date").value("2026-09-01"))

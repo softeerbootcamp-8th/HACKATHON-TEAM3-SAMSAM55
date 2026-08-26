@@ -256,6 +256,7 @@ class TripServiceTest {
         when(trip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 1, 0, 0));
         when(trip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 3, 0, 0));
         when(trip.getCompanionCount()).thenReturn(2);
+        when(trip.getInviteCode()).thenReturn("invite-code");
         when(tripDayRepository.findAllByTripIdOrderByDayNumberAsc(1L)).thenReturn(List.of());
         when(itineraryItemRepository.findAllByTripIdOrderByDayAndSortOrder(1L)).thenReturn(List.of());
 
@@ -266,6 +267,7 @@ class TripServiceTest {
         assertThat(response.startDate()).isEqualTo(LocalDate.of(2026, 9, 1));
         assertThat(response.endDate()).isEqualTo(LocalDate.of(2026, 9, 3));
         assertThat(response.companionCount()).isEqualTo(2);
+        assertThat(response.inviteCode()).isEqualTo("invite-code");
         assertThat(response.days()).isEmpty();
     }
 
@@ -288,6 +290,7 @@ class TripServiceTest {
         when(trip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 1, 0, 0));
         when(trip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 3, 0, 0));
         when(trip.getCompanionCount()).thenReturn(2);
+        when(trip.getInviteCode()).thenReturn("invite-code");
         when(tripDayRepository.findAllByTripIdOrderByDayNumberAsc(1L)).thenReturn(List.of(tripDay));
         when(itineraryItemRepository.findAllByTripIdOrderByDayAndSortOrder(1L))
                 .thenReturn(List.of(itineraryItem));
