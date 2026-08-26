@@ -160,11 +160,16 @@ function ParentHomePage() {
               item.status === 'VOTING'
                 ? `${item.votedCount ?? 0}/${item.totalParticipants ?? 0}표 완료`
                 : undefined
+            const name = item.name ?? ''
+            const title =
+              status === 'confirmed' && item.confirmedOption?.name
+                ? `${name} - ${item.confirmedOption.name}`
+                : name
 
             return (
               <ItemCard
                 key={item.id}
-                title={item.name ?? ''}
+                title={title}
                 category={item.category ?? ''}
                 meta={meta}
                 status={status ?? 'draft'}

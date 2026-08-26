@@ -16,6 +16,7 @@ import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
+import com.samsam55.trip.trip.entity.VoteOption;
 import com.samsam55.trip.trip.repository.ParticipantRepository;
 import com.samsam55.trip.trip.repository.ItineraryItemRepository;
 import com.samsam55.trip.trip.repository.TripDayRepository;
@@ -63,6 +64,9 @@ class TripServiceTest {
 
     @Mock
     private ItineraryItem itineraryItem;
+
+    @Mock
+    private VoteOption confirmedOption;
 
     @Test
     @DisplayName("로그인한 사용자가 방장인 여행만 목록으로 반환한다")
@@ -346,6 +350,30 @@ class TripServiceTest {
         assertThat(response.days().getFirst().items().getFirst().optionCount()).isEqualTo(2);
         verify(tripDayRepository).findAllByTripIdOrderByDayNumberAsc(1L);
         verify(itineraryItemRepository).findAllByTripIdOrderByDayAndSortOrder(1L);
+    }
+
+    @Test
+    @DisplayName("확정된 일정은 확정된 선택지 이름을 함께 내려준다")
+    void 확정된_일정은_확정된_선택지_이름을_함께_내려준다() {
+        when(tripRepository.findByIdAndHostUserId(1L, 1L)).thenReturn(java.util.Optional.of(trip));
+        when(trip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 1, 0, 0));
+        when(trip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 3, 0, 0));
+        when(tripDayRepository.findAllByTripIdOrderByDayNumberAsc(1L)).thenReturn(List.of(tripDay));
+        when(itineraryItemRepository.findAllByTripIdOrderByDayAndSortOrder(1L))
+                .thenReturn(List.of(itineraryItem));
+        when(tripDay.getId()).thenReturn(10L);
+        when(itineraryItem.getTripDay()).thenReturn(tripDay);
+        when(itineraryItem.getId()).thenReturn(100L);
+        when(itineraryItem.getStatus()).thenReturn(ItineraryItemStatus.CONFIRMED);
+        when(itineraryItem.getDecisionType()).thenReturn(ItineraryItemDecisionType.HOST_PICK);
+        when(itineraryItem.getConfirmedOption()).thenReturn(confirmedOption);
+        when(confirmedOption.getName()).thenReturn("도쿄 타워");
+        when(voteOptionRepository.countByTripId(1L)).thenReturn(List.of());
+
+        TripDetailResponseDto response = service().findTrip(1L, 1L);
+
+        assertThat(response.days().getFirst().items().getFirst().confirmedOptionName())
+                .isEqualTo("도쿄 타워");
     }
 
     private VoteOptionRepository.ItineraryItemOptionCount optionCount(Long itemId, long count) {
