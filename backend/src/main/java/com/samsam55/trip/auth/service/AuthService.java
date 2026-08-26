@@ -65,6 +65,8 @@ public class AuthService {
             AuthLoginRequestDto request,
             HttpServletRequest servletRequest,
             HttpServletResponse servletResponse
+
+            
     ) {
         User user = userRepository.findByLoginId(request.loginId())
                 .orElseThrow(() -> new ApplicationException(AuthErrorType.INVALID_CREDENTIALS));
