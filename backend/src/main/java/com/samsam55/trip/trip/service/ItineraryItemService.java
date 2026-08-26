@@ -2,6 +2,7 @@ package com.samsam55.trip.trip.service;
 
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
+import com.samsam55.trip.trip.dto.ItineraryItemBasicInfoUpdateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
@@ -161,6 +162,37 @@ public class ItineraryItemService {
         }
 
         itineraryItem.update(request.name(), request.category(), newDecisionType);
+
+        List<VoteOptionSummaryDto> voteOptions = voteOptionRepository.findByItineraryItem(itineraryItem).stream()
+                .map(voteOption -> VoteOptionSummaryDto.from(
+                        voteOption, s3PresignService.toPublicUrl(voteOption.getImageKey())))
+                .toList();
+        return ItineraryItemDetailResponseDto.from(itineraryItem, voteOptions);
+    }
+
+    /**
+     * 일정 항목의 이름·카테고리만 수정한다. 결정 방식·선택지와는 무관해 상태와
+     * 관계없이(PENDING 이후에도) 허용한다. 결정 방식을 바꾸려면 {@link #updateItineraryItem}을
+     * 쓴다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param itemId 수정할 일정 항목의 식별자
+     * @param request 이름·카테고리가 담긴 수정 요청
+     * @return 수정된 일정 항목과 선택지 목록
+     * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     */
+    @Transactional
+    public ItineraryItemDetailResponseDto updateBasicInfo(
+            Long loginUserId, Long itemId, ItineraryItemBasicInfoUpdateRequestDto request) {
+        ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+
+        if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
+            throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+        }
+
+        itineraryItem.updateBasicInfo(request.name(), request.category());
 
         List<VoteOptionSummaryDto> voteOptions = voteOptionRepository.findByItineraryItem(itineraryItem).stream()
                 .map(voteOption -> VoteOptionSummaryDto.from(

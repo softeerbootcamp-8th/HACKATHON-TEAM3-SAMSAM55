@@ -77,6 +77,11 @@ public class ItineraryItem extends BaseEntity {
         this.decisionType = decisionType;
     }
 
+    public void updateBasicInfo(String name, String category) {
+        this.name = name;
+        this.category = category;
+    }
+
     public void openVote() {
         this.status = ItineraryItemStatus.VOTING;
     }

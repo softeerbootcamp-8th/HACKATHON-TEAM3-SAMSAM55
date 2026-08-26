@@ -29,6 +29,7 @@ import type {
   CommonResponseVoid,
   CommonResponseVoteOptionCreateResponseDto,
   CommonResponseVoteStatusResponseDto,
+  ItineraryItemBasicInfoUpdateRequestDto,
   ItineraryItemCreateRequestDto,
   ItineraryItemReorderRequestDto,
   ItineraryItemUpdateRequestDto,
@@ -317,6 +318,66 @@ const {mutation: mutationOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteItineraryItemMutationOptions(options), queryClient);
+    }
+    export const updateItineraryItemBasicInfo = (
+    itemId: number,
+    itineraryItemBasicInfoUpdateRequestDto: ItineraryItemBasicInfoUpdateRequestDto,
+ signal?: AbortSignal
+) => {
+
+
+      return customInstance<CommonResponseItineraryItemDetailResponseDto>(
+      {url: `/api/itinerary-items/${itemId}/basic-info`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: itineraryItemBasicInfoUpdateRequestDto, signal
+    },
+      );
+    }
+
+
+
+
+export const getUpdateItineraryItemBasicInfoMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateItineraryItemBasicInfo>>, TError,UpdateItineraryItemBasicInfoMutationVariables, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof updateItineraryItemBasicInfo>>, TError,UpdateItineraryItemBasicInfoMutationVariables, TContext> => {
+
+const mutationKey = ['updateItineraryItemBasicInfo'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateItineraryItemBasicInfo>>, UpdateItineraryItemBasicInfoMutationVariables> = (props) => {
+          const {itemId,data} = props ?? {};
+
+          return  updateItineraryItemBasicInfo(itemId,data,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateItineraryItemBasicInfoMutationResult = NonNullable<Awaited<ReturnType<typeof updateItineraryItemBasicInfo>>>
+    export type UpdateItineraryItemBasicInfoMutationBody = ItineraryItemBasicInfoUpdateRequestDto
+    export type UpdateItineraryItemBasicInfoMutationError = unknown
+    export type UpdateItineraryItemBasicInfoMutationVariables = {itemId: number;data: ItineraryItemBasicInfoUpdateRequestDto}
+
+    export const useUpdateItineraryItemBasicInfo = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateItineraryItemBasicInfo>>, TError,UpdateItineraryItemBasicInfoMutationVariables, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateItineraryItemBasicInfo>>,
+        TError,
+        UpdateItineraryItemBasicInfoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateItineraryItemBasicInfoMutationOptions(options), queryClient);
     }
     export const createItineraryItem = (
     dayId: number,

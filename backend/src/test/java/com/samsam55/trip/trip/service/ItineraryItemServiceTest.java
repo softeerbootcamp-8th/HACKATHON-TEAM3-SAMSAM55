@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.member.entity.User;
 import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
+import com.samsam55.trip.trip.dto.ItineraryItemBasicInfoUpdateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
@@ -216,6 +217,68 @@ class ItineraryItemServiceTest {
         assertThat(response.decisionType()).isEqualTo("HOST_PICK");
         assertThat(itineraryItem.getName()).isEqualTo("저녁 메뉴");
         assertThat(itineraryItem.getDecisionType()).isEqualTo(ItineraryItemDecisionType.HOST_PICK);
+    }
+
+    @Test
+    @DisplayName("VOTING 상태 일정 항목도 이름·카테고리만 수정할 수 있다")
+    void VOTING_상태_일정_항목도_이름_카테고리만_수정할_수_있다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+        when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of());
+
+        ItineraryItemDetailResponseDto response = itineraryItemService.updateBasicInfo(
+                1L, 100L, new ItineraryItemBasicInfoUpdateRequestDto("저녁 메뉴", "관광"));
+
+        assertThat(response.name()).isEqualTo("저녁 메뉴");
+        assertThat(response.category()).isEqualTo("관광");
+        assertThat(itineraryItem.getName()).isEqualTo("저녁 메뉴");
+        assertThat(itineraryItem.getCategory()).isEqualTo("관광");
+        assertThat(itineraryItem.getDecisionType()).isEqualTo(ItineraryItemDecisionType.VOTE);
+        assertThat(itineraryItem.getStatus()).isEqualTo(ItineraryItemStatus.VOTING);
+    }
+
+    @Test
+    @DisplayName("CONFIRMED 상태 일정 항목도 이름·카테고리만 수정할 수 있다")
+    void CONFIRMED_상태_일정_항목도_이름_카테고리만_수정할_수_있다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.CONFIRMED, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+        when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of());
+
+        ItineraryItemDetailResponseDto response = itineraryItemService.updateBasicInfo(
+                1L, 100L, new ItineraryItemBasicInfoUpdateRequestDto("저녁 메뉴", "관광"));
+
+        assertThat(response.name()).isEqualTo("저녁 메뉴");
+        assertThat(response.category()).isEqualTo("관광");
+        assertThat(itineraryItem.getStatus()).isEqualTo(ItineraryItemStatus.CONFIRMED);
+    }
+
+    @Test
+    @DisplayName("이름·카테고리 수정 시 일정 항목을 찾을 수 없으면 예외가 발생한다")
+    void 이름_카테고리_수정_시_일정_항목을_찾을_수_없으면_예외가_발생한다() {
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> itineraryItemService.updateBasicInfo(
+                1L, 100L, new ItineraryItemBasicInfoUpdateRequestDto("저녁 메뉴", "관광")))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("이름·카테고리 수정 요청자가 여행 방장이 아니면 예외가 발생한다")
+    void 이름_카테고리_수정_요청자가_여행_방장이_아니면_예외가_발생한다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+
+        assertThatThrownBy(() -> itineraryItemService.updateBasicInfo(
+                999L, 100L, new ItineraryItemBasicInfoUpdateRequestDto("저녁 메뉴", "관광")))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.NOT_TRIP_HOST));
     }
 
     @Test

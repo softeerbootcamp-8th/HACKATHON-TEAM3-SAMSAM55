@@ -37,6 +37,7 @@ export * from './inviteJoinRequestDto';
 export * from './inviteJoinResponseDto';
 export * from './inviteParticipantDto';
 export * from './inviteVerifyResponseDto';
+export * from './itineraryItemBasicInfoUpdateRequestDto';
 export * from './itineraryItemConfirmationResponseDto';
 export * from './itineraryItemConfirmRequestDto';
 export * from './itineraryItemCreateRequestDto';
