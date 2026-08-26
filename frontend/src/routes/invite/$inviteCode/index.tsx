@@ -44,6 +44,7 @@ function InviteEntryPage() {
 
   return (
     <MobileScreen
+      floatingBottomBar
       bottomBar={
         <div className="px-5 pb-6">
           <Button
