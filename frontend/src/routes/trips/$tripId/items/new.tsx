@@ -62,12 +62,13 @@ function CreateItemPage() {
       {
         dayId: currentDayId,
         data: {
-          request: {
+          // request는 멀티파트 폼 필드(문자열)로 보내야 해서 JSON으로 직접 직렬화한다.
+          request: JSON.stringify({
             name: title,
             category,
             decisionType,
             options: decisionType === 'VOTE' ? optionNames : undefined,
-          },
+          }),
         },
       },
       {
