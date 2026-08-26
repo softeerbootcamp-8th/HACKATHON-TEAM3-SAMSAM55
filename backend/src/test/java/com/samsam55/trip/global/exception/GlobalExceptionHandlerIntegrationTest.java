@@ -42,6 +42,17 @@ class GlobalExceptionHandlerIntegrationTest {
     }
 
     @Test
+    @DisplayName("요청 본문이 올바른 JSON이 아니면 400과 공통 응답 형식으로 변환된다")
+    void 요청_본문이_올바른_JSON이_아니면_400으로_변환된다() throws Exception {
+        mockMvc.perform(post("/test/echo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{올바르지-않은-JSON}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"));
+    }
+
+    @Test
     @DisplayName("ApplicationException을 던지면 지정한 상태 코드로 응답한다")
     void ApplicationException은_지정한_상태코드로_응답한다() throws Exception {
         mockMvc.perform(get("/test/not-found"))

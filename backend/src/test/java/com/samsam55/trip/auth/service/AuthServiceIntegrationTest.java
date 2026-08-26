@@ -99,10 +99,12 @@ class AuthServiceIntegrationTest extends AbstractMySqlContainerTest {
     @DisplayName("로그아웃 시 현재 세션을 무효화한다")
     void 로그아웃_시_현재_세션을_무효화한다() {
         MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
         HttpSession session = request.getSession(true);
 
-        authService.logout(request);
+        authService.logout(request, response);
 
         assertThat(((org.springframework.mock.web.MockHttpSession) session).isInvalid()).isTrue();
+        assertThat(response.getCookie("PARTICIPANT_TOKEN").getMaxAge()).isZero();
     }
 }

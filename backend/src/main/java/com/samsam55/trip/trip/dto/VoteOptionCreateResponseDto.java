@@ -8,17 +8,17 @@ public record VoteOptionCreateResponseDto(
         String name,
         String description,
         String descriptionSource,
-        boolean hasImage
+        String imageUrl
 ) {
 
-    public static VoteOptionCreateResponseDto from(VoteOption voteOption) {
+    public static VoteOptionCreateResponseDto from(VoteOption voteOption, String imageUrl) {
         return new VoteOptionCreateResponseDto(
                 voteOption.getId(),
                 voteOption.getItineraryItem().getId(),
                 voteOption.getName(),
                 voteOption.getDescription(),
                 voteOption.getDescriptionSource(),
-                voteOption.getImage() != null
+                imageUrl
         );
     }
 }

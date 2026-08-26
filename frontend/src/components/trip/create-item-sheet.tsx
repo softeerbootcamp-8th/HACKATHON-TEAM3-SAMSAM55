@@ -13,6 +13,7 @@ import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Button } from '@/components/ui/button'
 import { TextInput } from '@/components/ui/text-input'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { uploadImage } from '@/lib/upload-image'
 import { cn } from '@/lib/utils'
 
 const CATEGORIES = ['숙소', '식사', '관광', '이동', '기타'] as const
@@ -151,13 +152,15 @@ function CreateItemSheet({
 
   const createItineraryItemMutation = useCreateItineraryItem()
   const createVoteOptionMutation = useCreateVoteOption()
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   const decisionType = decisionMethod === '투표' ? 'VOTE' : 'HOST_PICK'
   // HOST_PICK은 정한 곳이 곧 유일한 선택지라, 없으면 선택지 없는 일정이 그대로 만들어진다.
   const isMissingDecidedPlace =
     decisionType === 'HOST_PICK' && decidedPlace.trim().length === 0
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (currentDayId === undefined) return
     if (category === null) return
     if (isMissingDecidedPlace) return
@@ -165,24 +168,39 @@ function CreateItemSheet({
     const filledOptions = options.filter(
       (option) => option.name.trim().length > 0,
     )
-    const optionNames = filledOptions.map((option) => option.name.trim())
-    // optionImages는 options와 같은 순서로 매칭되고, 사진이 없는 자리는 빈 파일로 채운다.
-    const optionImages = filledOptions.map(
-      (option) => option.image ?? new Blob([]),
-    )
+
+    setUploadError(null)
+    setIsUploading(true)
+    let optionPayloads: { name: string; imageKey?: string }[] | undefined
+    let decidedPlaceImageKey: string | undefined
+    try {
+      if (decisionType === 'VOTE') {
+        optionPayloads = await Promise.all(
+          filledOptions.map(async (option) => ({
+            name: option.name.trim(),
+            imageKey: option.image
+              ? await uploadImage(option.image)
+              : undefined,
+          })),
+        )
+      } else if (decidedPlaceImage) {
+        decidedPlaceImageKey = await uploadImage(decidedPlaceImage)
+      }
+    } catch {
+      setUploadError('사진 업로드에 실패했어요. 다시 시도해주세요.')
+      setIsUploading(false)
+      return
+    }
+    setIsUploading(false)
 
     createItineraryItemMutation.mutate(
       {
         dayId: currentDayId,
         data: {
-          // request는 멀티파트 폼 필드(문자열)로 보내야 해서 JSON으로 직접 직렬화한다.
-          request: JSON.stringify({
-            name: title,
-            category: category ?? undefined,
-            decisionType,
-            options: decisionType === 'VOTE' ? optionNames : undefined,
-          }),
-          optionImages: decisionType === 'VOTE' ? optionImages : undefined,
+          name: title,
+          category,
+          decisionType,
+          options: optionPayloads,
         },
       },
       {
@@ -202,8 +220,10 @@ function CreateItemSheet({
             createVoteOptionMutation.mutate(
               {
                 itemId: created.id,
-                params: { name: decidedPlace.trim() },
-                data: { image: decidedPlaceImage ?? undefined },
+                data: {
+                  name: decidedPlace.trim(),
+                  imageKey: decidedPlaceImageKey,
+                },
               },
               { onSuccess: finish, onError: finish },
             )
@@ -217,7 +237,9 @@ function CreateItemSheet({
   }
 
   const isSubmitting =
-    createItineraryItemMutation.isPending || createVoteOptionMutation.isPending
+    isUploading ||
+    createItineraryItemMutation.isPending ||
+    createVoteOptionMutation.isPending
 
   return (
     <BottomSheet
@@ -387,9 +409,11 @@ function CreateItemSheet({
           {isSubmitting ? '만드는 중...' : '만들기'}
         </Button>
         <p className="text-center text-caption-sm text-muted-foreground">
-          {createItineraryItemMutation.isError
-            ? getApiErrorMessage(createItineraryItemMutation.error)
-            : '만들면 목록에 담겨요. 부모님께는 아직 안 보내요'}
+          {uploadError
+            ? uploadError
+            : createItineraryItemMutation.isError
+              ? getApiErrorMessage(createItineraryItemMutation.error)
+              : '만들면 목록에 담겨요. 부모님께는 아직 안 보내요'}
         </p>
       </div>
     </BottomSheet>

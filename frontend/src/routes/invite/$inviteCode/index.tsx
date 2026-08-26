@@ -18,20 +18,26 @@ function InviteEntryPage() {
   const {
     data: response,
     isLoading,
+    isFetching,
     isError,
     error,
-    refetch,
-  } = useVerify(inviteCode)
+  } = useVerify(inviteCode, {
+    query: { retry: false, staleTime: 0, refetchOnMount: 'always' },
+  })
   const trip = response?.data
 
-  if (isLoading) {
+  if (isLoading || isFetching) {
     return <MobileScreen>{null}</MobileScreen>
   }
 
   if (isError || !trip) {
     return (
       <MobileScreen>
-        <InviteErrorState error={error} onRetry={() => refetch()} />
+        <InviteErrorState
+          error={error}
+          errorCode={response?.error?.code}
+          variant="invite"
+        />
       </MobileScreen>
     )
   }

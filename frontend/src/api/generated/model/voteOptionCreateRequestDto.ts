@@ -5,6 +5,8 @@
  * OpenAPI spec version: v0
  */
 
-export type UpdateVoteOptionBody = {
-  image?: Blob;
-};
+export interface VoteOptionCreateRequestDto {
+  /** @minLength 1 */
+  name: string;
+  imageKey?: string;
+}

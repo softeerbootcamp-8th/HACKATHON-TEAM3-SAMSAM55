@@ -2,3 +2,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+
+# 테스트 클래스패스의 이 파일이 src/main/resources/application.yaml을 완전히 대체하므로
+# (동일 경로라 하나만 로드됨) upload.* 값도 여기서 따로 채워야 S3Presigner 빈 생성이 성공한다.
+# 실제 AWS 자격증명은 필요 없다 — presign을 실제로 호출하는 테스트가 없어서 빈 생성만 되면 된다.
+upload:
+  bucket-name: test-bucket
+  region: ap-northeast-2

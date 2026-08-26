@@ -6,10 +6,10 @@ public record ScheduleConfirmedOptionResponseDto(
         Long id,
         String name,
         String description,
-        boolean hasImage
+        String imageUrl
 ) {
 
-    public static ScheduleConfirmedOptionResponseDto from(VoteOption option) {
+    public static ScheduleConfirmedOptionResponseDto from(VoteOption option, String imageUrl) {
         if (option == null) {
             return null;
         }
@@ -17,7 +17,7 @@ public record ScheduleConfirmedOptionResponseDto(
                 option.getId(),
                 option.getName(),
                 option.getDescription(),
-                option.getImage() != null
+                imageUrl
         );
     }
 }

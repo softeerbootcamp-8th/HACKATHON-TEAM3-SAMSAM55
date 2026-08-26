@@ -45,11 +45,7 @@ function SelectOptionDialog({
               <OptionCard
                 key={option.id}
                 title={option.name ?? ''}
-                imageSrc={
-                  option.hasImage
-                    ? `/api/vote-options/${option.id}/image`
-                    : undefined
-                }
+                imageSrc={option.imageUrl}
                 leading={option.id === selectedOptionId}
                 onClick={() => option.id !== undefined && onSelect(option.id)}
               />

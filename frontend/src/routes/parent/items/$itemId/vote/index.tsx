@@ -160,11 +160,7 @@ function ParentVotePage() {
               title={option.name ?? ''}
               description={option.description ?? ''}
               selected={selectedOptionId === option.optionId}
-              imageSrc={
-                option.hasImage
-                  ? `/api/vote-options/${option.optionId}/image`
-                  : undefined
-              }
+              imageSrc={option.imageUrl}
               onClick={() =>
                 option.optionId &&
                 setSelection({

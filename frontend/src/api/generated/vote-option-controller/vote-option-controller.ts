@@ -5,29 +5,19 @@
  * OpenAPI spec version: v0
  */
 import {
-  useMutation,
-  useQuery
+  useMutation
 } from '@tanstack/react-query';
 import type {
-  DataTag,
-  DefinedInitialDataOptions,
-  DefinedUseQueryResult,
   MutationFunction,
   QueryClient,
-  QueryFunction,
-  QueryKey,
-  UndefinedInitialDataOptions,
   UseMutationOptions,
-  UseMutationResult,
-  UseQueryOptions,
-  UseQueryResult
+  UseMutationResult
 } from '@tanstack/react-query';
 
 import type {
   CommonResponseVoid,
   CommonResponseVoteOptionSummaryDto,
-  UpdateVoteOptionBody,
-  UpdateVoteOptionParams
+  VoteOptionUpdateRequestDto
 } from '../model';
 
 import { customInstance } from '../../mutator/custom-instance';
@@ -35,38 +25,17 @@ import { customInstance } from '../../mutator/custom-instance';
 
 
 
-const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
-  const result = { queryKey } as T & { queryKey: K };
-  for (const key of Object.keys(query)) {
-    // The explicit queryKey always wins, matching the previous
-    // `{ ...query, queryKey }` spread where it was set last.
-    if (key === 'queryKey') continue;
-    Object.defineProperty(result, key, {
-      enumerable: true,
-      configurable: true,
-      get: () => (query as Record<string, unknown>)[key],
-    });
-  }
-  return result;
-};
-
 export const updateVoteOption = (
     voteOptionId: number,
-    params: UpdateVoteOptionParams,
-    updateVoteOptionBody?: UpdateVoteOptionBody,
+    voteOptionUpdateRequestDto: VoteOptionUpdateRequestDto,
  signal?: AbortSignal
 ) => {
 
-      const formData = new FormData();
-if(updateVoteOptionBody?.image !== undefined) {
- formData.append(`image`, updateVoteOptionBody.image);
- }
 
       return customInstance<CommonResponseVoteOptionSummaryDto>(
       {url: `/api/vote-options/${voteOptionId}`, method: 'PUT',
-      headers: {'Content-Type': 'multipart/form-data', },
-       data: formData,
-        params, signal
+      headers: {'Content-Type': 'application/json', },
+      data: voteOptionUpdateRequestDto, signal
     },
       );
     }
@@ -89,9 +58,9 @@ const {mutation: mutationOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateVoteOption>>, UpdateVoteOptionMutationVariables> = (props) => {
-          const {voteOptionId,params,data} = props ?? {};
+          const {voteOptionId,data} = props ?? {};
 
-          return  updateVoteOption(voteOptionId,params,data,)
+          return  updateVoteOption(voteOptionId,data,)
         }
 
 
@@ -102,9 +71,9 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type UpdateVoteOptionMutationResult = NonNullable<Awaited<ReturnType<typeof updateVoteOption>>>
-    export type UpdateVoteOptionMutationBody = UpdateVoteOptionBody | undefined
+    export type UpdateVoteOptionMutationBody = VoteOptionUpdateRequestDto
     export type UpdateVoteOptionMutationError = unknown
-    export type UpdateVoteOptionMutationVariables = {voteOptionId: number;params: UpdateVoteOptionParams;data?: UpdateVoteOptionBody}
+    export type UpdateVoteOptionMutationVariables = {voteOptionId: number;data: VoteOptionUpdateRequestDto}
 
     export const useUpdateVoteOption = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateVoteOption>>, TError,UpdateVoteOptionMutationVariables, TContext>, }
@@ -173,89 +142,3 @@ const {mutation: mutationOptions} = options ?
       > => {
       return useMutation(getDeleteVoteOptionMutationOptions(options), queryClient);
     }
-    export const getImage = (
-    voteOptionId: number,
- signal?: AbortSignal
-) => {
-
-
-      return customInstance<string>(
-      {url: `/api/vote-options/${voteOptionId}/image`, method: 'GET', signal
-    },
-      );
-    }
-
-
-
-
-export const getGetImageQueryKey = (voteOptionId: number,) => {
-    return [
-    `/api/vote-options/${voteOptionId}/image`
-    ] as const;
-    }
-
-
-export const getGetImageQueryOptions = <TData = Awaited<ReturnType<typeof getImage>>, TError = unknown>(voteOptionId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getImage>>, TError, TData>>, }
-) => {
-
-const {query: queryOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetImageQueryKey(voteOptionId);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getImage>>> = ({ signal }) => getImage(voteOptionId, signal);
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: voteOptionId !== null && voteOptionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getImage>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetImageQueryResult = NonNullable<Awaited<ReturnType<typeof getImage>>>
-export type GetImageQueryError = unknown
-
-
-export function useGetImage<TData = Awaited<ReturnType<typeof getImage>>, TError = unknown>(
- voteOptionId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getImage>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getImage>>,
-          TError,
-          Awaited<ReturnType<typeof getImage>>
-        > , 'initialData'
-      >, }
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetImage<TData = Awaited<ReturnType<typeof getImage>>, TError = unknown>(
- voteOptionId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getImage>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getImage>>,
-          TError,
-          Awaited<ReturnType<typeof getImage>>
-        > , 'initialData'
-      >, }
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetImage<TData = Awaited<ReturnType<typeof getImage>>, TError = unknown>(
- voteOptionId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getImage>>, TError, TData>>, }
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-
-export function useGetImage<TData = Awaited<ReturnType<typeof getImage>>, TError = unknown>(
- voteOptionId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getImage>>, TError, TData>>, }
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetImageQueryOptions(voteOptionId,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
