@@ -581,7 +581,9 @@ function ItemDetailPage() {
           <div className="flex flex-col gap-2.5">
             <button
               type="button"
-              disabled={!options[0] || status !== 'PENDING'}
+              disabled={
+                !options[0] || (status !== 'PENDING' && status !== 'CONFIRMED')
+              }
               onClick={() => options[0] && setEditingOption(options[0])}
               className="flex flex-col gap-2.5 rounded-card border border-border p-3 text-left"
             >

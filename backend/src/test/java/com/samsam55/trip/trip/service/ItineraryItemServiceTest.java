@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.member.entity.User;
 import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
+import com.samsam55.trip.trip.dto.ItineraryItemBasicInfoUpdateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
@@ -216,6 +217,79 @@ class ItineraryItemServiceTest {
         assertThat(response.decisionType()).isEqualTo("HOST_PICK");
         assertThat(itineraryItem.getName()).isEqualTo("저녁 메뉴");
         assertThat(itineraryItem.getDecisionType()).isEqualTo(ItineraryItemDecisionType.HOST_PICK);
+    }
+
+    @Test
+    @DisplayName("VOTING 상태 일정 항목도 이름·카테고리만 수정할 수 있다")
+    void VOTING_상태_일정_항목도_이름_카테고리만_수정할_수_있다() {
+        ItineraryItem beforeUpdate = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
+        ReflectionTestUtils.setField(beforeUpdate, "id", 100L);
+        ItineraryItem afterUpdate = new ItineraryItem(
+                tripDay, "저녁 메뉴", "관광", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
+        ReflectionTestUtils.setField(afterUpdate, "id", 100L);
+        when(itineraryItemRepository.findById(100L))
+                .thenReturn(Optional.of(beforeUpdate), Optional.of(afterUpdate));
+        when(voteOptionRepository.findByItineraryItem(afterUpdate)).thenReturn(List.of());
+
+        ItineraryItemDetailResponseDto response = itineraryItemService.updateBasicInfo(
+                1L, 100L, new ItineraryItemBasicInfoUpdateRequestDto("저녁 메뉴", "관광"));
+
+        assertThat(response.name()).isEqualTo("저녁 메뉴");
+        assertThat(response.category()).isEqualTo("관광");
+        assertThat(response.status()).isEqualTo("VOTING");
+        verify(itineraryItemRepository).updateBasicInfo(100L, "저녁 메뉴", "관광");
+    }
+
+    @Test
+    @DisplayName("CONFIRMED 상태 일정 항목도 이름·카테고리만 수정하고 확정 결과를 유지한다")
+    void CONFIRMED_상태_일정_항목도_이름_카테고리만_수정하고_확정_결과를_유지한다() {
+        ItineraryItem beforeUpdate = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.CONFIRMED, 1, null);
+        ReflectionTestUtils.setField(beforeUpdate, "id", 100L);
+        VoteOption confirmedOption = new VoteOption(beforeUpdate, "스시", "설명", "AI", null);
+        ReflectionTestUtils.setField(confirmedOption, "id", 1001L);
+        ItineraryItem afterUpdate = new ItineraryItem(
+                tripDay, "저녁 메뉴", "관광", ItineraryItemDecisionType.HOST_PICK,
+                ItineraryItemStatus.CONFIRMED, 1, confirmedOption);
+        ReflectionTestUtils.setField(afterUpdate, "id", 100L);
+        when(itineraryItemRepository.findById(100L))
+                .thenReturn(Optional.of(beforeUpdate), Optional.of(afterUpdate));
+        when(voteOptionRepository.findByItineraryItem(afterUpdate)).thenReturn(List.of());
+
+        ItineraryItemDetailResponseDto response = itineraryItemService.updateBasicInfo(
+                1L, 100L, new ItineraryItemBasicInfoUpdateRequestDto("저녁 메뉴", "관광"));
+
+        assertThat(response.name()).isEqualTo("저녁 메뉴");
+        assertThat(response.category()).isEqualTo("관광");
+        assertThat(response.status()).isEqualTo("CONFIRMED");
+        assertThat(response.confirmedOptionId()).isEqualTo(1001L);
+        verify(itineraryItemRepository).updateBasicInfo(100L, "저녁 메뉴", "관광");
+    }
+
+    @Test
+    @DisplayName("이름·카테고리 수정 시 일정 항목을 찾을 수 없으면 예외가 발생한다")
+    void 이름_카테고리_수정_시_일정_항목을_찾을_수_없으면_예외가_발생한다() {
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> itineraryItemService.updateBasicInfo(
+                1L, 100L, new ItineraryItemBasicInfoUpdateRequestDto("저녁 메뉴", "관광")))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("이름·카테고리 수정 요청자가 여행 방장이 아니면 예외가 발생한다")
+    void 이름_카테고리_수정_요청자가_여행_방장이_아니면_예외가_발생한다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+
+        assertThatThrownBy(() -> itineraryItemService.updateBasicInfo(
+                999L, 100L, new ItineraryItemBasicInfoUpdateRequestDto("저녁 메뉴", "관광")))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.NOT_TRIP_HOST));
     }
 
     @Test

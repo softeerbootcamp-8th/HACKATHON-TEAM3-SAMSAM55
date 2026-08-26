@@ -207,6 +207,41 @@ class ItineraryItemControllerTest {
     }
 
     @Test
+    @DisplayName("일정 항목 이름·카테고리 수정 요청은 200과 공통 응답 형식으로 반환한다")
+    void 일정_항목_이름_카테고리_수정_요청은_200과_공통_응답_형식으로_반환한다() throws Exception {
+        when(itineraryItemService.updateBasicInfo(anyLong(), anyLong(), any()))
+                .thenReturn(new ItineraryItemDetailResponseDto(
+                        100L, "저녁 메뉴", "관광", 1, "VOTE", "VOTING", List.of(), null));
+
+        mockMvc.perform(put("/api/itinerary-items/100/basic-info")
+                        .contentType("application/json")
+                        .content("""
+                                {"name":"저녁 메뉴","category":"관광"}
+                                """)
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.name").value("저녁 메뉴"))
+                .andExpect(jsonPath("$.data.status").value("VOTING"));
+    }
+
+    @Test
+    @DisplayName("이름·카테고리 수정 시 방장이 아니면 403 공통 에러 응답으로 반환한다")
+    void 이름_카테고리_수정_시_방장이_아니면_403_공통_에러_응답으로_반환한다() throws Exception {
+        when(itineraryItemService.updateBasicInfo(anyLong(), anyLong(), any()))
+                .thenThrow(new ApplicationException(TripErrorType.NOT_TRIP_HOST));
+
+        mockMvc.perform(put("/api/itinerary-items/100/basic-info")
+                        .contentType("application/json")
+                        .content("""
+                                {"name":"저녁 메뉴","category":"관광"}
+                                """)
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("NOT_TRIP_HOST"));
+    }
+
+    @Test
     @DisplayName("투표 현황 조회는 200과 공통 응답 형식으로 반환한다")
     void 투표_현황_조회는_200과_공통_응답_형식으로_반환한다() throws Exception {
         when(itineraryItemService.getVoteStatus(anyLong(), anyLong()))

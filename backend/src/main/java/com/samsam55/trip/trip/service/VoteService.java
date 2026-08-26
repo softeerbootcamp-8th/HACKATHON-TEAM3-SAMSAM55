@@ -37,17 +37,19 @@ public class VoteService {
     private final ParticipantRepository participantRepository;
 
     /**
-     * 준비 중인 일정 항목들을 한 번에 부모 투표로 올린다.
-     * 목록에 담긴 일정 항목 중 하나라도 조건을 만족하지 못하면 전체가 롤백된다.
+     * 준비 중인 일정 항목들을 한 번에 부모에게 올린다. 목록에 담긴 일정 항목 중
+     * 하나라도 조건을 만족하지 못하면 전체가 롤백된다. 결정 방식에 따라 처리가
+     * 다르다 — VOTE는 부모 투표를 받을 수 있도록 VOTING으로 전이하고, HOST_PICK은
+     * 투표 단계를 거치지 않으므로 보유한 선택지 하나로 즉시 CONFIRMED까지 전이한다.
      *
      * @param loginUserId 요청한 회원의 식별자
-     * @param itemIds 투표를 시작할 일정 항목 식별자 목록
+     * @param itemIds 올릴 일정 항목 식별자 목록
      * @return 변경된 일정 항목들의 상태 목록
      * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
      * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
-     * @throws ApplicationException 결정 방식이 투표가 아닐 때(ITINERARY_ITEM_NOT_VOTE_TYPE)
      * @throws ApplicationException 이미 투표가 시작됐거나 확정된 일정일 때(ITINERARY_ITEM_ALREADY_OPENED)
-     * @throws ApplicationException 선택지가 2개 미만일 때(VOTE_OPTION_COUNT_INSUFFICIENT)
+     * @throws ApplicationException VOTE 항목의 선택지가 2개 미만일 때(VOTE_OPTION_COUNT_INSUFFICIENT)
+     * @throws ApplicationException HOST_PICK 항목에 등록된 선택지(장소)가 없을 때(HOST_PICK_OPTION_REQUIRED)
      */
     @Transactional
     public VoteStartResponseDto startVote(Long loginUserId, List<Long> itemIds) {
@@ -59,17 +61,22 @@ public class VoteService {
             if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
                 throw withItemId(TripErrorType.NOT_TRIP_HOST, itemId);
             }
-            if (itineraryItem.getDecisionType() != ItineraryItemDecisionType.VOTE) {
-                throw withItemId(TripErrorType.ITINERARY_ITEM_NOT_VOTE_TYPE, itemId);
-            }
             if (itineraryItem.getStatus() != ItineraryItemStatus.PENDING) {
                 throw withItemId(TripErrorType.ITINERARY_ITEM_ALREADY_OPENED, itemId);
             }
-            if (voteOptionRepository.countByItineraryItemId(itemId) < MIN_VOTE_OPTION_COUNT) {
-                throw withItemId(TripErrorType.VOTE_OPTION_COUNT_INSUFFICIENT, itemId);
+
+            if (itineraryItem.getDecisionType() == ItineraryItemDecisionType.HOST_PICK) {
+                VoteOption option = voteOptionRepository.findByItineraryItem(itineraryItem).stream()
+                        .findFirst()
+                        .orElseThrow(() -> withItemId(TripErrorType.HOST_PICK_OPTION_REQUIRED, itemId));
+                itineraryItem.confirm(option);
+            } else {
+                if (voteOptionRepository.countByItineraryItemId(itemId) < MIN_VOTE_OPTION_COUNT) {
+                    throw withItemId(TripErrorType.VOTE_OPTION_COUNT_INSUFFICIENT, itemId);
+                }
+                itineraryItem.openVote();
             }
 
-            itineraryItem.openVote();
             results.add(ItineraryItemStatusDto.from(itineraryItem));
         }
         return VoteStartResponseDto.from(results);
@@ -80,7 +87,7 @@ public class VoteService {
     }
 
     /**
-     * 참여자가 여러 일정 항목에 한 번에 투표하거나 기존 투표를 변경한다.
+     * 참여자가 여러 일정 항목에 한 번에 투표를 기록한다. 기록된 투표는 변경할 수 없다.
      * 목록에 담긴 일정 항목 중 하나라도 조건을 만족하지 못하면 전체가 롤백된다.
      * 각 일정 항목에 트립의 모든 참여자가 투표를 마치면 상태를 VOTED로 전환한다.
      *
@@ -92,6 +99,7 @@ public class VoteService {
      * @throws ApplicationException 투표 중이거나 투표가 끝난 상태가 아닐 때(ITINERARY_ITEM_NOT_VOTABLE)
      * @throws ApplicationException 옵션이 해당 일정 항목의 선택지가 아닐 때(VOTE_OPTION_NOT_FOUND)
      * @throws ApplicationException 참여자를 찾을 수 없을 때(PARTICIPANT_NOT_FOUND)
+     * @throws ApplicationException 이미 투표를 기록한 일정일 때(VOTE_ALREADY_CAST)
      */
     @Transactional
     public MyVoteBatchResponseDto castVotes(ParticipantPrincipal principal, List<MyVoteItemRequestDto> voteItems) {
@@ -113,15 +121,14 @@ public class VoteService {
                     && itineraryItem.getStatus() != ItineraryItemStatus.VOTED) {
                 throw withItemId(TripErrorType.ITINERARY_ITEM_NOT_VOTABLE, itemId);
             }
+            if (voteRepository.findByItineraryItemIdAndParticipantId(itemId, principal.participantId()).isPresent()) {
+                throw withItemId(TripErrorType.VOTE_ALREADY_CAST, itemId);
+            }
 
             VoteOption voteOption = voteOptionRepository.findByIdAndItineraryItemId(voteOptionId, itemId)
                     .orElseThrow(() -> withItemId(TripErrorType.VOTE_OPTION_NOT_FOUND, itemId));
 
-            voteRepository.findByItineraryItemIdAndParticipantId(itemId, principal.participantId())
-                    .ifPresentOrElse(
-                            vote -> vote.changeOption(voteOption),
-                            () -> voteRepository.save(new Vote(voteOption, itineraryItem, participant))
-                    );
+            voteRepository.save(new Vote(voteOption, itineraryItem, participant));
 
             if (itineraryItem.getStatus() == ItineraryItemStatus.VOTING) {
                 long totalParticipantCount = participantRepository.countByTripId(principal.tripId());
@@ -186,10 +193,12 @@ public class VoteService {
 
     /**
      * 확정된 일정 항목의 확정을 해제한다. VOTE 항목은 다시 투표를 받을 수 있도록
-     * VOTING 상태로 되돌리고 기존에 쌓인 투표를 지운다. HOST_PICK 항목은 방장이
-     * 확정하기를 눌러야만 확정되는 방식이라 투표를 거친 적이 없으므로, 처음 만들었을
-     * 때와 같은 PENDING 상태로 되돌린다. 기존 선택지는 유지해 같은 장소를 다시
-     * 확정하거나, PENDING 상태에서 수정한 뒤 재확정할 수 있게 한다.
+     * VOTING 상태로 되돌리며, 기존에 쌓인 투표는 지우지 않고 그대로 보존한다 —
+     * 되돌린 뒤 다시 확정할 때 그 투표 결과를 그대로 활용할 수 있다. HOST_PICK
+     * 항목은 방장이 확정하기를 눌러야만 확정되는 방식이라 투표를 거친 적이
+     * 없으므로, 처음 만들었을 때와 같은 PENDING 상태로 되돌린다. 기존 선택지는
+     * 유지해 같은 장소를 다시 확정하거나, PENDING 상태에서 수정한 뒤 재확정할 수
+     * 있게 한다.
      *
      * @param loginUserId 요청한 회원의 식별자
      * @param itemId 확정을 해제할 일정 항목의 식별자
@@ -211,7 +220,6 @@ public class VoteService {
         }
 
         itineraryItem.unconfirm();
-        voteRepository.deleteAllByItineraryItemId(itemId);
 
         return ItineraryItemStatusDto.from(itineraryItem);
     }
