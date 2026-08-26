@@ -8,7 +8,6 @@ import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
 import com.samsam55.trip.trip.dto.VoteOptionImageDto;
 import com.samsam55.trip.trip.dto.VoteOptionSummaryDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
-import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.VoteOption;
@@ -83,8 +82,9 @@ public class VoteOptionService {
     }
 
     /**
-     * 일정 항목에 투표 선택지를 추가한다. {@code decisionType}이 HOST_PICK이면
-     * 추가된 선택지가 즉시 확정되어 일정 항목 상태가 CONFIRMED로 전환된다.
+     * 일정 항목에 투표 선택지를 추가한다. 선택지를 추가해도 일정 항목은 자동으로
+     * 확정되지 않는다 — {@code decisionType}이 HOST_PICK이어도 PENDING 상태로 남고,
+     * 방장이 별도로 확정 API를 호출해야 CONFIRMED로 전환된다.
      *
      * @param loginUserId 요청한 회원의 식별자
      * @param itemId 선택지를 추가할 일정 항목의 식별자
@@ -126,10 +126,6 @@ public class VoteOptionService {
                 hasImage ? readBytes(image) : null,
                 hasImage ? image.getContentType() : null
         ));
-
-        if (itineraryItem.getDecisionType() == ItineraryItemDecisionType.HOST_PICK) {
-            itineraryItem.confirm(voteOption);
-        }
 
         return VoteOptionCreateResponseDto.from(voteOption);
     }

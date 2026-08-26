@@ -12,6 +12,7 @@ import com.samsam55.trip.trip.dto.TripCreateRequestDto;
 import com.samsam55.trip.trip.dto.TripDetailResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
+import com.samsam55.trip.trip.entity.ItineraryItemDecisionType;
 import com.samsam55.trip.trip.entity.ItineraryItemStatus;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
@@ -302,6 +303,7 @@ class TripServiceTest {
         when(itineraryItem.getName()).thenReturn("점심 식사");
         when(itineraryItem.getCategory()).thenReturn("식사");
         when(itineraryItem.getStatus()).thenReturn(ItineraryItemStatus.VOTING);
+        when(itineraryItem.getDecisionType()).thenReturn(ItineraryItemDecisionType.VOTE);
 
         TripDetailResponseDto response = service().findTrip(1L, 1L);
 
@@ -314,6 +316,7 @@ class TripServiceTest {
         assertThat(response.days().getFirst().items().getFirst().name()).isEqualTo("점심 식사");
         assertThat(response.days().getFirst().items().getFirst().category()).isEqualTo("식사");
         assertThat(response.days().getFirst().items().getFirst().status()).isEqualTo("VOTING");
+        assertThat(response.days().getFirst().items().getFirst().decisionType()).isEqualTo("VOTE");
         verify(tripDayRepository).findAllByTripIdOrderByDayNumberAsc(1L);
         verify(itineraryItemRepository).findAllByTripIdOrderByDayAndSortOrder(1L);
     }

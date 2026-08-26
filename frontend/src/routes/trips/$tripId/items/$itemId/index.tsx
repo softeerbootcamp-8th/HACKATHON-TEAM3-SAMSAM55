@@ -100,14 +100,13 @@ function ItemDetailPage() {
   const unconfirmMutation = useUnconfirm()
   const deleteItineraryItemMutation = useDeleteItineraryItem()
 
+  const goToTripHome = () =>
+    navigate({ to: '/trips/$tripId', params: { tripId } })
+
   if (isLoading || !detail) {
     return (
       <MobileScreen>
-        <AppBar
-          type="back"
-          title="일정 상세"
-          onBack={() => window.history.back()}
-        />
+        <AppBar type="back" title="일정 상세" onBack={goToTripHome} />
       </MobileScreen>
     )
   }
@@ -322,7 +321,7 @@ function ItemDetailPage() {
       <AppBar
         type="backWithMore"
         title="일정 상세"
-        onBack={() => window.history.back()}
+        onBack={goToTripHome}
         onMore={() => setMoreOpen(true)}
       />
 
@@ -591,14 +590,12 @@ function ItemDetailPage() {
         ) : (
           <Button
             size="cta"
-            onClick={() =>
-              navigate({
-                to: '/trips/$tripId/items/$itemId/edit',
-                params: { tripId, itemId },
-              })
-            }
+            disabled={!leadingOption || confirmMutation.isPending}
+            onClick={handleConfirm}
           >
-            {options[0]?.name ? `${options[0].name}로 확정하기` : '확정하기'}
+            {leadingOption?.name
+              ? `${leadingOption.name}로 확정하기`
+              : '확정하기'}
           </Button>
         )}
         {isVote && (
