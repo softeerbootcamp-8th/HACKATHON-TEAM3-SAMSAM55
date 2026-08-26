@@ -436,8 +436,8 @@ class VoteServiceTest {
     // ===== 일정 확정 해제 =====
 
     @Test
-    @DisplayName("확정된 일정을 다시 투표 상태로 되돌린다")
-    void 확정_해제_확정된_일정을_다시_투표_상태로_되돌린다() {
+    @DisplayName("확정된 일정을 다시 투표 상태로 되돌리고 기존 투표 기록은 보존한다")
+    void 확정_해제_확정된_일정을_다시_투표_상태로_되돌리고_투표_기록을_보존한다() {
         ItineraryItem item = itineraryItem(101L, ItineraryItemDecisionType.VOTE, ItineraryItemStatus.CONFIRMED);
         VoteOption option = voteOption(item, 1001L);
         item.confirm(option);
@@ -448,8 +448,27 @@ class VoteServiceTest {
         assertThat(response.status()).isEqualTo("VOTING");
         assertThat(item.getStatus()).isEqualTo(ItineraryItemStatus.VOTING);
         assertThat(item.getConfirmedOption()).isNull();
-        verify(voteRepository).deleteAllByItineraryItemId(101L);
+        verify(voteRepository, never()).deleteAllByItineraryItemId(any());
         verify(voteOptionRepository, never()).deleteAllByItineraryItemId(any());
+    }
+
+    @Test
+    @DisplayName("보존된 투표 기록으로 같은 선택지를 다시 확정할 수 있다")
+    void 확정_해제_보존된_투표_기록으로_재확정할_수_있다() {
+        ItineraryItem item = itineraryItem(101L, ItineraryItemDecisionType.VOTE, ItineraryItemStatus.CONFIRMED);
+        VoteOption option = voteOption(item, 1001L);
+        item.confirm(option);
+        when(itineraryItemRepository.findById(101L)).thenReturn(Optional.of(item));
+
+        voteService.unconfirm(HOST_USER_ID, 101L);
+
+        when(voteOptionRepository.findByIdAndItineraryItemId(1001L, 101L)).thenReturn(Optional.of(option));
+
+        voteService.confirm(HOST_USER_ID, 101L, 1001L);
+
+        assertThat(item.getStatus()).isEqualTo(ItineraryItemStatus.CONFIRMED);
+        assertThat(item.getConfirmedOption()).isSameAs(option);
+        verify(voteRepository, never()).deleteAllByItineraryItemId(any());
     }
 
     @Test
