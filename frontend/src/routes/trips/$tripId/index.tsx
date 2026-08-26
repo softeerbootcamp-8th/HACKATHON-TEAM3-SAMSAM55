@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
+import { useDeleteItineraryItem } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
 import {
   getFindTripQueryKey,
   getFindTripsQueryKey,
@@ -53,6 +54,7 @@ function TripHomePage() {
     query: { enabled: isValidTripId, retry: false },
   })
   const deleteTrip = useDeleteTrip()
+  const deleteItineraryItemMutation = useDeleteItineraryItem()
   const detail = tripQuery.data?.success ? tripQuery.data.data : undefined
   const days: TripDay[] = (detail?.days ?? []).flatMap((tripDay) => {
     if (tripDay.dayNumber === undefined) {
@@ -133,6 +135,30 @@ function TripHomePage() {
         `${d.label} ${d.items.filter((item) => item.status === 'draft').length}개`,
     )
     .join(' · ')
+
+  const handleDeleteItem = async () => {
+    if (deleteItemId === null) return
+    setDeleteError(undefined)
+
+    try {
+      const response = await deleteItineraryItemMutation.mutateAsync({
+        itemId: deleteItemId,
+      })
+      if (!response.success) {
+        setDeleteError(response.error?.message ?? '일정을 삭제하지 못했습니다.')
+        return
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: getFindTripQueryKey(tripIdNumber),
+      })
+      setDeleteItemId(null)
+    } catch (error) {
+      setDeleteError(
+        getApiError(error)?.message ?? '일정을 삭제하지 못했습니다.',
+      )
+    }
+  }
 
   const handleDeleteTrip = async () => {
     setDeleteError(undefined)
@@ -326,7 +352,7 @@ function TripHomePage() {
         description="일정판에서 삭제됩니다."
         confirmLabel="삭제하기"
         danger
-        onConfirm={() => setDeleteItemId(null)}
+        onConfirm={handleDeleteItem}
       />
 
       <ConfirmDialog
