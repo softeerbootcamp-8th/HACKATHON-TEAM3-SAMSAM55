@@ -17,6 +17,7 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { cn } from '@/lib/utils'
 
 const CATEGORIES = ['숙소', '식사', '관광', '이동', '기타'] as const
+const MAX_VOTE_OPTION_COUNT = 4
 
 type OptionDraft = {
   name: string
@@ -116,6 +117,21 @@ function CreateItemSheet({
     { name: '', image: null },
   ])
   const [decidedPlace, setDecidedPlace] = useState('')
+  const [decidedPlaceImage, setDecidedPlaceImage] = useState<File | null>(null)
+  const [decidedPlacePreviewUrl, setDecidedPlacePreviewUrl] = useState<
+    string | null
+  >(null)
+  const decidedPlaceFileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!decidedPlaceImage) {
+      setDecidedPlacePreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(decidedPlaceImage)
+    setDecidedPlacePreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [decidedPlaceImage])
 
   // 시트를 열 때마다 여행 홈에서 고르고 있던 일차로 다시 맞추고, 입력값은 초기화한다.
   useEffect(() => {
@@ -129,6 +145,7 @@ function CreateItemSheet({
       { name: '', image: null },
     ])
     setDecidedPlace('')
+    setDecidedPlaceImage(null)
   }, [open, initialDayNumber])
 
   const currentDayId = days.find(
@@ -140,6 +157,7 @@ function CreateItemSheet({
 
   const handleCreate = () => {
     if (currentDayId === undefined) return
+    if (category === null) return
 
     const decisionType = decisionMethod === '투표' ? 'VOTE' : 'HOST_PICK'
     const filledOptions = options.filter(
@@ -180,7 +198,11 @@ function CreateItemSheet({
           // 선택지로 추가한다.
           if (decisionType === 'HOST_PICK' && decidedPlace.trim().length > 0) {
             createVoteOptionMutation.mutate(
-              { itemId: created.id, params: { name: decidedPlace.trim() } },
+              {
+                itemId: created.id,
+                params: { name: decidedPlace.trim() },
+                data: { image: decidedPlaceImage ?? undefined },
+              },
               { onSuccess: finish, onError: finish },
             )
             return
@@ -279,7 +301,7 @@ function CreateItemSheet({
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
               <p className="text-caption text-muted-foreground">선택지</p>
-              <p className="text-caption-sm text-muted-foreground">2개 이상</p>
+              <p className="text-caption-sm text-muted-foreground">2~4개</p>
             </div>
             <p className="text-caption-sm text-muted-foreground">
               사진은 선택이에요 · 넣으면 부모님이 고르기 쉬워요
@@ -307,12 +329,20 @@ function CreateItemSheet({
 
             <button
               type="button"
+              disabled={options.length >= MAX_VOTE_OPTION_COUNT}
               onClick={() =>
                 setOptions((prev) => [...prev, { name: '', image: null }])
               }
-              className="flex h-13 w-full items-center justify-center rounded-card border-[1.5px] border-dashed border-primary-deep text-card-title text-primary-deep"
+              className={cn(
+                'flex h-13 w-full items-center justify-center rounded-card border-[1.5px] border-dashed text-card-title',
+                options.length >= MAX_VOTE_OPTION_COUNT
+                  ? 'border-border text-muted-foreground'
+                  : 'border-primary-deep text-primary-deep',
+              )}
             >
-              + 선택지 추가
+              {options.length >= MAX_VOTE_OPTION_COUNT
+                ? '선택지는 최대 4개까지예요'
+                : '+ 선택지 추가'}
             </button>
           </div>
         ) : (
@@ -325,9 +355,31 @@ function CreateItemSheet({
             />
             <div className="flex flex-col gap-2">
               <p className="text-caption text-muted-foreground">사진</p>
-              <div className="flex size-[75px] items-center justify-center rounded-card border-[1.5px] border-dashed border-border bg-muted">
-                <Camera className="size-4 text-muted-foreground" />
-              </div>
+              <button
+                type="button"
+                aria-label="사진 추가"
+                onClick={() => decidedPlaceFileInputRef.current?.click()}
+                className="flex size-[75px] items-center justify-center overflow-hidden rounded-card border-[1.5px] border-dashed border-border bg-muted"
+              >
+                {decidedPlacePreviewUrl ? (
+                  <img
+                    src={decidedPlacePreviewUrl}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <Camera className="size-4 text-muted-foreground" />
+                )}
+              </button>
+              <input
+                ref={decidedPlaceFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) =>
+                  setDecidedPlaceImage(event.target.files?.[0] ?? null)
+                }
+              />
               <p className="text-caption-sm text-muted-foreground">
                 사진을 넣으면 부모님이 확정 일정표에서 보기 편해요
               </p>
@@ -339,7 +391,9 @@ function CreateItemSheet({
       <div className="flex flex-col gap-2 px-5 pb-7">
         <Button
           size="cta"
-          disabled={!title || currentDayId === undefined || isSubmitting}
+          disabled={
+            !title || !category || currentDayId === undefined || isSubmitting
+          }
           onClick={handleCreate}
         >
           {isSubmitting ? '만드는 중...' : '만들기'}

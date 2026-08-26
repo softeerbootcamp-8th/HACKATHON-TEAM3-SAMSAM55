@@ -185,8 +185,10 @@ public class VoteService {
     }
 
     /**
-     * 확정된 일정 항목을 다시 투표 상태로 되돌린다. 확정된 선택지를 지우고, 기존에
-     * 쌓인 투표도 함께 지워서 깨끗한 상태로 다시 투표를 받을 수 있게 한다.
+     * 확정된 일정 항목의 확정을 해제한다. VOTE 항목은 다시 투표를 받을 수 있도록
+     * VOTING 상태로 되돌리고 기존에 쌓인 투표를 지운다. HOST_PICK 항목은 방장이
+     * 확정하기를 눌러야만 확정되는 방식이라 투표를 거친 적이 없으므로, 처음 만들었을
+     * 때와 같은 PENDING 상태로 되돌리고 확정돼 있던 선택지("정한 곳")도 함께 지운다.
      *
      * @param loginUserId 요청한 회원의 식별자
      * @param itemId 확정을 해제할 일정 항목의 식별자
@@ -207,8 +209,12 @@ public class VoteService {
             throw new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_CONFIRMED);
         }
 
+        boolean isHostPick = itineraryItem.getDecisionType() == ItineraryItemDecisionType.HOST_PICK;
         itineraryItem.unconfirm();
         voteRepository.deleteAllByItineraryItemId(itemId);
+        if (isHostPick) {
+            voteOptionRepository.deleteAllByItineraryItemId(itemId);
+        }
 
         return ItineraryItemStatusDto.from(itineraryItem);
     }

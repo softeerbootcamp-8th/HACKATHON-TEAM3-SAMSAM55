@@ -449,6 +449,23 @@ class VoteServiceTest {
         assertThat(item.getStatus()).isEqualTo(ItineraryItemStatus.VOTING);
         assertThat(item.getConfirmedOption()).isNull();
         verify(voteRepository).deleteAllByItineraryItemId(101L);
+        verify(voteOptionRepository, never()).deleteAllByItineraryItemId(any());
+    }
+
+    @Test
+    @DisplayName("HOST_PICK 일정은 확정을 해제하면 PENDING으로 되돌아가고 기존 선택지도 지워진다")
+    void 확정_해제_HOST_PICK_일정은_PENDING으로_되돌아가고_선택지도_지워진다() {
+        ItineraryItem item = itineraryItem(101L, ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.CONFIRMED);
+        VoteOption option = voteOption(item, 1001L);
+        item.confirm(option);
+        when(itineraryItemRepository.findById(101L)).thenReturn(Optional.of(item));
+
+        ItineraryItemStatusDto response = voteService.unconfirm(HOST_USER_ID, 101L);
+
+        assertThat(response.status()).isEqualTo("PENDING");
+        assertThat(item.getStatus()).isEqualTo(ItineraryItemStatus.PENDING);
+        assertThat(item.getConfirmedOption()).isNull();
+        verify(voteOptionRepository).deleteAllByItineraryItemId(101L);
     }
 
     @Test

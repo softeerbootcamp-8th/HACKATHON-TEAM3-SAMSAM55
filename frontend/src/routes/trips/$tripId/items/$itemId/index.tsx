@@ -6,6 +6,7 @@ import * as React from 'react'
 import {
   getGetItineraryItemQueryKey,
   useCreateVoteOption,
+  useDeleteItineraryItem,
   useGetItineraryItem,
   useGetVoteStatus,
 } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
@@ -97,6 +98,7 @@ function ItemDetailPage() {
   const createVoteOptionMutation = useCreateVoteOption()
   const confirmMutation = useConfirm()
   const unconfirmMutation = useUnconfirm()
+  const deleteItineraryItemMutation = useDeleteItineraryItem()
 
   const goToTripHome = () =>
     navigate({ to: '/trips/$tripId', params: { tripId } })
@@ -152,6 +154,18 @@ function ItemDetailPage() {
                 : old,
           )
           setDeletingOption(null)
+        },
+      },
+    )
+  }
+
+  const handleDeleteItem = () => {
+    deleteItineraryItemMutation.mutate(
+      { itemId: itemIdNumber },
+      {
+        onSuccess: () => {
+          setDeleteItemOpen(false)
+          navigate({ to: '/trips/$tripId', params: { tripId } })
         },
       },
     )
@@ -649,10 +663,7 @@ function ItemDetailPage() {
         description="삭제하면 되돌릴 수 없어요."
         confirmLabel="삭제하기"
         danger
-        onConfirm={() => {
-          setDeleteItemOpen(false)
-          navigate({ to: '/trips/$tripId', params: { tripId } })
-        }}
+        onConfirm={handleDeleteItem}
       />
     </MobileScreen>
   )
