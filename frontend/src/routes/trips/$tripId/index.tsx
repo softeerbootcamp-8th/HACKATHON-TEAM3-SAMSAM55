@@ -27,7 +27,18 @@ import { toItemStatus } from '@/lib/itinerary-item-status'
 import { cn } from '@/lib/utils'
 import { useHorizontalDragScroll } from '@/hooks/use-horizontal-drag-scroll'
 
+type TripSearch = {
+  day?: number
+}
+
 export const Route = createFileRoute('/trips/$tripId/')({
+  validateSearch: (search: Record<string, unknown>): TripSearch => {
+    const day = Number(search.day)
+
+    return {
+      day: Number.isInteger(day) && day > 0 ? day : undefined,
+    }
+  },
   component: TripHomePage,
 })
 
@@ -49,7 +60,8 @@ type TripDay = {
 
 function TripHomePage() {
   const { tripId } = Route.useParams()
-  const navigate = useNavigate()
+  const { day: selectedDayParam } = Route.useSearch()
+  const navigate = useNavigate({ from: '/trips/$tripId/' })
   const queryClient = useQueryClient()
   const tripIdNumber = Number(tripId)
   const isValidTripId = Number.isInteger(tripIdNumber) && tripIdNumber > 0
@@ -89,7 +101,6 @@ function TripHomePage() {
     ]
   })
 
-  const [selectedDay, setSelectedDay] = useState(1)
   const [isEditing, setIsEditing] = useState(false)
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false)
   const [isCreateItemOpen, setIsCreateItemOpen] = useState(false)
@@ -117,7 +128,9 @@ function TripHomePage() {
     },
   })
 
-  const day = days.find((d) => d.id === selectedDay) ?? days[0]
+  const selectedDay =
+    days.find((d) => d.id === selectedDayParam)?.id ?? days[0]?.id
+  const day = days.find((d) => d.id === selectedDay)
   const dayScrollHandlers = useHorizontalDragScroll()
   // HOST_PICK(내가 결정) 항목은 방장이 직접 확정하는 방식이라 투표에 올릴 수 없다 —
   // 서버(startVote)가 VOTE가 아닌 항목이 하나라도 섞여 있으면 배치 전체를 거부한다.
@@ -262,7 +275,7 @@ function TripHomePage() {
               label={d.label}
               pending={d.pending}
               selected={d.id === selectedDay}
-              onClick={() => setSelectedDay(d.id)}
+              onClick={() => void navigate({ search: { day: d.id } })}
             />
           ))}
         </div>
