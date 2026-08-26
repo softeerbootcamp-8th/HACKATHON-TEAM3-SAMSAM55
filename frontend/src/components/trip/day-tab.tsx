@@ -13,7 +13,7 @@ function DayTab({ label, selected, pending, onClick }: DayTabProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        'relative rounded-tab px-4 py-2 text-label whitespace-nowrap',
+        'relative shrink-0 rounded-tab px-4 py-2 text-label whitespace-nowrap',
         selected
           ? 'bg-primary text-primary-foreground'
           : 'border border-border bg-background text-muted-foreground',

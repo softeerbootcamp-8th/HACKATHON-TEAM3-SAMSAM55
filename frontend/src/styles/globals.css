@@ -120,6 +120,15 @@
   }
 }
 
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* 2. Typography — 디자인 시스템 명명을 그대로 유틸리티 클래스로 노출 */
 /*
  * line-height는 Figma 마스터가 전부 "auto"(leading-[normal])로 지정돼 있다.

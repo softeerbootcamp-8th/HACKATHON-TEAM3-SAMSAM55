@@ -43,6 +43,7 @@ export * from './itineraryItemCreateForm';
 export * from './itineraryItemCreateResponseDto';
 export * from './itineraryItemDetailResponseDto';
 export * from './itineraryItemStatusDto';
+export * from './itineraryItemUpdateRequestDto';
 export * from './myVoteBatchRequestDto';
 export * from './myVoteBatchResponseDto';
 export * from './myVoteItemRequestDto';

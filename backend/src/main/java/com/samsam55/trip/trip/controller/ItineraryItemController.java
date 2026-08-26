@@ -10,11 +10,13 @@ import com.samsam55.trip.trip.dto.ItineraryItemCreateForm;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
+import com.samsam55.trip.trip.dto.ItineraryItemUpdateRequestDto;
 import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
 import com.samsam55.trip.trip.dto.VoteStatusResponseDto;
 import com.samsam55.trip.trip.service.ItineraryItemService;
 import com.samsam55.trip.trip.service.VoteOptionService;
 import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -113,6 +117,24 @@ public class ItineraryItemController {
     ) {
         itineraryItemService.deleteItineraryItem(loginUserId, itemId);
         return CommonResponse.empty();
+    }
+
+    /**
+     * 일정 항목의 이름·카테고리·결정 방식을 수정한다. 여행 방장만 호출할 수 있고,
+     * 투표가 시작되기 전(PENDING)에만 수정할 수 있다.
+     *
+     * @param loginUserId 로그인한 회원의 식별자
+     * @param itemId 수정할 일정 항목의 식별자
+     * @param updateRequest 이름·카테고리·결정 방식이 담긴 수정 요청
+     * @return 수정된 일정 항목 상세가 담긴 200 응답
+     */
+    @PutMapping("/api/itinerary-items/{itemId}")
+    public CommonResponse<ItineraryItemDetailResponseDto> updateItineraryItem(
+            @Login Long loginUserId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody ItineraryItemUpdateRequestDto updateRequest
+    ) {
+        return CommonResponse.success(itineraryItemService.updateItineraryItem(loginUserId, itemId, updateRequest));
     }
 
     /**

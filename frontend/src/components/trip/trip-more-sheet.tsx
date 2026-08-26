@@ -5,6 +5,7 @@ type TripMoreSheetProps = {
   onOpenChange: (open: boolean) => void
   tripTitle: string
   tripPeriod: string
+  onInviteLink?: () => void
   onEditTrip?: () => void
   onDeleteTrip: () => void
 }
@@ -14,6 +15,7 @@ function TripMoreSheet({
   onOpenChange,
   tripTitle,
   tripPeriod,
+  onInviteLink,
   onEditTrip,
   onDeleteTrip,
 }: TripMoreSheetProps) {
@@ -24,6 +26,18 @@ function TripMoreSheet({
         <p className="text-caption text-muted-foreground">{tripPeriod}</p>
       </div>
       <div className="flex flex-col">
+        {onInviteLink && (
+          <>
+            <button
+              type="button"
+              onClick={onInviteLink}
+              className="flex h-14 w-full items-center text-body-strong text-foreground"
+            >
+              여행 초대 링크
+            </button>
+            <div className="h-px w-full bg-border" />
+          </>
+        )}
         {onEditTrip && (
           <>
             <button
