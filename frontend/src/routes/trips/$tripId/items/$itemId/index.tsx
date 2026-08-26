@@ -577,13 +577,46 @@ function ItemDetailPage() {
           </>
         )}
 
-        {!isVote && (
+        {!isVote && isConfirmed && (
+          <>
+            <button
+              type="button"
+              onClick={() => options[0] && setEditingOption(options[0])}
+              className="flex flex-col gap-2.5 overflow-hidden rounded-[18px] border border-border text-left"
+            >
+              <img
+                src={options[0]?.imageUrl ?? defaultOptionImageWide}
+                alt=""
+                className="h-[233px] w-full object-cover"
+              />
+              <div className="flex flex-col gap-2.5 p-4">
+                <p className="text-title-2 text-foreground">
+                  {options[0]?.name}
+                </p>
+                {options[0]?.description && (
+                  <p className="text-caption text-muted-foreground">
+                    {options[0].description}
+                  </p>
+                )}
+                <div className="flex items-center gap-1.5">
+                  <User className="size-4 text-muted-foreground" />
+                  <p className="text-[14px] font-medium text-muted-foreground">
+                    내가 정했어요
+                  </p>
+                </div>
+              </div>
+            </button>
+            <p className="text-caption-sm text-muted-foreground">
+              카드를 탭하면 이름, 설명, 사진을 수정할 수 있어요
+            </p>
+          </>
+        )}
+
+        {!isVote && !isConfirmed && (
           <div className="flex flex-col gap-2.5">
             <button
               type="button"
-              disabled={
-                !options[0] || (status !== 'PENDING' && status !== 'CONFIRMED')
-              }
+              disabled={!options[0]}
               onClick={() => options[0] && setEditingOption(options[0])}
               className="flex flex-col gap-2.5 rounded-card border border-border p-3 text-left"
             >
