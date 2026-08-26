@@ -101,7 +101,9 @@ function CreateItemPage() {
 
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null)
   const [title, setTitle] = useState('')
-  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('식사')
+  const [category, setCategory] = useState<(typeof CATEGORIES)[number] | null>(
+    null,
+  )
   const [decisionMethod, setDecisionMethod] = useState<'투표' | '내가 결정'>(
     '투표',
   )
@@ -120,6 +122,7 @@ function CreateItemPage() {
 
   const handleCreate = () => {
     if (currentDayId === undefined || currentDayId === null) return
+    if (category === null) return
 
     const decisionType = decisionMethod === '투표' ? 'VOTE' : 'HOST_PICK'
     const filledOptions = options.filter(
@@ -315,7 +318,9 @@ function CreateItemPage() {
       <div className="flex flex-col gap-2 px-5 pb-7">
         <Button
           size="cta"
-          disabled={!title || currentDayId === null || isSubmitting}
+          disabled={
+            !title || !category || currentDayId === null || isSubmitting
+          }
           onClick={handleCreate}
         >
           {isSubmitting ? '만드는 중...' : '만들기'}
