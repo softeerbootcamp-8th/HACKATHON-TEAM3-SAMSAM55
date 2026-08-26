@@ -2,7 +2,10 @@ package com.samsam55.trip.trip.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -145,6 +148,29 @@ class ItineraryItemControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(100))
                 .andExpect(jsonPath("$.error").isEmpty());
+    }
+
+    @Test
+    @DisplayName("일정 항목 삭제 요청은 200과 공통 응답 형식으로 반환한다")
+    void 일정_항목_삭제_요청은_200과_공통_응답_형식으로_반환한다() throws Exception {
+        mockMvc.perform(delete("/api/itinerary-items/100")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.error").isEmpty());
+        verify(itineraryItemService).deleteItineraryItem(1L, 100L);
+    }
+
+    @Test
+    @DisplayName("일정 항목 삭제 시 방장이 아니면 403 공통 에러 응답으로 반환한다")
+    void 일정_항목_삭제_시_방장이_아니면_403_공통_에러_응답으로_반환한다() throws Exception {
+        doThrow(new ApplicationException(TripErrorType.NOT_TRIP_HOST))
+                .when(itineraryItemService).deleteItineraryItem(1L, 100L);
+
+        mockMvc.perform(delete("/api/itinerary-items/100")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("NOT_TRIP_HOST"));
     }
 
     @Test

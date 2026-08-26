@@ -70,4 +70,12 @@ public interface ItineraryItemRepository extends JpaRepository<ItineraryItem, Lo
             where item.tripDay.trip.id = :tripId
             """)
     int deleteAllByTripId(@Param("tripId") Long tripId);
+
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            update ItineraryItem item
+            set item.confirmedOption = null
+            where item.id = :itemId
+            """)
+    int clearConfirmedOptionByItemId(@Param("itemId") Long itemId);
 }

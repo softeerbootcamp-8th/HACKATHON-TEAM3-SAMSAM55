@@ -10,7 +10,9 @@ type EditOptionSheetProps = {
   onOpenChange: (open: boolean) => void
   initialName: string
   initialDescription: string
-  onSave?: (name: string, description: string) => void
+  initialDescriptionSource?: string
+  initialImageSrc?: string
+  onSave?: (name: string, description: string, image: File | null) => void
 }
 
 function EditOptionSheet({
@@ -18,19 +20,56 @@ function EditOptionSheet({
   onOpenChange,
   initialName,
   initialDescription,
+  initialDescriptionSource,
+  initialImageSrc,
   onSave,
 }: EditOptionSheetProps) {
+  const isAiGenerated = initialDescriptionSource === 'AI'
   const [name, setName] = React.useState(initialName)
   const [description, setDescription] = React.useState(initialDescription)
+  const [image, setImage] = React.useState<File | null>(null)
+  const [newPreviewUrl, setNewPreviewUrl] = React.useState<string | null>(null)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  React.useEffect(() => {
+    if (!image) {
+      setNewPreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(image)
+    setNewPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [image])
+
+  const previewUrl = newPreviewUrl ?? initialImageSrc
 
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="선택지 수정">
       <div className="flex items-end gap-3">
-        <div className="relative flex size-[74px] shrink-0 items-center justify-center rounded-card bg-muted">
+        <button
+          type="button"
+          aria-label="사진 변경"
+          onClick={() => fileInputRef.current?.click()}
+          className="relative flex size-[74px] shrink-0 items-center justify-center overflow-hidden rounded-card bg-muted"
+        >
+          {previewUrl && (
+            <img
+              src={previewUrl}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+            />
+          )}
           <span className="absolute -right-1.5 -bottom-1.5 flex size-[30px] items-center justify-center rounded-full bg-background shadow-[0px_0px_3.5px_rgba(0,0,0,0.1)]">
             <Camera className="size-4 text-muted-foreground" />
           </span>
-        </div>
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(event) => setImage(event.target.files?.[0] ?? null)}
+        />
         <TextInput
           label="이름"
           value={name}
@@ -43,7 +82,7 @@ function EditOptionSheet({
         <div className="flex items-center justify-between">
           <p className="text-caption text-muted-foreground">설명</p>
           <span className="rounded-chip bg-primary-tint px-2 py-[3px] text-[11px] leading-none font-medium text-primary-deep">
-            ✨ AI 작성
+            {isAiGenerated ? '✨ AI 작성' : '✏️ 직접 작성'}
           </span>
         </div>
         <textarea
@@ -53,14 +92,16 @@ function EditOptionSheet({
           className="h-21 w-full resize-none rounded-card border-2 border-primary-deep bg-muted px-4 py-3.5 text-[14px] text-foreground outline-none"
         />
         <p className="text-caption-sm text-muted-foreground">
-          AI가 쓴 내용이라 사실과 다를 수 있어요. 확인해주세요
+          {isAiGenerated
+            ? 'AI가 쓴 내용이라 사실과 다를 수 있어요. 확인해주세요'
+            : '직접 쓴 설명이에요. 자유롭게 수정할 수 있어요'}
         </p>
       </div>
 
       <Button
         size="cta"
         onClick={() => {
-          onSave?.(name, description)
+          onSave?.(name, description, image)
           onOpenChange(false)
         }}
       >
