@@ -115,10 +115,15 @@ function TripHomePage() {
             return []
           }
 
+          const name = item.name ?? '이름 없는 일정'
+
           return [
             {
               id: item.id,
-              title: item.name ?? '이름 없는 일정',
+              title:
+                status === 'confirmed' && item.confirmedOptionName
+                  ? `${name} - ${item.confirmedOptionName}`
+                  : name,
               category: item.category ?? '기타',
               status,
               decisionType: item.decisionType,

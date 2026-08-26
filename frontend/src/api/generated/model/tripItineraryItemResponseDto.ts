@@ -12,4 +12,5 @@ export interface TripItineraryItemResponseDto {
   status?: string;
   decisionType?: string;
   optionCount?: number;
+  confirmedOptionName?: string;
 }

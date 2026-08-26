@@ -14,6 +14,8 @@ export interface TripCreateRequestDto {
   startDate: string;
   endDate: string;
   /**
+     * @minItems 1
+     * @maxItems 2147483647
      * @items.minLength 0
      * @items.maxLength 50
      */
