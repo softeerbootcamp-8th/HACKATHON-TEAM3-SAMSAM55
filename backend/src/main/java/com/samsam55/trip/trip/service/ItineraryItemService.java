@@ -27,9 +27,11 @@ import com.samsam55.trip.trip.repository.TripDayRepository;
 import com.samsam55.trip.trip.repository.VoteOptionRepository;
 import com.samsam55.trip.trip.repository.VoteRepository;
 import com.samsam55.trip.upload.service.S3PresignService;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -260,5 +262,41 @@ public class ItineraryItemService {
         itineraryItemRepository.clearConfirmedOptionByItemId(itemId);
         voteOptionRepository.deleteAllByItineraryItemId(itemId);
         itineraryItemRepository.delete(itineraryItem);
+    }
+
+    /**
+     * 같은 일차 안에서 일정 항목의 순서를 바꾼다. {@code itemIds}는 그 일차에 있는 모든 일정 항목의
+     * 식별자를 새 순서대로 나열한 것이어야 한다 — 하나라도 빠지거나 다른 일차의 항목이 섞이면 거부한다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param tripDayId 순서를 바꿀 일차의 식별자
+     * @param itemIds 새 순서대로 나열한 일정 항목 식별자 목록
+     * @throws ApplicationException 일차를 찾을 수 없을 때(TRIP_DAY_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     * @throws ApplicationException itemIds가 그 일차의 일정 항목 목록과 정확히 일치하지 않을 때(ITINERARY_ITEM_ORDER_MISMATCH)
+     */
+    @Transactional
+    public void reorderItineraryItems(Long loginUserId, Long tripDayId, List<Long> itemIds) {
+        TripDay tripDay = tripDayRepository.findByIdForUpdate(tripDayId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.TRIP_DAY_NOT_FOUND));
+
+        if (!tripDay.getTrip().getHostUser().getId().equals(loginUserId)) {
+            throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+        }
+
+        List<ItineraryItem> currentItems = itineraryItemRepository.findByTripDayIdOrderBySortOrderAsc(tripDayId);
+        Set<Long> currentItemIds = currentItems.stream().map(ItineraryItem::getId).collect(Collectors.toSet());
+        if (currentItemIds.size() != itemIds.size() || !currentItemIds.equals(new HashSet<>(itemIds))) {
+            throw new ApplicationException(TripErrorType.ITINERARY_ITEM_ORDER_MISMATCH);
+        }
+
+        // (trip_day_id, sort_order) 유니크 제약 때문에 최종 순서를 바로 적용하면 중간에 다른 항목과
+        // 값이 겹칠 수 있다. 먼저 전부 겹칠 일 없는 임시 음수 값으로 밀어둔 뒤, 최종 순서로 다시 채운다.
+        for (int i = 0; i < itemIds.size(); i++) {
+            itineraryItemRepository.updateSortOrder(itemIds.get(i), -(i + 1));
+        }
+        for (int i = 0; i < itemIds.size(); i++) {
+            itineraryItemRepository.updateSortOrder(itemIds.get(i), i + 1);
+        }
     }
 }
