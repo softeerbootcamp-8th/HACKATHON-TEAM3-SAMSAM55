@@ -66,17 +66,41 @@ function NewTripPeriodPage() {
     endDate: initialEndDate,
   } = Route.useSearch()
   const today = new Date()
+  const todayValue = toDateString(today)
+  const normalizedInitialStartDate =
+    initialStartDate && initialStartDate >= todayValue
+      ? initialStartDate
+      : undefined
+  const normalizedInitialEndDate =
+    normalizedInitialStartDate &&
+    initialEndDate &&
+    initialEndDate >= todayValue &&
+    initialEndDate >= normalizedInitialStartDate
+      ? initialEndDate
+      : undefined
   const [month, setMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   )
   const [startDate, setStartDate] = useState<string | undefined>(
-    initialStartDate,
+    normalizedInitialStartDate,
   )
-  const [endDate, setEndDate] = useState<string | undefined>(initialEndDate)
+  const [endDate, setEndDate] = useState<string | undefined>(
+    normalizedInitialEndDate,
+  )
   const calendarDays = getCalendarDays(month)
+  const isValidSelectedPeriod =
+    !!startDate &&
+    !!endDate &&
+    startDate >= todayValue &&
+    endDate >= todayValue &&
+    startDate <= endDate
 
   const handleDateClick = (date: Date) => {
     const value = toDateString(date)
+    if (value < todayValue) {
+      return
+    }
+
     if (!startDate || endDate) {
       setStartDate(value)
       setEndDate(undefined)
@@ -98,7 +122,7 @@ function NewTripPeriodPage() {
         <div className="px-5 pb-6">
           <Button
             size="cta"
-            disabled={!title || !startDate || !endDate}
+            disabled={!title || !isValidSelectedPeriod}
             onClick={() =>
               navigate({
                 to: '/trips/new/members',
@@ -201,6 +225,7 @@ function NewTripPeriodPage() {
               ))}
               {calendarDays.map((day) => {
                 const value = toDateString(day.date)
+                const isPast = value < todayValue
                 const isStart = value === startDate
                 const isEnd = value === endDate
                 const isInRange =
@@ -217,11 +242,13 @@ function NewTripPeriodPage() {
                     <button
                       type="button"
                       onClick={() => handleDateClick(day.date)}
+                      disabled={isPast}
                       aria-label={`${value} 선택`}
                       className={cn(
                         'flex size-9 items-center justify-center rounded-full text-body',
                         !day.currentMonth && 'text-text-disabled',
                         day.currentMonth && 'text-foreground',
+                        isPast && 'text-text-disabled',
                         isInRange && 'bg-primary-tint text-primary-deep',
                         (isStart || isEnd) &&
                           'bg-primary-deep font-medium text-white',
