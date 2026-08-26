@@ -6,6 +6,10 @@ package com.samsam55.trip.trip.ai;
  */
 public interface VoteOptionDescriptionGenerator {
 
+    /**
+     * @return 생성한 설명. 생성할 설명이 없으면(예: 스텁) {@code null}을 반환한다 — 안내
+     *         문구 같은 placeholder로 채우지 않는다. 값이 없으면 화면에서도 보여주지 않는다.
+     */
     String generate(String optionName);
 
     /**

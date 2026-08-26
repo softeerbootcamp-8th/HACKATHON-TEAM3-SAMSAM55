@@ -12,7 +12,6 @@ import { AppBar } from '@/components/ui/app-bar'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Button } from '@/components/ui/button'
 import { TextInput } from '@/components/ui/text-input'
-import { DayTab } from '@/components/trip/day-tab'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { uploadImage } from '@/lib/upload-image'
 import { cn } from '@/lib/utils'
@@ -105,7 +104,6 @@ function CreateItemSheet({
   const queryClient = useQueryClient()
   const tripIdNumber = Number(tripId)
 
-  const [selectedDayNumber, setSelectedDayNumber] = useState(initialDayNumber)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<(typeof CATEGORIES)[number] | null>(
     null,
@@ -134,10 +132,9 @@ function CreateItemSheet({
     return () => URL.revokeObjectURL(url)
   }, [decidedPlaceImage])
 
-  // 시트를 열 때마다 여행 홈에서 고르고 있던 일차로 다시 맞추고, 입력값은 초기화한다.
+  // 시트를 열 때마다 입력값을 초기화한다. 며칠차는 여행 홈에서 고르고 있던 일차로 고정된다.
   useEffect(() => {
     if (!open) return
-    setSelectedDayNumber(initialDayNumber)
     setTitle('')
     setCategory(null)
     setDecisionMethod('투표')
@@ -147,10 +144,10 @@ function CreateItemSheet({
     ])
     setDecidedPlace('')
     setDecidedPlaceImage(null)
-  }, [open, initialDayNumber])
+  }, [open])
 
   const currentDayId = days.find(
-    (day) => day.dayNumber === selectedDayNumber,
+    (day) => day.dayNumber === initialDayNumber,
   )?.id
 
   const createItineraryItemMutation = useCreateItineraryItem()
@@ -158,11 +155,16 @@ function CreateItemSheet({
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
+  const decisionType = decisionMethod === '투표' ? 'VOTE' : 'HOST_PICK'
+  // HOST_PICK은 정한 곳이 곧 유일한 선택지라, 없으면 선택지 없는 일정이 그대로 만들어진다.
+  const isMissingDecidedPlace =
+    decisionType === 'HOST_PICK' && decidedPlace.trim().length === 0
+
   const handleCreate = async () => {
     if (currentDayId === undefined) return
     if (category === null) return
+    if (isMissingDecidedPlace) return
 
-    const decisionType = decisionMethod === '투표' ? 'VOTE' : 'HOST_PICK'
     const filledOptions = options.filter(
       (option) => option.name.trim().length > 0,
     )
@@ -252,24 +254,6 @@ function CreateItemSheet({
       />
 
       <div className="flex flex-1 flex-col gap-7 overflow-y-auto px-5 py-6">
-        {days.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <p className="text-caption text-muted-foreground">며칠차</p>
-            <div className="flex gap-2 overflow-x-auto">
-              {days.map((day) =>
-                day.dayNumber === undefined ? null : (
-                  <DayTab
-                    key={day.id}
-                    label={`${day.dayNumber}일차`}
-                    selected={day.dayNumber === selectedDayNumber}
-                    onClick={() => setSelectedDayNumber(day.dayNumber!)}
-                  />
-                ),
-              )}
-            </div>
-          </div>
-        )}
-
         <TextInput
           label="일정 이름"
           placeholder="예: 점심 식사"
@@ -414,7 +398,11 @@ function CreateItemSheet({
         <Button
           size="cta"
           disabled={
-            !title || !category || currentDayId === undefined || isSubmitting
+            !title ||
+            !category ||
+            currentDayId === undefined ||
+            isMissingDecidedPlace ||
+            isSubmitting
           }
           onClick={handleCreate}
         >
