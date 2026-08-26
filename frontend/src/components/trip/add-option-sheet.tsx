@@ -66,12 +66,6 @@ function AddOptionSheet({ open, onOpenChange, onAdd }: AddOptionSheetProps) {
           className="flex-1"
         />
       </div>
-      <div className="flex items-center gap-2 rounded-thumb bg-primary-tint px-3.5 py-3">
-        <span className="shrink-0 text-[14px]">✨</span>
-        <p className="text-caption text-foreground">
-          여행지 이름만 넣으면 AI가 설명을 써줘요
-        </p>
-      </div>
       <Button
         size="cta"
         disabled={name.trim().length === 0}
