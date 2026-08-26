@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { User, Users } from 'lucide-react'
+import { TriangleAlert, User, Users } from 'lucide-react'
 import * as React from 'react'
 
 import {
@@ -354,6 +354,14 @@ function ItemDetailPage() {
                 {isEditingOptions ? '완료' : '편집'}
               </button>
             </div>
+            {!canStartVote && (
+              <div className="flex items-center gap-2 rounded-card bg-destructive/10 px-3.5 py-3">
+                <TriangleAlert className="size-4 shrink-0 text-destructive" />
+                <p className="text-[13px] text-destructive">
+                  선택지가 2개 이상이어야 투표가 가능해요.
+                </p>
+              </div>
+            )}
             <div className="flex flex-col gap-2.5">
               {options.map((option) => (
                 <OptionCard
