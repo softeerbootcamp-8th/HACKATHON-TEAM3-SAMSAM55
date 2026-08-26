@@ -72,6 +72,9 @@ class TripServiceTest {
         when(trip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 1, 0, 0));
         when(trip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 3, 0, 0));
         when(trip.getCompanionCount()).thenReturn(2);
+        when(itineraryItemRepository.countByTripDayTripId(1L)).thenReturn(8L);
+        when(itineraryItemRepository.countByTripDayTripIdAndStatus(1L, ItineraryItemStatus.CONFIRMED))
+                .thenReturn(5L);
 
         TripListResponseDto response = service().findTrips(1L);
 
@@ -81,7 +84,33 @@ class TripServiceTest {
         assertThat(response.items().getFirst().startDate()).isEqualTo(LocalDate.of(2026, 9, 1));
         assertThat(response.items().getFirst().endDate()).isEqualTo(LocalDate.of(2026, 9, 3));
         assertThat(response.items().getFirst().companionCount()).isEqualTo(2);
+        assertThat(response.items().getFirst().totalItems()).isEqualTo(8L);
+        assertThat(response.items().getFirst().confirmedItems()).isEqualTo(5L);
+        assertThat(response.items().getFirst().progressPercent()).isEqualTo(62);
         verify(tripRepository).findAllByHostUserIdOrderByStartDateAscIdAsc(1L);
+        verify(itineraryItemRepository).countByTripDayTripId(1L);
+        verify(itineraryItemRepository)
+                .countByTripDayTripIdAndStatus(1L, ItineraryItemStatus.CONFIRMED);
+    }
+
+    @Test
+    @DisplayName("일정이 없는 여행의 진척률은 0으로 반환한다")
+    void 일정이_없는_여행의_진척률은_0으로_반환한다() {
+        when(tripRepository.findAllByHostUserIdOrderByStartDateAscIdAsc(1L)).thenReturn(List.of(trip));
+        when(trip.getId()).thenReturn(1L);
+        when(trip.getTitle()).thenReturn("일정 없는 여행");
+        when(trip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 1, 0, 0));
+        when(trip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 1, 0, 0));
+        when(trip.getCompanionCount()).thenReturn(1);
+        when(itineraryItemRepository.countByTripDayTripId(1L)).thenReturn(0L);
+        when(itineraryItemRepository.countByTripDayTripIdAndStatus(1L, ItineraryItemStatus.CONFIRMED))
+                .thenReturn(0L);
+
+        TripListResponseDto response = service().findTrips(1L);
+
+        assertThat(response.items().getFirst().totalItems()).isZero();
+        assertThat(response.items().getFirst().confirmedItems()).isZero();
+        assertThat(response.items().getFirst().progressPercent()).isZero();
     }
 
     @Test
@@ -227,6 +256,7 @@ class TripServiceTest {
         when(trip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 1, 0, 0));
         when(trip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 3, 0, 0));
         when(trip.getCompanionCount()).thenReturn(2);
+        when(trip.getInviteCode()).thenReturn("invite-code");
         when(tripDayRepository.findAllByTripIdOrderByDayNumberAsc(1L)).thenReturn(List.of());
         when(itineraryItemRepository.findAllByTripIdOrderByDayAndSortOrder(1L)).thenReturn(List.of());
 
@@ -237,6 +267,7 @@ class TripServiceTest {
         assertThat(response.startDate()).isEqualTo(LocalDate.of(2026, 9, 1));
         assertThat(response.endDate()).isEqualTo(LocalDate.of(2026, 9, 3));
         assertThat(response.companionCount()).isEqualTo(2);
+        assertThat(response.inviteCode()).isEqualTo("invite-code");
         assertThat(response.days()).isEmpty();
     }
 
@@ -259,6 +290,7 @@ class TripServiceTest {
         when(trip.getStartDate()).thenReturn(LocalDateTime.of(2026, 9, 1, 0, 0));
         when(trip.getEndDate()).thenReturn(LocalDateTime.of(2026, 9, 3, 0, 0));
         when(trip.getCompanionCount()).thenReturn(2);
+        when(trip.getInviteCode()).thenReturn("invite-code");
         when(tripDayRepository.findAllByTripIdOrderByDayNumberAsc(1L)).thenReturn(List.of(tripDay));
         when(itineraryItemRepository.findAllByTripIdOrderByDayAndSortOrder(1L))
                 .thenReturn(List.of(itineraryItem));

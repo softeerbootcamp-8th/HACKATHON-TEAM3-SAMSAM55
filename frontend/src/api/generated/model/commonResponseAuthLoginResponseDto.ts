@@ -4,11 +4,11 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { AuthLoginResponseDto } from './authLoginResponseDto'
-import type { ErrorResponse } from './errorResponse'
+import type { AuthLoginResponseDto } from './authLoginResponseDto';
+import type { ErrorResponse } from './errorResponse';
 
 export interface CommonResponseAuthLoginResponseDto {
-  success?: boolean
-  data?: AuthLoginResponseDto
-  error?: ErrorResponse
+  success?: boolean;
+  data?: AuthLoginResponseDto;
+  error?: ErrorResponse;
 }

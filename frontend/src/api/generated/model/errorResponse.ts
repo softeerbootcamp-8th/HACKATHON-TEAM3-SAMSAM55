@@ -6,6 +6,6 @@
  */
 
 export interface ErrorResponse {
-  code?: string
-  message?: string
+  code?: string;
+  message?: string;
 }

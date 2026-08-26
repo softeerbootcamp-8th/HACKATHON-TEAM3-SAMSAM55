@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
@@ -65,9 +66,10 @@ class AuthServiceIntegrationTest extends AbstractMySqlContainerTest {
     void 로그인_성공_시_회원_식별자를_세션에_저장한다() {
         authService.signup(new AuthSignupRequestDto("login-user", "password"));
         MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse servletResponse = new MockHttpServletResponse();
 
         AuthLoginResponseDto response = authService.login(
-                new AuthLoginRequestDto("login-user", "password"), request
+                new AuthLoginRequestDto("login-user", "password"), request, servletResponse
         );
 
         HttpSession session = request.getSession(false);
@@ -82,9 +84,10 @@ class AuthServiceIntegrationTest extends AbstractMySqlContainerTest {
     void 로그인_실패_시_세션을_생성하지_않는다() {
         authService.signup(new AuthSignupRequestDto("login-failure-user", "password"));
         MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse servletResponse = new MockHttpServletResponse();
 
         assertThatThrownBy(() -> authService.login(
-                new AuthLoginRequestDto("login-failure-user", "wrong-password"), request
+                new AuthLoginRequestDto("login-failure-user", "wrong-password"), request, servletResponse
         ))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(AuthErrorType.INVALID_CREDENTIALS));

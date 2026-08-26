@@ -5,24 +5,37 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: #92d3d5;
+  --primary-foreground: #1a1a1a;
+  --primary-deep: #3e9a9d;
+  --primary-tint: #eaf6f6;
+  --secondary: #ffffff;
+  --secondary-foreground: #1a1a1a;
+  --muted: #f7f8f8;
+  --muted-foreground: #8a9090;
+  --accent: #f7f8f8;
+  --accent-foreground: #1a1a1a;
+  --destructive: #fa5252;
+  --destructive-foreground: #ffffff;
+  --border: #eceeee;
+  --input: #eceeee;
+  --ring: #92d3d5;
+  --disabled-fill: #cfcfcf;
+  --text-disabled: #b3b3b3;
+  --status-draft: #6b7075;
+  --status-draft-tint: #eeeff1;
+  --status-voting: #3e9a9d;
+  --status-voting-tint: #eaf6f6;
+  --status-confirmed: #37b24d;
+  --status-confirmed-tint: #e6f6e9;
+  --status-attention: #b03d3d;
+  --status-attention-tint: #f6e6e6;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -38,41 +51,8 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
 @theme inline {
+  --font-sans: 'Noto Sans KR', ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -81,6 +61,8 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-deep: var(--primary-deep);
+  --color-primary-tint: var(--primary-tint);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -88,18 +70,37 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-disabled-fill: var(--disabled-fill);
+  --color-text-disabled: var(--text-disabled);
+  --color-status-draft: var(--status-draft);
+  --color-status-draft-tint: var(--status-draft-tint);
+  --color-status-voting: var(--status-voting);
+  --color-status-voting-tint: var(--status-voting-tint);
+  --color-status-confirmed: var(--status-confirmed);
+  --color-status-confirmed-tint: var(--status-confirmed-tint);
+  --color-status-attention: var(--status-attention);
+  --color-status-attention-tint: var(--status-attention-tint);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  /* 8pt 그리드 라운드 스케일 (디자인 시스템 3. Radius) */
+  --radius-2xs: 2px; /* 그래버 */
+  --radius-tab: 10px; /* 일차 탭 */
+  --radius-thumb: 12px; /* 썸네일 */
+  --radius-card: 14px; /* 카드 · 입력 */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-btn: 16px; /* 버튼 · 큰 카드 */
+  --radius-chip: 20px; /* 칩 · 뱃지 */
+  --radius-fab: 28px; /* FAB · 원형 */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -115,6 +116,91 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
+}
+
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 2. Typography — 디자인 시스템 명명을 그대로 유틸리티 클래스로 노출 */
+/*
+ * line-height는 Figma 마스터가 전부 "auto"(leading-[normal])로 지정돼 있다.
+ * Noto Sans KR은 CJK 메트릭 때문에 normal 줄간격 자체가 라틴 폰트 대비 훨씬 크다
+ * (예: 25px → 실측 39px, 16px → 실측 30px) — 임의로 1.3~1.4를 지정하면 Figma보다
+ * 줄간격이 좁아 보인다. 값을 지정하지 않고 그대로 normal을 따라가야 일치한다.
+ */
+@utility text-display {
+  font-weight: 700;
+  font-size: 25px;
+  line-height: normal;
+}
+@utility text-title-1 {
+  font-weight: 700;
+  font-size: 22px;
+  line-height: normal;
+}
+@utility text-title-2 {
+  font-weight: 700;
+  font-size: 18px;
+  line-height: normal;
+}
+@utility text-title-3 {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: normal;
+}
+@utility text-subtitle {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: normal;
+}
+@utility text-body-strong {
+  font-weight: 500;
+  font-size: 16px;
+  line-height: normal;
+}
+@utility text-body {
+  font-weight: 400;
+  font-size: 16px;
+  line-height: normal;
+}
+@utility text-card-title {
+  font-weight: 500;
+  font-size: 15px;
+  line-height: normal;
+}
+@utility text-label {
+  font-weight: 500;
+  font-size: 13px;
+  /* 이 토큰은 일차 탭·카테고리 칩처럼 패딩으로 높이가 정해지는 곳에서만 쓴다.
+     Noto Sans KR의 normal 줄간격은 13px에서 실제로 ~27px까지 커져서 칩이
+     Figma보다 훨씬 두꺼워 보인다 — 다른 토큰과 달리 여기는 줄간격을 꽉 붙인다. */
+  line-height: 1;
+}
+@utility text-caption {
+  font-weight: 400;
+  font-size: 13px;
+  line-height: normal;
+}
+@utility text-caption-sm {
+  font-weight: 400;
+  font-size: 12px;
+  line-height: normal;
+}
+@utility text-chip {
+  font-weight: 500;
+  font-size: 12px;
+  line-height: normal;
+}
+@utility text-chip-sm {
+  font-weight: 500;
+  font-size: 10px;
+  line-height: normal;
 }

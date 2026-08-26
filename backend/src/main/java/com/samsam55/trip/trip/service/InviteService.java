@@ -1,5 +1,6 @@
 package com.samsam55.trip.trip.service;
 
+import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.trip.dto.InviteJoinRequestDto;
 import com.samsam55.trip.trip.dto.InviteJoinResponseDto;
@@ -88,6 +89,7 @@ public class InviteService {
     private void issueSession(HttpServletRequest servletRequest, Participant participant) {
         HttpSession session = servletRequest.getSession(true);
         servletRequest.changeSessionId();
+        session.removeAttribute(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE);
         session.setAttribute(PARTICIPANT_ID_SESSION_ATTRIBUTE, participant.getId());
         session.setAttribute(TRIP_ID_SESSION_ATTRIBUTE, participant.getTrip().getId());
     }

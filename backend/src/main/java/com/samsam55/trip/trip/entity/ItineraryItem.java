@@ -70,4 +70,32 @@ public class ItineraryItem extends BaseEntity {
         this.sortOrder = sortOrder;
         this.confirmedOption = confirmedOption;
     }
+
+    public void update(String name, String category, ItineraryItemDecisionType decisionType) {
+        this.name = name;
+        this.category = category;
+        this.decisionType = decisionType;
+    }
+
+    public void openVote() {
+        this.status = ItineraryItemStatus.VOTING;
+    }
+
+    public void markVoted() {
+        this.status = ItineraryItemStatus.VOTED;
+    }
+
+    public void confirm(VoteOption option) {
+        this.status = ItineraryItemStatus.CONFIRMED;
+        this.confirmedOption = option;
+    }
+
+    public void unconfirm() {
+        // HOST_PICK은 투표를 거친 적이 없으므로(선택지 추가 즉시 확정됨) VOTING이 아니라
+        // 처음 만들었을 때와 같은 PENDING으로 되돌린다.
+        this.status = decisionType == ItineraryItemDecisionType.HOST_PICK
+                ? ItineraryItemStatus.PENDING
+                : ItineraryItemStatus.VOTING;
+        this.confirmedOption = null;
+    }
 }

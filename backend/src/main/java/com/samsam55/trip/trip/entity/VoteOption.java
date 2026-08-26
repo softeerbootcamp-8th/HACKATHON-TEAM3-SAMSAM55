@@ -40,7 +40,7 @@ public class VoteOption extends BaseEntity {
     private String descriptionSource;
 
     @Lob
-    @Column(name = "image")
+    @Column(name = "image", columnDefinition = "LONGBLOB")
     private byte[] image;
 
     @Column(name = "image_content_type", length = 100)
@@ -55,6 +55,14 @@ public class VoteOption extends BaseEntity {
             String imageContentType
     ) {
         this.itineraryItem = itineraryItem;
+        this.name = name;
+        this.description = description;
+        this.descriptionSource = descriptionSource;
+        this.image = image;
+        this.imageContentType = imageContentType;
+    }
+
+    public void update(String name, String description, String descriptionSource, byte[] image, String imageContentType) {
         this.name = name;
         this.description = description;
         this.descriptionSource = descriptionSource;

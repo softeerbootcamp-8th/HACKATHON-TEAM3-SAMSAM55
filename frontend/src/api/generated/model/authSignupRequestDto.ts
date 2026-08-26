@@ -7,14 +7,14 @@
 
 export interface AuthSignupRequestDto {
   /**
-   * @minLength 0
-   * @maxLength 100
-   */
-  loginId: string
+     * @minLength 0
+     * @maxLength 100
+     */
+  loginId: string;
   /**
-   * @minLength 0
-   * @maxLength 72
-   * @pattern ^[\x21-\x7E]+$
-   */
-  password: string
+     * @minLength 8
+     * @maxLength 72
+     * @pattern ^[\x21-\x7E]+$
+     */
+  password: string;
 }
