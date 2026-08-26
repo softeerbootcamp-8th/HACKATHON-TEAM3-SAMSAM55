@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
 import { useFindTrip } from '@/api/generated/trip-controller/trip-controller'
@@ -19,17 +20,40 @@ function TripInvitePage() {
   const tripQuery = useFindTrip(tripIdNumber, {
     query: { enabled: isValidTripId, retry: false },
   })
+  const [isCopyToastVisible, setIsCopyToastVisible] = useState(false)
+  const copyToastTimeoutRef = useRef<number | null>(null)
   const detail = tripQuery.data?.success ? tripQuery.data.data : undefined
   const inviteLink = detail?.inviteCode
     ? `${window.location.origin}/invite/${detail.inviteCode}`
     : ''
 
-  const handleCopy = () => {
+  useEffect(() => {
+    return () => {
+      if (copyToastTimeoutRef.current !== null) {
+        window.clearTimeout(copyToastTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const handleCopy = async () => {
     if (!inviteLink) {
       return
     }
 
-    void navigator.clipboard.writeText(inviteLink)
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+    } catch {
+      return
+    }
+
+    setIsCopyToastVisible(true)
+    if (copyToastTimeoutRef.current !== null) {
+      window.clearTimeout(copyToastTimeoutRef.current)
+    }
+    copyToastTimeoutRef.current = window.setTimeout(() => {
+      setIsCopyToastVisible(false)
+      copyToastTimeoutRef.current = null
+    }, 2000)
   }
 
   if (tripQuery.isLoading) {
@@ -108,6 +132,15 @@ function TripInvitePage() {
           </button>
         </div>
       </div>
+      {isCopyToastVisible && (
+        <div
+          className="pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-chip bg-foreground px-4 py-2 text-caption text-background"
+          role="status"
+          aria-live="polite"
+        >
+          복사되었습니다
+        </div>
+      )}
     </MobileScreen>
   )
 }
