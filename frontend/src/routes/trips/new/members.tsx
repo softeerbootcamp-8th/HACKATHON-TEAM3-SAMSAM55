@@ -43,6 +43,7 @@ function NewTripMembersPage() {
   const [customMembers, setCustomMembers] = useState<string[]>([])
   const [errorMessage, setErrorMessage] = useState<string>()
   const createTrip = useCreateTrip()
+  const hasCompanion = selected.length > 0 || customMembers.length > 0
 
   function toggle(member: string) {
     setSelected((prev) =>
@@ -91,8 +92,9 @@ function NewTripMembersPage() {
 
       await queryClient.invalidateQueries({ queryKey: getFindTripsQueryKey() })
       await navigate({
-        to: '/trips/$tripId/invite',
+        to: '/trips/$tripId',
         params: { tripId: String(response.data.id) },
+        search: { invite: true },
         replace: true,
       })
     } catch (error) {
@@ -111,7 +113,7 @@ function NewTripMembersPage() {
         <div className="px-5 pb-6">
           <Button
             size="cta"
-            disabled={createTrip.isPending}
+            disabled={createTrip.isPending || !hasCompanion}
             onClick={handleCreateTrip}
           >
             {createTrip.isPending ? '여행 만드는 중...' : '여행 만들기'}
