@@ -26,6 +26,7 @@ import type {
 import type {
   CommonResponseItineraryItemCreateResponseDto,
   CommonResponseItineraryItemDetailResponseDto,
+  CommonResponseVoid,
   CommonResponseVoteOptionCreateResponseDto,
   CommonResponseVoteStatusResponseDto,
   CreateVoteOptionBody,
@@ -272,7 +273,64 @@ export function useGetItineraryItem<TData = Awaited<ReturnType<typeof getItinera
 
 
 
-export const getVoteStatus = (
+export const deleteItineraryItem = (
+    itemId: number,
+ signal?: AbortSignal
+) => {
+
+
+      return customInstance<CommonResponseVoid>(
+      {url: `/api/itinerary-items/${itemId}`, method: 'DELETE', signal
+    },
+      );
+    }
+
+
+
+
+export const getDeleteItineraryItemMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteItineraryItem>>, TError,DeleteItineraryItemMutationVariables, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof deleteItineraryItem>>, TError,DeleteItineraryItemMutationVariables, TContext> => {
+
+const mutationKey = ['deleteItineraryItem'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteItineraryItem>>, DeleteItineraryItemMutationVariables> = (props) => {
+          const {itemId} = props ?? {};
+
+          return  deleteItineraryItem(itemId,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteItineraryItemMutationResult = NonNullable<Awaited<ReturnType<typeof deleteItineraryItem>>>
+
+    export type DeleteItineraryItemMutationError = unknown
+    export type DeleteItineraryItemMutationVariables = {itemId: number}
+
+    export const useDeleteItineraryItem = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteItineraryItem>>, TError,DeleteItineraryItemMutationVariables, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteItineraryItem>>,
+        TError,
+        DeleteItineraryItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteItineraryItemMutationOptions(options), queryClient);
+    }
+    export const getVoteStatus = (
     itemId: number,
  signal?: AbortSignal
 ) => {
