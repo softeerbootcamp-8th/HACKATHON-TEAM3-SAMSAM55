@@ -28,9 +28,9 @@ import type {
   CommonResponseItineraryItemDetailResponseDto,
   CommonResponseVoteOptionCreateResponseDto,
   CommonResponseVoteStatusResponseDto,
-  CreateItineraryItemBody,
   CreateVoteOptionBody,
-  CreateVoteOptionParams
+  CreateVoteOptionParams,
+  ItineraryItemCreateForm
 } from '../model';
 
 import { customInstance } from '../../mutator/custom-instance';
@@ -55,16 +55,16 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 
 export const createItineraryItem = (
     dayId: number,
-    createItineraryItemBody?: CreateItineraryItemBody,
+    itineraryItemCreateForm?: ItineraryItemCreateForm,
  signal?: AbortSignal
 ) => {
 
       const formData = new FormData();
-if(createItineraryItemBody?.request !== undefined) {
- formData.append(`request`, JSON.stringify(createItineraryItemBody.request));
+if(itineraryItemCreateForm?.request !== undefined) {
+ formData.append(`request`, itineraryItemCreateForm.request);
  }
-if(createItineraryItemBody?.optionImages !== undefined) {
- createItineraryItemBody?.optionImages.forEach(value => formData.append(`optionImages`, value));
+if(itineraryItemCreateForm?.optionImages !== undefined) {
+ itineraryItemCreateForm?.optionImages.forEach(value => formData.append(`optionImages`, value));
  }
 
       return customInstance<CommonResponseItineraryItemCreateResponseDto>(
@@ -106,9 +106,9 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateItineraryItemMutationResult = NonNullable<Awaited<ReturnType<typeof createItineraryItem>>>
-    export type CreateItineraryItemMutationBody = CreateItineraryItemBody | undefined
+    export type CreateItineraryItemMutationBody = ItineraryItemCreateForm | undefined
     export type CreateItineraryItemMutationError = unknown
-    export type CreateItineraryItemMutationVariables = {dayId: number;data?: CreateItineraryItemBody}
+    export type CreateItineraryItemMutationVariables = {dayId: number;data?: ItineraryItemCreateForm}
 
     export const useCreateItineraryItem = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createItineraryItem>>, TError,CreateItineraryItemMutationVariables, TContext>, }
