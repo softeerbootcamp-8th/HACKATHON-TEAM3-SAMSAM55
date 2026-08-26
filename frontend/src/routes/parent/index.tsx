@@ -91,7 +91,7 @@ function ParentHomePage() {
 
         <div
           {...dayScrollHandlers}
-          className="mt-5 flex w-full min-w-0 flex-nowrap gap-2 overflow-x-auto overflow-y-hidden touch-pan-x"
+          className="scrollbar-none mt-5 flex w-full min-w-0 flex-nowrap gap-2 overflow-x-auto overflow-y-hidden touch-pan-x"
         >
           {days.map((d) =>
             d.id === undefined ? null : (
