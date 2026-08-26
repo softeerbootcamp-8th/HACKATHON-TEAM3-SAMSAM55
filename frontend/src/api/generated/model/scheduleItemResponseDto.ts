@@ -15,5 +15,6 @@ export interface ScheduleItemResponseDto {
   sortOrder?: number;
   votedCount?: number;
   totalParticipants?: number;
+  needsVote?: boolean;
   confirmedOption?: ScheduleConfirmedOptionResponseDto;
 }
