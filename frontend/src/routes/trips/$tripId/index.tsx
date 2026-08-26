@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   DndContext,
   type DragEndEvent,
@@ -34,6 +34,7 @@ import { AddItemRow } from '@/components/trip/add-item-row'
 import { CreateItemSheet } from '@/components/trip/create-item-sheet'
 import { DayTab } from '@/components/trip/day-tab'
 import { EditRow } from '@/components/trip/edit-row'
+import { InviteLinkDialog } from '@/components/trip/invite-link-dialog'
 import { ItemCard } from '@/components/trip/item-card'
 import { TripMoreSheet } from '@/components/trip/trip-more-sheet'
 import { MobileScreen } from '@/components/layout/mobile-screen'
@@ -46,6 +47,7 @@ import { useHorizontalDragScroll } from '@/hooks/use-horizontal-drag-scroll'
 
 type TripSearch = {
   day?: number
+  invite?: boolean
 }
 
 // 서버(startVote)가 요구하는 것과 같은 규칙 — 선택지가 2개 미만이면 투표를 시작할 수 없다.
@@ -57,6 +59,7 @@ export const Route = createFileRoute('/trips/$tripId/')({
 
     return {
       day: Number.isInteger(day) && day > 0 ? day : undefined,
+      invite: search.invite === true ? true : undefined,
     }
   },
   component: TripHomePage,
@@ -81,7 +84,7 @@ type TripDay = {
 
 function TripHomePage() {
   const { tripId } = Route.useParams()
-  const { day: selectedDayParam } = Route.useSearch()
+  const { day: selectedDayParam, invite: shouldOpenInvite } = Route.useSearch()
   const navigate = useNavigate({ from: '/trips/$tripId/' })
   const queryClient = useQueryClient()
   const tripIdNumber = Number(tripId)
@@ -133,6 +136,12 @@ function TripHomePage() {
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null)
   const [isDeleteTripOpen, setIsDeleteTripOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string>()
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
+  const [isCopyToastVisible, setIsCopyToastVisible] = useState(false)
+  const copyToastTimeoutRef = useRef<number | null>(null)
+  const inviteLink = detail?.inviteCode
+    ? `${window.location.origin}/invite/${detail.inviteCode}`
+    : ''
 
   useEffect(() => {
     const errorCode =
@@ -141,6 +150,46 @@ function TripHomePage() {
       void navigate({ to: '/trips', replace: true })
     }
   }, [isValidTripId, navigate, tripQuery.data?.error?.code, tripQuery.error])
+
+  useEffect(() => {
+    if (!shouldOpenInvite) {
+      return
+    }
+    setIsInviteDialogOpen(true)
+    void navigate({
+      search: (prev) => ({ ...prev, invite: undefined }),
+      replace: true,
+    })
+  }, [shouldOpenInvite, navigate])
+
+  useEffect(() => {
+    return () => {
+      if (copyToastTimeoutRef.current !== null) {
+        window.clearTimeout(copyToastTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const handleCopyInviteLink = async () => {
+    if (!inviteLink) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+    } catch {
+      return
+    }
+
+    setIsCopyToastVisible(true)
+    if (copyToastTimeoutRef.current !== null) {
+      window.clearTimeout(copyToastTimeoutRef.current)
+    }
+    copyToastTimeoutRef.current = window.setTimeout(() => {
+      setIsCopyToastVisible(false)
+      copyToastTimeoutRef.current = null
+    }, 2000)
+  }
 
   const startVoteMutation = useStartVote({
     mutation: {
@@ -457,10 +506,7 @@ function TripHomePage() {
         }
         onInviteLink={() => {
           setIsMoreSheetOpen(false)
-          void navigate({
-            to: '/trips/$tripId/invite',
-            params: { tripId },
-          })
+          setIsInviteDialogOpen(true)
         }}
         onDeleteTrip={() => {
           setIsMoreSheetOpen(false)
@@ -502,6 +548,32 @@ function TripHomePage() {
         danger
         onConfirm={handleDeleteTrip}
       />
+
+      <InviteLinkDialog
+        open={isInviteDialogOpen}
+        onOpenChange={setIsInviteDialogOpen}
+        tripTitle={detail.title ?? ''}
+        tripPeriod={
+          detail.startDate && detail.endDate
+            ? formatTripPeriod(
+                detail.startDate,
+                detail.endDate,
+                detail.companionCount ?? 0,
+              )
+            : ''
+        }
+        onCopyLink={handleCopyInviteLink}
+      />
+
+      {isCopyToastVisible && (
+        <div
+          className="pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-chip bg-foreground px-4 py-2 text-caption text-background"
+          role="status"
+          aria-live="polite"
+        >
+          복사되었습니다
+        </div>
+      )}
     </MobileScreen>
   )
 }

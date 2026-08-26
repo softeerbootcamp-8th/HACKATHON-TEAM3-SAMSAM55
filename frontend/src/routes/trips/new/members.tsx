@@ -91,8 +91,9 @@ function NewTripMembersPage() {
 
       await queryClient.invalidateQueries({ queryKey: getFindTripsQueryKey() })
       await navigate({
-        to: '/trips/$tripId/invite',
+        to: '/trips/$tripId',
         params: { tripId: String(response.data.id) },
+        search: { invite: true },
         replace: true,
       })
     } catch (error) {
