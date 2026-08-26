@@ -8,12 +8,17 @@ import {
   useGetItineraryItem,
   useUpdateItineraryItem,
 } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
+import { SelectOptionDialog } from '@/components/trip/select-option-dialog'
 import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
 import { TextInput } from '@/components/ui/text-input'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { MobileScreen } from '@/components/layout/mobile-screen'
+
+// 선택지가 2개 이상인 일정에서 투표를 내가 결정으로 바꾸려면, 어느 선택지를 남길지
+// 골라야 한다 — 서버(PUT .../itinerary-items/{itemId})가 같은 기준으로 요구한다.
+const MIN_OPTION_COUNT_REQUIRING_SELECTION = 2
 
 export const Route = createFileRoute('/trips/$tripId/items/$itemId/edit')({
   component: ItemEditPage,
@@ -43,6 +48,13 @@ function ItemEditPage() {
     '부모님과 투표' | '내가 결정'
   >('부모님과 투표')
   const [decidedPlace, setDecidedPlace] = React.useState('')
+  const [selectedOptionId, setSelectedOptionId] = React.useState<number | null>(
+    null,
+  )
+  const [selectOptionDialogOpen, setSelectOptionDialogOpen] =
+    React.useState(false)
+
+  const existingOptions = detail?.voteOptions ?? []
 
   // 조회가 끝나면 폼 값을 실제 데이터로 한 번 채운다. 이후엔 사용자가 입력한 값을 유지한다.
   React.useEffect(() => {
@@ -63,6 +75,30 @@ function ItemEditPage() {
   const updateItineraryItemMutation = useUpdateItineraryItem()
   const createVoteOptionMutation = useCreateVoteOption()
 
+  // 투표였던 선택지가 2개 이상인 일정을 내가 결정으로 바꾸려는 시도면, 먼저 하나를
+  // 골라달라는 모달을 띄운다 — 고르기 전까진 결정 방식을 실제로 바꾸지 않는다.
+  const handleSelectDecisionMethod = (
+    method: '부모님과 투표' | '내가 결정',
+  ) => {
+    if (method === decisionMethod) return
+    if (
+      method === '내가 결정' &&
+      existingOptions.length >= MIN_OPTION_COUNT_REQUIRING_SELECTION
+    ) {
+      setSelectedOptionId(null)
+      setSelectOptionDialogOpen(true)
+      return
+    }
+    setDecisionMethod(method)
+    setSelectedOptionId(null)
+  }
+
+  const handleConfirmSelectOption = () => {
+    if (selectedOptionId === null) return
+    setDecisionMethod('내가 결정')
+    setSelectOptionDialogOpen(false)
+  }
+
   const goBack = () =>
     navigate({
       to: '/trips/$tripId/items/$itemId',
@@ -77,7 +113,15 @@ function ItemEditPage() {
       decisionMethod === '부모님과 투표' ? 'VOTE' : 'HOST_PICK'
 
     updateItineraryItemMutation.mutate(
-      { itemId: itemIdNumber, data: { name: title, category, decisionType } },
+      {
+        itemId: itemIdNumber,
+        data: {
+          name: title,
+          category,
+          decisionType,
+          selectedOptionId: selectedOptionId ?? undefined,
+        },
+      },
       {
         onSuccess: () => {
           void queryClient.invalidateQueries({
@@ -87,7 +131,7 @@ function ItemEditPage() {
           // HOST_PICK인데 아직 선택지가 없으면(= PENDING 상태에서만 수정 가능하므로
           // 있을 수 있는 유일한 경우), 입력한 장소를 선택지로 추가한다 — 서버가
           // HOST_PICK 선택지 추가 시 즉시 확정한다.
-          const hasNoOption = (detail?.voteOptions?.length ?? 0) === 0
+          const hasNoOption = existingOptions.length === 0
           if (
             decisionType === 'HOST_PICK' &&
             hasNoOption &&
@@ -181,7 +225,7 @@ function ItemEditPage() {
               <button
                 key={method}
                 type="button"
-                onClick={() => setDecisionMethod(method)}
+                onClick={() => handleSelectDecisionMethod(method)}
                 className={cn(
                   'h-13 flex-1 rounded-card border text-card-title',
                   method === decisionMethod
@@ -195,7 +239,7 @@ function ItemEditPage() {
           </div>
         </div>
 
-        {decisionMethod === '내가 결정' && (
+        {decisionMethod === '내가 결정' && existingOptions.length === 0 && (
           <TextInput
             label="정한 곳"
             placeholder="예: 스시 오마카세 긴자점"
@@ -203,6 +247,30 @@ function ItemEditPage() {
             onChange={(event) => setDecidedPlace(event.target.value)}
           />
         )}
+
+        {decisionMethod === '내가 결정' &&
+          existingOptions.length >= MIN_OPTION_COUNT_REQUIRING_SELECTION &&
+          selectedOptionId !== null && (
+            <div className="flex flex-col gap-2">
+              <p className="text-caption text-muted-foreground">정한 곳</p>
+              <div className="flex items-center justify-between rounded-card border border-border px-3 py-2.5">
+                <p className="text-card-title text-foreground">
+                  {
+                    existingOptions.find(
+                      (option) => option.id === selectedOptionId,
+                    )?.name
+                  }
+                </p>
+                <button
+                  type="button"
+                  className="text-caption text-primary-deep"
+                  onClick={() => setSelectOptionDialogOpen(true)}
+                >
+                  다시 선택하기
+                </button>
+              </div>
+            </div>
+          )}
       </div>
 
       <div className="flex flex-col gap-2 px-5 pt-3 pb-7">
@@ -219,6 +287,15 @@ function ItemEditPage() {
           </p>
         )}
       </div>
+
+      <SelectOptionDialog
+        open={selectOptionDialogOpen}
+        onOpenChange={setSelectOptionDialogOpen}
+        options={existingOptions}
+        selectedOptionId={selectedOptionId}
+        onSelect={setSelectedOptionId}
+        onConfirm={handleConfirmSelectOption}
+      />
     </MobileScreen>
   )
 }

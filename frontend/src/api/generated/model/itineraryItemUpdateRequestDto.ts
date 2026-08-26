@@ -21,4 +21,5 @@ export interface ItineraryItemUpdateRequestDto {
      * @pattern HOST_PICK|VOTE
      */
   decisionType: string;
+  selectedOptionId?: number;
 }
