@@ -22,7 +22,8 @@ public record TripDetailResponseDto(
     public static TripDetailResponseDto from(
             Trip trip,
             List<TripDay> tripDays,
-            List<ItineraryItem> itineraryItems
+            List<ItineraryItem> itineraryItems,
+            Map<Long, Integer> optionCountsByItemId
     ) {
         Map<Long, List<ItineraryItem>> itemsByTripDayId = itineraryItems.stream()
                 .collect(Collectors.groupingBy(
@@ -41,7 +42,8 @@ public record TripDetailResponseDto(
                 tripDays.stream()
                         .map(tripDay -> TripDayResponseDto.from(
                                 tripDay,
-                                itemsByTripDayId.getOrDefault(tripDay.getId(), List.of())
+                                itemsByTripDayId.getOrDefault(tripDay.getId(), List.of()),
+                                optionCountsByItemId
                         ))
                         .toList()
         );

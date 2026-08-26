@@ -329,6 +329,7 @@ class TripServiceTest {
         when(itineraryItem.getCategory()).thenReturn("식사");
         when(itineraryItem.getStatus()).thenReturn(ItineraryItemStatus.VOTING);
         when(itineraryItem.getDecisionType()).thenReturn(ItineraryItemDecisionType.VOTE);
+        when(voteOptionRepository.countByTripId(1L)).thenReturn(List.of(optionCount(100L, 2)));
 
         TripDetailResponseDto response = service().findTrip(1L, 1L);
 
@@ -342,8 +343,23 @@ class TripServiceTest {
         assertThat(response.days().getFirst().items().getFirst().category()).isEqualTo("식사");
         assertThat(response.days().getFirst().items().getFirst().status()).isEqualTo("VOTING");
         assertThat(response.days().getFirst().items().getFirst().decisionType()).isEqualTo("VOTE");
+        assertThat(response.days().getFirst().items().getFirst().optionCount()).isEqualTo(2);
         verify(tripDayRepository).findAllByTripIdOrderByDayNumberAsc(1L);
         verify(itineraryItemRepository).findAllByTripIdOrderByDayAndSortOrder(1L);
+    }
+
+    private VoteOptionRepository.ItineraryItemOptionCount optionCount(Long itemId, long count) {
+        return new VoteOptionRepository.ItineraryItemOptionCount() {
+            @Override
+            public Long getItemId() {
+                return itemId;
+            }
+
+            @Override
+            public long getOptionCount() {
+                return count;
+            }
+        };
     }
 
     private TripService service() {
