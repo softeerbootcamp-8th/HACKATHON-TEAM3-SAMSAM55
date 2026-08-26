@@ -10,4 +10,5 @@ export interface TripItineraryItemResponseDto {
   name?: string;
   category?: string;
   status?: string;
+  decisionType?: string;
 }

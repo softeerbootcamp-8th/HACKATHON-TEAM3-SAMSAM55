@@ -36,6 +36,7 @@ type TripItem = {
   title: string
   category: string
   status: 'draft' | 'voting' | 'confirmed' | 'voteDone'
+  decisionType?: string
   voteMeta?: string
 }
 
@@ -80,6 +81,7 @@ function TripHomePage() {
               title: item.name ?? '이름 없는 일정',
               category: item.category ?? '기타',
               status,
+              decisionType: item.decisionType,
             },
           ]
         }),
@@ -117,9 +119,11 @@ function TripHomePage() {
 
   const day = days.find((d) => d.id === selectedDay) ?? days[0]
   const dayScrollHandlers = useHorizontalDragScroll()
-  const draftItems = days
-    .flatMap((d) => d.items)
-    .filter((item) => item.status === 'draft')
+  // HOST_PICK(내가 결정) 항목은 방장이 직접 확정하는 방식이라 투표에 올릴 수 없다 —
+  // 서버(startVote)가 VOTE가 아닌 항목이 하나라도 섞여 있으면 배치 전체를 거부한다.
+  const isDraftItem = (item: TripItem) =>
+    item.status === 'draft' && item.decisionType === 'VOTE'
+  const draftItems = days.flatMap((d) => d.items).filter(isDraftItem)
   const draftCount = draftItems.length
   const hasItems = (day?.items.length ?? 0) > 0
 
@@ -133,11 +137,8 @@ function TripHomePage() {
   }
 
   const draftSummary = days
-    .filter((d) => d.items.some((item) => item.status === 'draft'))
-    .map(
-      (d) =>
-        `${d.label} ${d.items.filter((item) => item.status === 'draft').length}개`,
-    )
+    .filter((d) => d.items.some(isDraftItem))
+    .map((d) => `${d.label} ${d.items.filter(isDraftItem).length}개`)
     .join(' · ')
 
   const handleDeleteItem = async () => {
