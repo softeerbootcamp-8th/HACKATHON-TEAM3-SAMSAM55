@@ -57,7 +57,9 @@ public class VoteOptionService {
     /**
      * 일정 항목에 투표 선택지를 추가한다. 선택지를 추가해도 일정 항목은 자동으로
      * 확정되지 않는다 — {@code decisionType}이 HOST_PICK이어도 PENDING 상태로 남고,
-     * 방장이 별도로 확정 API를 호출해야 CONFIRMED로 전환된다.
+     * 방장이 별도로 확정 API를 호출해야 CONFIRMED로 전환된다. HOST_PICK은 일괄
+     * 올리기(startVote)가 보유한 선택지 하나로 자동 확정하는 방식이라, 선택지를
+     * 1개로 제한한다.
      *
      * @param loginUserId 요청한 회원의 식별자
      * @param itemId 선택지를 추가할 일정 항목의 식별자
@@ -69,6 +71,7 @@ public class VoteOptionService {
      * @throws ApplicationException 이름이 비어 있을 때(INVALID_INPUT_VALUE)
      * @throws ApplicationException 투표가 이미 시작된 일정 항목일 때(VOTE_ALREADY_STARTED)
      * @throws ApplicationException 선택지가 이미 4개일 때(VOTE_OPTION_COUNT_EXCEEDED)
+     * @throws ApplicationException HOST_PICK 일정에 선택지가 이미 있을 때(HOST_PICK_OPTION_ALREADY_EXISTS)
      */
     @Transactional
     public VoteOptionCreateResponseDto createVoteOption(
@@ -86,7 +89,11 @@ public class VoteOptionService {
         if (itineraryItem.getStatus() != ItineraryItemStatus.PENDING) {
             throw new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED);
         }
-        if (voteOptionRepository.countByItineraryItem(itineraryItem) >= MAX_VOTE_OPTION_COUNT) {
+        long existingOptionCount = voteOptionRepository.countByItineraryItem(itineraryItem);
+        if (itineraryItem.getDecisionType() == ItineraryItemDecisionType.HOST_PICK && existingOptionCount >= 1) {
+            throw new ApplicationException(TripErrorType.HOST_PICK_OPTION_ALREADY_EXISTS);
+        }
+        if (existingOptionCount >= MAX_VOTE_OPTION_COUNT) {
             throw new ApplicationException(TripErrorType.VOTE_OPTION_COUNT_EXCEEDED);
         }
 
