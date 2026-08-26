@@ -23,6 +23,7 @@ import { formatTripPeriod } from '@/features/trip/trip-format'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { toItemStatus } from '@/lib/itinerary-item-status'
 import { cn } from '@/lib/utils'
+import { useHorizontalSwipe } from '@/hooks/use-horizontal-swipe'
 
 export const Route = createFileRoute('/trips/$tripId/')({
   component: TripHomePage,
@@ -111,6 +112,20 @@ function TripHomePage() {
   })
 
   const day = days.find((d) => d.id === selectedDay) ?? days[0]
+  const selectedDayIndex = Math.max(
+    days.findIndex((tripDay) => tripDay.id === day?.id),
+    0,
+  )
+  const moveToDay = (offset: number) => {
+    const nextDay = days[selectedDayIndex + offset]
+    if (nextDay) {
+      setSelectedDay(nextDay.id)
+    }
+  }
+  const daySwipeHandlers = useHorizontalSwipe(
+    () => moveToDay(1),
+    () => moveToDay(-1),
+  )
   const draftItems = days
     .flatMap((d) => d.items)
     .filter((item) => item.status === 'draft')
@@ -212,7 +227,10 @@ function TripHomePage() {
         onBack={() => navigate({ to: '/trips' })}
         onMore={() => setIsMoreSheetOpen(true)}
       />
-      <div className="flex flex-col px-5 pt-4 pb-6">
+      <div
+        {...daySwipeHandlers}
+        className="touch-pan-y flex flex-col px-5 pt-4 pb-6"
+      >
         <p className="text-display text-foreground">{detail.title}</p>
 
         {deleteError && (

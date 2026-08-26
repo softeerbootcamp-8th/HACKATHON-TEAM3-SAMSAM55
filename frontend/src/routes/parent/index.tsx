@@ -9,6 +9,7 @@ import { MobileScreen } from '@/components/layout/mobile-screen'
 import { getApiError } from '@/features/auth/auth'
 import { formatDateRange } from '@/lib/date'
 import { toItemStatus } from '@/lib/itinerary-item-status'
+import { useHorizontalSwipe } from '@/hooks/use-horizontal-swipe'
 
 export const Route = createFileRoute('/parent/')({
   component: ParentHomePage,
@@ -32,6 +33,20 @@ function ParentHomePage() {
   const firstVotingItem = days
     .flatMap((scheduleDay) => scheduleDay.items ?? [])
     .find((item) => item.status === 'VOTING')
+  const selectedDayIndex = Math.max(
+    days.findIndex((scheduleDay) => scheduleDay.id === day?.id),
+    0,
+  )
+  const moveToDay = (offset: number) => {
+    const nextDay = days[selectedDayIndex + offset]
+    if (nextDay?.id !== undefined) {
+      setSelectedDayId(nextDay.id)
+    }
+  }
+  const daySwipeHandlers = useHorizontalSwipe(
+    () => moveToDay(1),
+    () => moveToDay(-1),
+  )
 
   if (scheduleQuery.isLoading) {
     return (
@@ -77,7 +92,10 @@ function ParentHomePage() {
         </div>
       }
     >
-      <div className="flex flex-col px-5 pt-4 pb-6">
+      <div
+        {...daySwipeHandlers}
+        className="touch-pan-y flex flex-col px-5 pt-4 pb-6"
+      >
         <div className="flex flex-col gap-1.5">
           <p className="text-display text-foreground">{schedule.title}</p>
           {schedule.startDate && schedule.endDate && (
