@@ -27,7 +27,6 @@ import { AddOptionSheet } from '@/components/trip/add-option-sheet'
 import { EditOptionSheet } from '@/components/trip/edit-option-sheet'
 import { ItemMoreSheet } from '@/components/trip/item-more-sheet'
 import { OptionCard } from '@/components/trip/option-card'
-import { SelectOptionDialog } from '@/components/trip/select-option-dialog'
 import { VoteStatusRow } from '@/components/trip/vote-status-row'
 import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
@@ -92,8 +91,8 @@ function ItemDetailPage() {
     React.useState<VoteOptionSummaryDto | null>(null)
   const [moreOpen, setMoreOpen] = React.useState(false)
   const [deleteItemOpen, setDeleteItemOpen] = React.useState(false)
-  const [confirmDialogOpen, setConfirmDialogOpen] = React.useState(false)
-  const [selectedConfirmOptionId, setSelectedConfirmOptionId] = React.useState<
+  // 자녀가 직접 탭해서 고른 선택지 — 아직 안 골랐으면 최다 득표 선택지를 기본값으로 보여준다.
+  const [tappedConfirmOptionId, setTappedConfirmOptionId] = React.useState<
     number | null
   >(null)
 
@@ -129,6 +128,11 @@ function ItemDetailPage() {
     },
     undefined,
   )
+  // 동점이면 leadingOption이 항상 먼저 나온 선택지로 고정되므로, 자녀가 직접 탭해서
+  // 고른 선택지가 있으면 그걸 우선한다.
+  const selectedConfirmOption =
+    options.find((option) => option.id === tappedConfirmOptionId) ??
+    leadingOption
   const confirmedOption = options.find(
     (option) => option.id === detail.confirmedOptionId,
   )
@@ -288,15 +292,10 @@ function ItemDetailPage() {
                   }
                 : old,
           )
-          setConfirmDialogOpen(false)
+          setTappedConfirmOptionId(null)
         },
       },
     )
-  }
-
-  const openConfirmDialog = () => {
-    setSelectedConfirmOptionId(leadingOption?.id ?? null)
-    setConfirmDialogOpen(true)
   }
 
   const handleUnconfirm = () => {
@@ -441,16 +440,23 @@ function ItemDetailPage() {
                     voters={(optionVotes?.voters ?? []).map(
                       (voter) => voter.roleName?.charAt(0) ?? '?',
                     )}
-                    leading={(optionVotes?.voteCount ?? 0) > 0}
+                    leading={option.id === selectedConfirmOption?.id}
                     imageSrc={
                       option.hasImage
                         ? `/api/vote-options/${option.id}/image`
                         : undefined
                     }
+                    onClick={() =>
+                      option.id !== undefined &&
+                      setTappedConfirmOptionId(option.id)
+                    }
                   />
                 )
               })}
             </div>
+            <p className="text-caption-sm text-muted-foreground">
+              카드를 탭해서 확정할 선택지를 직접 고를 수 있어요
+            </p>
           </>
         )}
 
@@ -587,10 +593,13 @@ function ItemDetailPage() {
         ) : isVote && isVoting ? (
           <Button
             size="cta"
-            disabled={!leadingOption || confirmMutation.isPending}
-            onClick={openConfirmDialog}
+            disabled={!selectedConfirmOption || confirmMutation.isPending}
+            onClick={() =>
+              selectedConfirmOption?.id !== undefined &&
+              handleConfirm(selectedConfirmOption.id)
+            }
           >
-            {leadingOption?.name}로 확정하기
+            {selectedConfirmOption?.name}로 확정하기
           </Button>
         ) : isVote ? (
           <Button size="cta" disabled={!canStartVote} onClick={handleStartVote}>
@@ -675,37 +684,6 @@ function ItemDetailPage() {
         confirmLabel="삭제하기"
         danger
         onConfirm={handleDeleteItem}
-      />
-      <SelectOptionDialog
-        open={confirmDialogOpen}
-        onOpenChange={setConfirmDialogOpen}
-        options={options}
-        selectedOptionId={selectedConfirmOptionId}
-        onSelect={setSelectedConfirmOptionId}
-        onConfirm={() =>
-          selectedConfirmOptionId !== null &&
-          handleConfirm(selectedConfirmOptionId)
-        }
-        title="어떤 선택지로 확정할까요?"
-        description="득표수가 가장 많은 선택지가 미리 선택돼 있어요"
-        confirmLabel="확정하기"
-        voteCounts={Object.fromEntries(
-          options.flatMap((option) => {
-            if (option.id === undefined) return []
-            const optionVotes = voteStatusByOptionId.get(option.id)
-            return [
-              [
-                option.id,
-                {
-                  voteCount: optionVotes?.voteCount ?? 0,
-                  voters: (optionVotes?.voters ?? []).map(
-                    (voter) => voter.roleName?.charAt(0) ?? '?',
-                  ),
-                },
-              ],
-            ]
-          }),
-        )}
       />
     </MobileScreen>
   )

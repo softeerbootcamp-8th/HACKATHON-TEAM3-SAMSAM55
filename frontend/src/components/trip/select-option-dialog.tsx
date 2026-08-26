@@ -14,9 +14,6 @@ type SelectOptionDialogProps = {
   title?: string
   description?: string
   confirmLabel?: string
-  // 제공하면 선택지 카드에 득표수·투표자를 함께 보여준다 — 동점일 때 어느 쪽이
-  // 몇 표인지 보고 고를 수 있게 하려는 용도다.
-  voteCounts?: Record<number, { voteCount: number; voters: string[] }>
 }
 
 function SelectOptionDialog({
@@ -29,7 +26,6 @@ function SelectOptionDialog({
   title = '선택지가 여러 개에요.',
   description = '어떤 곳으로 선택할까요?',
   confirmLabel = '선택하기',
-  voteCounts,
 }: SelectOptionDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -45,25 +41,19 @@ function SelectOptionDialog({
             </Dialog.Description>
           </div>
           <div className="flex flex-col gap-2.5 overflow-y-auto">
-            {options.map((option) => {
-              const voteInfo =
-                option.id !== undefined ? voteCounts?.[option.id] : undefined
-              return (
-                <OptionCard
-                  key={option.id}
-                  title={option.name ?? ''}
-                  imageSrc={
-                    option.hasImage
-                      ? `/api/vote-options/${option.id}/image`
-                      : undefined
-                  }
-                  voteCount={voteInfo?.voteCount}
-                  voters={voteInfo?.voters}
-                  leading={option.id === selectedOptionId}
-                  onClick={() => option.id !== undefined && onSelect(option.id)}
-                />
-              )
-            })}
+            {options.map((option) => (
+              <OptionCard
+                key={option.id}
+                title={option.name ?? ''}
+                imageSrc={
+                  option.hasImage
+                    ? `/api/vote-options/${option.id}/image`
+                    : undefined
+                }
+                leading={option.id === selectedOptionId}
+                onClick={() => option.id !== undefined && onSelect(option.id)}
+              />
+            ))}
           </div>
           <div className="flex gap-2.5">
             <Dialog.Close asChild>

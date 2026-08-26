@@ -191,39 +191,43 @@ function ParentItemDetailPage() {
               )}
             </div>
           </div>
-          <p className="text-subtitle text-foreground">최종 투표 결과</p>
-          <div className="flex flex-col gap-2">
-            {result.options?.map((option) => (
-              <div
-                key={option.optionId}
-                className={
-                  option.optionId === result.confirmedOptionId
-                    ? 'flex h-[50px] items-center justify-between rounded-thumb border-2 border-primary-deep bg-primary-tint px-3.5'
-                    : 'flex h-[50px] items-center justify-between rounded-thumb bg-muted px-3.5'
-                }
-              >
-                <p
-                  className={
-                    option.optionId === result.confirmedOptionId
-                      ? 'text-[14px] font-medium text-foreground'
-                      : 'text-[14px] text-muted-foreground'
-                  }
-                >
-                  {option.name}
-                </p>
-                <p
-                  className={
-                    'text-[14px] font-bold ' +
-                    (option.optionId === result.confirmedOptionId
-                      ? 'text-primary-deep'
-                      : 'text-muted-foreground')
-                  }
-                >
-                  {option.voteCount}표
-                </p>
+          {isVote && (
+            <>
+              <p className="text-subtitle text-foreground">최종 투표 결과</p>
+              <div className="flex flex-col gap-2">
+                {result.options?.map((option) => (
+                  <div
+                    key={option.optionId}
+                    className={
+                      option.optionId === result.confirmedOptionId
+                        ? 'flex h-[50px] items-center justify-between rounded-thumb border-2 border-primary-deep bg-primary-tint px-3.5'
+                        : 'flex h-[50px] items-center justify-between rounded-thumb bg-muted px-3.5'
+                    }
+                  >
+                    <p
+                      className={
+                        option.optionId === result.confirmedOptionId
+                          ? 'text-[14px] font-medium text-foreground'
+                          : 'text-[14px] text-muted-foreground'
+                      }
+                    >
+                      {option.name}
+                    </p>
+                    <p
+                      className={
+                        'text-[14px] font-bold ' +
+                        (option.optionId === result.confirmedOptionId
+                          ? 'text-primary-deep'
+                          : 'text-muted-foreground')
+                      }
+                    >
+                      {option.voteCount}표
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       )}
     </MobileScreen>
