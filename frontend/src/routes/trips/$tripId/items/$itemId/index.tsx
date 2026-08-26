@@ -91,6 +91,10 @@ function ItemDetailPage() {
     React.useState<VoteOptionSummaryDto | null>(null)
   const [moreOpen, setMoreOpen] = React.useState(false)
   const [deleteItemOpen, setDeleteItemOpen] = React.useState(false)
+  // 자녀가 직접 탭해서 고른 선택지 — 아직 안 골랐으면 최다 득표 선택지를 기본값으로 보여준다.
+  const [tappedConfirmOptionId, setTappedConfirmOptionId] = React.useState<
+    number | null
+  >(null)
 
   const deleteVoteOptionMutation = useDeleteVoteOption()
   const updateVoteOptionMutation = useUpdateVoteOption()
@@ -124,6 +128,11 @@ function ItemDetailPage() {
     },
     undefined,
   )
+  // 동점이면 leadingOption이 항상 먼저 나온 선택지로 고정되므로, 자녀가 직접 탭해서
+  // 고른 선택지가 있으면 그걸 우선한다.
+  const selectedConfirmOption =
+    options.find((option) => option.id === tappedConfirmOptionId) ??
+    leadingOption
   const confirmedOption = options.find(
     (option) => option.id === detail.confirmedOptionId,
   )
@@ -261,11 +270,9 @@ function ItemDetailPage() {
     )
   }
 
-  const handleConfirm = () => {
-    if (leadingOption?.id === undefined) return
-
+  const handleConfirm = (optionId: number) => {
     confirmMutation.mutate(
-      { itemId: itemIdNumber, data: { voteOptionId: leadingOption.id } },
+      { itemId: itemIdNumber, data: { voteOptionId: optionId } },
       {
         onSuccess: (response) => {
           const confirmed = response.data
@@ -285,6 +292,7 @@ function ItemDetailPage() {
                   }
                 : old,
           )
+          setTappedConfirmOptionId(null)
         },
       },
     )
@@ -432,16 +440,23 @@ function ItemDetailPage() {
                     voters={(optionVotes?.voters ?? []).map(
                       (voter) => voter.roleName?.charAt(0) ?? '?',
                     )}
-                    leading={(optionVotes?.voteCount ?? 0) > 0}
+                    leading={option.id === selectedConfirmOption?.id}
                     imageSrc={
                       option.hasImage
                         ? `/api/vote-options/${option.id}/image`
                         : undefined
                     }
+                    onClick={() =>
+                      option.id !== undefined &&
+                      setTappedConfirmOptionId(option.id)
+                    }
                   />
                 )
               })}
             </div>
+            <p className="text-caption-sm text-muted-foreground">
+              카드를 탭해서 확정할 선택지를 직접 고를 수 있어요
+            </p>
           </>
         )}
 
@@ -578,10 +593,13 @@ function ItemDetailPage() {
         ) : isVote && isVoting ? (
           <Button
             size="cta"
-            disabled={!leadingOption || confirmMutation.isPending}
-            onClick={handleConfirm}
+            disabled={!selectedConfirmOption || confirmMutation.isPending}
+            onClick={() =>
+              selectedConfirmOption?.id !== undefined &&
+              handleConfirm(selectedConfirmOption.id)
+            }
           >
-            {leadingOption?.name}로 확정하기
+            {selectedConfirmOption?.name}로 확정하기
           </Button>
         ) : isVote ? (
           <Button size="cta" disabled={!canStartVote} onClick={handleStartVote}>
@@ -591,7 +609,9 @@ function ItemDetailPage() {
           <Button
             size="cta"
             disabled={!leadingOption || confirmMutation.isPending}
-            onClick={handleConfirm}
+            onClick={() =>
+              leadingOption?.id !== undefined && handleConfirm(leadingOption.id)
+            }
           >
             {leadingOption?.name
               ? `${leadingOption.name}로 확정하기`

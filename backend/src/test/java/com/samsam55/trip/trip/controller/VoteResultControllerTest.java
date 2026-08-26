@@ -92,6 +92,7 @@ class VoteResultControllerTest {
                 "점심 식사",
                 "식사",
                 "VOTING",
+                "VOTE",
                 1,
                 LocalDate.of(2026, 9, 1),
                 3,
