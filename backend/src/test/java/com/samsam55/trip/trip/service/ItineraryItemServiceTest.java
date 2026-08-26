@@ -201,7 +201,7 @@ class ItineraryItemServiceTest {
         when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of());
 
         ItineraryItemDetailResponseDto response = itineraryItemService.updateItineraryItem(
-                1L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK"));
+                1L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK", null));
 
         assertThat(response.name()).isEqualTo("저녁 메뉴");
         assertThat(response.category()).isEqualTo("관광");
@@ -216,7 +216,7 @@ class ItineraryItemServiceTest {
         when(itineraryItemRepository.findById(100L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> itineraryItemService.updateItineraryItem(
-                1L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK")))
+                1L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK", null)))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
     }
@@ -230,7 +230,7 @@ class ItineraryItemServiceTest {
         when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
 
         assertThatThrownBy(() -> itineraryItemService.updateItineraryItem(
-                999L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK")))
+                999L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK", null)))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.NOT_TRIP_HOST));
     }
@@ -244,9 +244,91 @@ class ItineraryItemServiceTest {
         when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
 
         assertThatThrownBy(() -> itineraryItemService.updateItineraryItem(
-                1L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK")))
+                1L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK", null)))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_ALREADY_STARTED));
+    }
+
+    @Test
+    @DisplayName("VOTE에서 HOST_PICK으로 바꾸는데 기존 선택지가 2개 이상이고 selectedOptionId가 없으면 예외가 발생한다")
+    void VOTE에서_HOST_PICK으로_바꾸는데_기존_선택지가_2개_이상이고_selectedOptionId가_없으면_예외가_발생한다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        ReflectionTestUtils.setField(sushi, "id", 1L);
+        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null, null);
+        ReflectionTestUtils.setField(ramen, "id", 2L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+        when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of(sushi, ramen));
+
+        assertThatThrownBy(() -> itineraryItemService.updateItineraryItem(
+                1L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK", null)))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_OPTION_SELECTION_REQUIRED));
+    }
+
+    @Test
+    @DisplayName("VOTE에서 HOST_PICK으로 바꾸는데 selectedOptionId가 이 일정의 선택지가 아니면 예외가 발생한다")
+    void VOTE에서_HOST_PICK으로_바꾸는데_selectedOptionId가_이_일정의_선택지가_아니면_예외가_발생한다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        ReflectionTestUtils.setField(sushi, "id", 1L);
+        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null, null);
+        ReflectionTestUtils.setField(ramen, "id", 2L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+        when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of(sushi, ramen));
+
+        assertThatThrownBy(() -> itineraryItemService.updateItineraryItem(
+                1L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK", 999L)))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.VOTE_OPTION_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("VOTE에서 HOST_PICK으로 바꾸는데 기존 선택지가 2개 이상이면 선택한 선택지만 남기고 나머지는 삭제한다")
+    void VOTE에서_HOST_PICK으로_바꾸는데_기존_선택지가_2개_이상이면_선택한_선택지만_남기고_나머지는_삭제한다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        ReflectionTestUtils.setField(sushi, "id", 1L);
+        VoteOption ramen = new VoteOption(itineraryItem, "라멘", "설명", "AI", null, null);
+        ReflectionTestUtils.setField(ramen, "id", 2L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+        when(voteOptionRepository.findByItineraryItem(itineraryItem))
+                .thenReturn(List.of(sushi, ramen))
+                .thenReturn(List.of(sushi));
+
+        ItineraryItemDetailResponseDto response = itineraryItemService.updateItineraryItem(
+                1L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK", 1L));
+
+        assertThat(response.decisionType()).isEqualTo("HOST_PICK");
+        assertThat(response.voteOptions()).hasSize(1);
+        assertThat(response.voteOptions().get(0).name()).isEqualTo("스시");
+        assertThat(itineraryItem.getStatus()).isEqualTo(ItineraryItemStatus.PENDING);
+        verify(voteOptionRepository).deleteAll(List.of(ramen));
+    }
+
+    @Test
+    @DisplayName("VOTE에서 HOST_PICK으로 바꿔도 기존 선택지가 1개 이하면 selectedOptionId 없이도 그대로 수정된다")
+    void VOTE에서_HOST_PICK으로_바꿔도_기존_선택지가_1개_이하면_selectedOptionId_없이도_그대로_수정된다() {
+        ItineraryItem itineraryItem = new ItineraryItem(
+                tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING, 1, null);
+        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
+        VoteOption sushi = new VoteOption(itineraryItem, "스시", "설명", "AI", null, null);
+        ReflectionTestUtils.setField(sushi, "id", 1L);
+        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
+        when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of(sushi));
+
+        ItineraryItemDetailResponseDto response = itineraryItemService.updateItineraryItem(
+                1L, 100L, new ItineraryItemUpdateRequestDto("저녁 메뉴", "관광", "HOST_PICK", null));
+
+        assertThat(response.decisionType()).isEqualTo("HOST_PICK");
+        assertThat(response.voteOptions()).hasSize(1);
+        verify(voteOptionRepository, never()).deleteAll(any());
     }
 
     @Test

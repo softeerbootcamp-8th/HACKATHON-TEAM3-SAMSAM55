@@ -14,6 +14,8 @@ public record ItineraryItemUpdateRequestDto(
 
         @NotBlank(message = "결정 방식은 필수입니다.")
         @Pattern(regexp = "HOST_PICK|VOTE", message = "결정 방식은 HOST_PICK 또는 VOTE여야 합니다.")
-        String decisionType
+        String decisionType,
+
+        Long selectedOptionId
 ) {
 }
