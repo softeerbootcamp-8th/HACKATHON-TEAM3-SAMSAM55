@@ -1,30 +1,26 @@
-import { useRef, type TouchEvent } from 'react'
+import { useRef, type PointerEvent } from 'react'
 
 const SWIPE_THRESHOLD = 40
 
 function useHorizontalSwipe(onSwipeLeft: () => void, onSwipeRight: () => void) {
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
 
-  const onTouchStart = (event: TouchEvent) => {
-    const touch = event.touches[0]
-    if (!touch) {
-      return
-    }
-
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY }
+  const onPointerDown = (event: PointerEvent<HTMLElement>) => {
+    swipeStartRef.current = { x: event.clientX, y: event.clientY }
+    event.currentTarget.setPointerCapture(event.pointerId)
   }
 
-  const onTouchEnd = (event: TouchEvent) => {
-    const start = touchStartRef.current
-    const touch = event.changedTouches[0]
-    touchStartRef.current = null
+  const onPointerUp = (event: PointerEvent<HTMLElement>) => {
+    const start = swipeStartRef.current
+    swipeStartRef.current = null
+    event.currentTarget.releasePointerCapture(event.pointerId)
 
-    if (!start || !touch) {
+    if (!start) {
       return
     }
 
-    const deltaX = touch.clientX - start.x
-    const deltaY = touch.clientY - start.y
+    const deltaX = event.clientX - start.x
+    const deltaY = event.clientY - start.y
     if (
       Math.abs(deltaX) < SWIPE_THRESHOLD ||
       Math.abs(deltaX) <= Math.abs(deltaY)
@@ -40,11 +36,11 @@ function useHorizontalSwipe(onSwipeLeft: () => void, onSwipeRight: () => void) {
     onSwipeRight()
   }
 
-  const onTouchCancel = () => {
-    touchStartRef.current = null
+  const onPointerCancel = () => {
+    swipeStartRef.current = null
   }
 
-  return { onTouchStart, onTouchEnd, onTouchCancel }
+  return { onPointerDown, onPointerUp, onPointerCancel }
 }
 
 export { useHorizontalSwipe }
