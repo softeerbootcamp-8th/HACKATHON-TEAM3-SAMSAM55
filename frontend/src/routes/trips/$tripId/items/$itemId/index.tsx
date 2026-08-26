@@ -24,6 +24,7 @@ import {
 } from '@/api/generated/vote-option-controller/vote-option-controller'
 import { AddOptionSheet } from '@/components/trip/add-option-sheet'
 import { EditOptionSheet } from '@/components/trip/edit-option-sheet'
+import { ItemMoreSheet } from '@/components/trip/item-more-sheet'
 import { OptionCard } from '@/components/trip/option-card'
 import { VoteStatusRow } from '@/components/trip/vote-status-row'
 import { AppBar } from '@/components/ui/app-bar'
@@ -87,6 +88,7 @@ function ItemDetailPage() {
     React.useState<VoteOptionSummaryDto | null>(null)
   const [deletingOption, setDeletingOption] =
     React.useState<VoteOptionSummaryDto | null>(null)
+  const [moreOpen, setMoreOpen] = React.useState(false)
   const [deleteItemOpen, setDeleteItemOpen] = React.useState(false)
 
   const deleteVoteOptionMutation = useDeleteVoteOption()
@@ -307,7 +309,7 @@ function ItemDetailPage() {
         type="backWithMore"
         title="일정 상세"
         onBack={() => window.history.back()}
-        onMore={() => setDeleteItemOpen(true)}
+        onMore={() => setMoreOpen(true)}
       />
 
       <div className="flex flex-col gap-2 px-5 pt-4">
@@ -616,6 +618,23 @@ function ItemDetailPage() {
             : undefined
         }
         onSave={handleEditOption}
+      />
+      <ItemMoreSheet
+        open={moreOpen}
+        onOpenChange={setMoreOpen}
+        itemName={detail.name ?? ''}
+        itemMeta={`${detail.dayNumber}일차 · ${detail.category ?? ''}`}
+        onEditItem={() => {
+          setMoreOpen(false)
+          navigate({
+            to: '/trips/$tripId/items/$itemId/edit',
+            params: { tripId, itemId },
+          })
+        }}
+        onDeleteItem={() => {
+          setMoreOpen(false)
+          setDeleteItemOpen(true)
+        }}
       />
       <ConfirmDialog
         open={deletingOption !== null}

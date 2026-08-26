@@ -30,7 +30,8 @@ import type {
   CommonResponseVoteStatusResponseDto,
   CreateVoteOptionBody,
   CreateVoteOptionParams,
-  ItineraryItemCreateForm
+  ItineraryItemCreateForm,
+  ItineraryItemUpdateRequestDto
 } from '../model';
 
 import { customInstance } from '../../mutator/custom-instance';
@@ -53,7 +54,153 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export const createItineraryItem = (
+export const getItineraryItem = (
+    itemId: number,
+ signal?: AbortSignal
+) => {
+
+
+      return customInstance<CommonResponseItineraryItemDetailResponseDto>(
+      {url: `/api/itinerary-items/${itemId}`, method: 'GET', signal
+    },
+      );
+    }
+
+
+
+
+export const getGetItineraryItemQueryKey = (itemId: number,) => {
+    return [
+    `/api/itinerary-items/${itemId}`
+    ] as const;
+    }
+
+
+export const getGetItineraryItemQueryOptions = <TData = Awaited<ReturnType<typeof getItineraryItem>>, TError = unknown>(itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData>>, }
+) => {
+
+const {query: queryOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetItineraryItemQueryKey(itemId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getItineraryItem>>> = ({ signal }) => getItineraryItem(itemId, signal);
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: itemId !== null && itemId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetItineraryItemQueryResult = NonNullable<Awaited<ReturnType<typeof getItineraryItem>>>
+export type GetItineraryItemQueryError = unknown
+
+
+export function useGetItineraryItem<TData = Awaited<ReturnType<typeof getItineraryItem>>, TError = unknown>(
+ itemId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getItineraryItem>>,
+          TError,
+          Awaited<ReturnType<typeof getItineraryItem>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetItineraryItem<TData = Awaited<ReturnType<typeof getItineraryItem>>, TError = unknown>(
+ itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getItineraryItem>>,
+          TError,
+          Awaited<ReturnType<typeof getItineraryItem>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetItineraryItem<TData = Awaited<ReturnType<typeof getItineraryItem>>, TError = unknown>(
+ itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData>>, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetItineraryItem<TData = Awaited<ReturnType<typeof getItineraryItem>>, TError = unknown>(
+ itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData>>, }
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetItineraryItemQueryOptions(itemId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const updateItineraryItem = (
+    itemId: number,
+    itineraryItemUpdateRequestDto: ItineraryItemUpdateRequestDto,
+ signal?: AbortSignal
+) => {
+
+
+      return customInstance<CommonResponseItineraryItemDetailResponseDto>(
+      {url: `/api/itinerary-items/${itemId}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: itineraryItemUpdateRequestDto, signal
+    },
+      );
+    }
+
+
+
+
+export const getUpdateItineraryItemMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateItineraryItem>>, TError,UpdateItineraryItemMutationVariables, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof updateItineraryItem>>, TError,UpdateItineraryItemMutationVariables, TContext> => {
+
+const mutationKey = ['updateItineraryItem'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateItineraryItem>>, UpdateItineraryItemMutationVariables> = (props) => {
+          const {itemId,data} = props ?? {};
+
+          return  updateItineraryItem(itemId,data,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateItineraryItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateItineraryItem>>>
+    export type UpdateItineraryItemMutationBody = ItineraryItemUpdateRequestDto
+    export type UpdateItineraryItemMutationError = unknown
+    export type UpdateItineraryItemMutationVariables = {itemId: number;data: ItineraryItemUpdateRequestDto}
+
+    export const useUpdateItineraryItem = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateItineraryItem>>, TError,UpdateItineraryItemMutationVariables, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateItineraryItem>>,
+        TError,
+        UpdateItineraryItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateItineraryItemMutationOptions(options), queryClient);
+    }
+    export const createItineraryItem = (
     dayId: number,
     itineraryItemCreateForm?: ItineraryItemCreateForm,
  signal?: AbortSignal
@@ -186,93 +333,7 @@ const {mutation: mutationOptions} = options ?
       > => {
       return useMutation(getCreateVoteOptionMutationOptions(options), queryClient);
     }
-    export const getItineraryItem = (
-    itemId: number,
- signal?: AbortSignal
-) => {
-
-
-      return customInstance<CommonResponseItineraryItemDetailResponseDto>(
-      {url: `/api/itinerary-items/${itemId}`, method: 'GET', signal
-    },
-      );
-    }
-
-
-
-
-export const getGetItineraryItemQueryKey = (itemId: number,) => {
-    return [
-    `/api/itinerary-items/${itemId}`
-    ] as const;
-    }
-
-
-export const getGetItineraryItemQueryOptions = <TData = Awaited<ReturnType<typeof getItineraryItem>>, TError = unknown>(itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData>>, }
-) => {
-
-const {query: queryOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetItineraryItemQueryKey(itemId);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getItineraryItem>>> = ({ signal }) => getItineraryItem(itemId, signal);
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: itemId !== null && itemId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetItineraryItemQueryResult = NonNullable<Awaited<ReturnType<typeof getItineraryItem>>>
-export type GetItineraryItemQueryError = unknown
-
-
-export function useGetItineraryItem<TData = Awaited<ReturnType<typeof getItineraryItem>>, TError = unknown>(
- itemId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getItineraryItem>>,
-          TError,
-          Awaited<ReturnType<typeof getItineraryItem>>
-        > , 'initialData'
-      >, }
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetItineraryItem<TData = Awaited<ReturnType<typeof getItineraryItem>>, TError = unknown>(
- itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getItineraryItem>>,
-          TError,
-          Awaited<ReturnType<typeof getItineraryItem>>
-        > , 'initialData'
-      >, }
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetItineraryItem<TData = Awaited<ReturnType<typeof getItineraryItem>>, TError = unknown>(
- itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData>>, }
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-
-export function useGetItineraryItem<TData = Awaited<ReturnType<typeof getItineraryItem>>, TError = unknown>(
- itemId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getItineraryItem>>, TError, TData>>, }
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetItineraryItemQueryOptions(itemId,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-export const getVoteStatus = (
+    export const getVoteStatus = (
     itemId: number,
  signal?: AbortSignal
 ) => {

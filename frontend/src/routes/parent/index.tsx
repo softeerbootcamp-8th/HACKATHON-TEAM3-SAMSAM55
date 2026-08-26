@@ -3,12 +3,13 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
 import { useFindSchedule } from '@/api/generated/schedule-controller/schedule-controller'
 import { Button } from '@/components/ui/button'
+import { DayTab } from '@/components/trip/day-tab'
 import { ItemCard } from '@/components/trip/item-card'
 import { MobileScreen } from '@/components/layout/mobile-screen'
 import { getApiError } from '@/features/auth/auth'
 import { formatDateRange } from '@/lib/date'
 import { toItemStatus } from '@/lib/itinerary-item-status'
-import { cn } from '@/lib/utils'
+import { useHorizontalDragScroll } from '@/hooks/use-horizontal-drag-scroll'
 
 export const Route = createFileRoute('/parent/')({
   component: ParentHomePage,
@@ -32,6 +33,7 @@ function ParentHomePage() {
   const firstVotingItem = days
     .flatMap((scheduleDay) => scheduleDay.items ?? [])
     .find((item) => item.status === 'VOTING')
+  const dayScrollHandlers = useHorizontalDragScroll()
 
   if (scheduleQuery.isLoading) {
     return (
@@ -77,7 +79,7 @@ function ParentHomePage() {
         </div>
       }
     >
-      <div className="flex flex-col gap-4 px-5 pt-4">
+      <div className="flex flex-col px-5 pt-4 pb-6">
         <div className="flex flex-col gap-1.5">
           <p className="text-display text-foreground">{schedule.title}</p>
           {schedule.startDate && schedule.endDate && (
@@ -87,29 +89,28 @@ function ParentHomePage() {
           )}
         </div>
 
-        <div className="flex gap-2">
-          {days.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => setSelectedDayId(d.id ?? null)}
-              className={cn(
-                'relative rounded-tab px-4 py-2 text-label',
-                d.id === (day?.id ?? days[0]?.id)
-                  ? 'bg-primary text-primary-foreground'
-                  : 'border border-border bg-background text-muted-foreground',
-              )}
-            >
-              {d.dayNumber}일차
-            </button>
-          ))}
+        <div
+          {...dayScrollHandlers}
+          className="scrollbar-none mt-5 flex w-full min-w-0 flex-nowrap gap-2 overflow-x-auto overflow-y-hidden touch-pan-x"
+        >
+          {days.map((d) =>
+            d.id === undefined ? null : (
+              <DayTab
+                key={d.id}
+                label={`${d.dayNumber}일차`}
+                pending={d.items?.some((item) => item.status === 'VOTING')}
+                selected={d.id === day?.id}
+                onClick={() => setSelectedDayId(d.id ?? null)}
+              />
+            ),
+          )}
         </div>
 
-        <p className="text-[14px] font-medium text-muted-foreground">
+        <p className="mt-6 text-[14px] font-medium text-muted-foreground">
           일정 {items.length}개
         </p>
 
-        <div className="flex flex-col gap-3">
+        <div className="mt-2.5 flex flex-col gap-3">
           {items.map((item) => {
             const status = toItemStatus(item.status)
             const meta =

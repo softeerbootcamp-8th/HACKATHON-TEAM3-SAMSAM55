@@ -12,5 +12,6 @@ export interface TripDetailResponseDto {
   startDate?: string;
   endDate?: string;
   companionCount?: number;
+  inviteCode?: string;
   days?: TripDayResponseDto[];
 }

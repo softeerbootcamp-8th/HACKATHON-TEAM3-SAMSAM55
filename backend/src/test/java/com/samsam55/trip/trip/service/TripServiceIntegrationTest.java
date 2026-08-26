@@ -169,6 +169,7 @@ class TripServiceIntegrationTest extends AbstractMySqlContainerTest {
         assertThat(response.startDate()).isEqualTo(LocalDate.of(2026, 9, 1));
         assertThat(response.endDate()).isEqualTo(LocalDate.of(2026, 9, 4));
         assertThat(response.companionCount()).isEqualTo(2);
+        assertThat(response.inviteCode()).isEqualTo(trip.getInviteCode());
         assertThat(response.days()).hasSize(2);
         assertThat(response.days().get(0).dayNumber()).isEqualTo(1);
         assertThat(response.days().get(0).date()).isEqualTo(LocalDate.of(2026, 9, 1));
