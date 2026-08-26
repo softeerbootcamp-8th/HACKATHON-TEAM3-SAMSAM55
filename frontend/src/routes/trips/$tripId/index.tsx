@@ -1,8 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
-import { useDeleteItineraryItem } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
+import {
+  useDeleteItineraryItem,
+  useReorderItineraryItems,
+} from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
+import type { CommonResponseTripDetailResponseDto } from '@/api/generated/model'
 import {
   getFindTripQueryKey,
   getFindTripsQueryKey,
@@ -17,6 +34,7 @@ import { AddItemRow } from '@/components/trip/add-item-row'
 import { CreateItemSheet } from '@/components/trip/create-item-sheet'
 import { DayTab } from '@/components/trip/day-tab'
 import { EditRow } from '@/components/trip/edit-row'
+import { InviteLinkDialog } from '@/components/trip/invite-link-dialog'
 import { ItemCard } from '@/components/trip/item-card'
 import { TripMoreSheet } from '@/components/trip/trip-more-sheet'
 import { MobileScreen } from '@/components/layout/mobile-screen'
@@ -29,7 +47,11 @@ import { useHorizontalDragScroll } from '@/hooks/use-horizontal-drag-scroll'
 
 type TripSearch = {
   day?: number
+  invite?: boolean
 }
+
+// 서버(startVote)가 요구하는 것과 같은 규칙 — 선택지가 2개 미만이면 투표를 시작할 수 없다.
+const MIN_VOTE_OPTION_COUNT = 2
 
 export const Route = createFileRoute('/trips/$tripId/')({
   validateSearch: (search: Record<string, unknown>): TripSearch => {
@@ -37,6 +59,7 @@ export const Route = createFileRoute('/trips/$tripId/')({
 
     return {
       day: Number.isInteger(day) && day > 0 ? day : undefined,
+      invite: search.invite === true ? true : undefined,
     }
   },
   component: TripHomePage,
@@ -48,6 +71,7 @@ type TripItem = {
   category: string
   status: 'draft' | 'voting' | 'confirmed' | 'voteDone'
   decisionType?: string
+  optionCount?: number
   voteMeta?: string
 }
 
@@ -60,7 +84,7 @@ type TripDay = {
 
 function TripHomePage() {
   const { tripId } = Route.useParams()
-  const { day: selectedDayParam } = Route.useSearch()
+  const { day: selectedDayParam, invite: shouldOpenInvite } = Route.useSearch()
   const navigate = useNavigate({ from: '/trips/$tripId/' })
   const queryClient = useQueryClient()
   const tripIdNumber = Number(tripId)
@@ -70,6 +94,10 @@ function TripHomePage() {
   })
   const deleteTrip = useDeleteTrip()
   const deleteItineraryItemMutation = useDeleteItineraryItem()
+  const reorderItineraryItemsMutation = useReorderItineraryItems()
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  )
   const detail = tripQuery.data?.success ? tripQuery.data.data : undefined
   const days: TripDay[] = (detail?.days ?? []).flatMap((tripDay) => {
     if (tripDay.dayNumber === undefined) {
@@ -87,13 +115,19 @@ function TripHomePage() {
             return []
           }
 
+          const name = item.name ?? '이름 없는 일정'
+
           return [
             {
               id: item.id,
-              title: item.name ?? '이름 없는 일정',
+              title:
+                status === 'confirmed' && item.confirmedOptionName
+                  ? `${name} - ${item.confirmedOptionName}`
+                  : name,
               category: item.category ?? '기타',
               status,
               decisionType: item.decisionType,
+              optionCount: item.optionCount,
             },
           ]
         }),
@@ -107,6 +141,12 @@ function TripHomePage() {
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null)
   const [isDeleteTripOpen, setIsDeleteTripOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string>()
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
+  const [isCopyToastVisible, setIsCopyToastVisible] = useState(false)
+  const copyToastTimeoutRef = useRef<number | null>(null)
+  const inviteLink = detail?.inviteCode
+    ? `${window.location.origin}/invite/${detail.inviteCode}`
+    : ''
 
   useEffect(() => {
     const errorCode =
@@ -115,6 +155,46 @@ function TripHomePage() {
       void navigate({ to: '/trips', replace: true })
     }
   }, [isValidTripId, navigate, tripQuery.data?.error?.code, tripQuery.error])
+
+  useEffect(() => {
+    if (!shouldOpenInvite) {
+      return
+    }
+    setIsInviteDialogOpen(true)
+    void navigate({
+      search: (prev) => ({ ...prev, invite: undefined }),
+      replace: true,
+    })
+  }, [shouldOpenInvite, navigate])
+
+  useEffect(() => {
+    return () => {
+      if (copyToastTimeoutRef.current !== null) {
+        window.clearTimeout(copyToastTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const handleCopyInviteLink = async () => {
+    if (!inviteLink) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+    } catch {
+      return
+    }
+
+    setIsCopyToastVisible(true)
+    if (copyToastTimeoutRef.current !== null) {
+      window.clearTimeout(copyToastTimeoutRef.current)
+    }
+    copyToastTimeoutRef.current = window.setTimeout(() => {
+      setIsCopyToastVisible(false)
+      copyToastTimeoutRef.current = null
+    }, 2000)
+  }
 
   const startVoteMutation = useStartVote({
     mutation: {
@@ -132,10 +212,13 @@ function TripHomePage() {
     days.find((d) => d.id === selectedDayParam)?.id ?? days[0]?.id
   const day = days.find((d) => d.id === selectedDay)
   const dayScrollHandlers = useHorizontalDragScroll()
-  // HOST_PICK(내가 결정) 항목은 방장이 직접 확정하는 방식이라 투표에 올릴 수 없다 —
-  // 서버(startVote)가 VOTE가 아닌 항목이 하나라도 섞여 있으면 배치 전체를 거부한다.
+  // HOST_PICK(내가 결정) 항목은 방장이 직접 확정하는 방식이라 투표에 올릴 수 없고,
+  // 선택지가 2개 미만인 VOTE 항목도 투표를 시작할 수 없다 — 서버(startVote)가 이 조건을
+  // 하나라도 못 채우는 항목이 섞여 있으면 배치 전체를 거부한다.
   const isDraftItem = (item: TripItem) =>
-    item.status === 'draft' && item.decisionType === 'VOTE'
+    item.status === 'draft' &&
+    item.decisionType === 'VOTE' &&
+    (item.optionCount ?? 0) >= MIN_VOTE_OPTION_COUNT
   const draftItems = days.flatMap((d) => d.items).filter(isDraftItem)
   const draftCount = draftItems.length
   const hasItems = (day?.items.length ?? 0) > 0
@@ -176,6 +259,58 @@ function TripHomePage() {
         getApiError(error)?.message ?? '일정을 삭제하지 못했습니다.',
       )
     }
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!day || !over || active.id === over.id) return
+
+    const oldIndex = day.items.findIndex((item) => item.id === active.id)
+    const newIndex = day.items.findIndex((item) => item.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const tripDayId = detail?.days?.find((d) => d.dayNumber === day.id)?.id
+    if (tripDayId === undefined) return
+
+    const reorderedIds = arrayMove(day.items, oldIndex, newIndex).map(
+      (item) => item.id,
+    )
+
+    // 서버 응답을 기다리지 않고 캐시를 먼저 새 순서로 바꿔서 바로 반영되게 하고,
+    // 요청이 실패하면 서버 상태로 다시 불러와 되돌린다.
+    queryClient.setQueryData<CommonResponseTripDetailResponseDto>(
+      getFindTripQueryKey(tripIdNumber),
+      (old) => {
+        if (!old?.data?.days) return old
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            days: old.data.days.map((d) =>
+              d.dayNumber === day.id
+                ? {
+                    ...d,
+                    items: reorderedIds
+                      .map((id) => d.items?.find((item) => item.id === id))
+                      .filter((item) => item !== undefined),
+                  }
+                : d,
+            ),
+          },
+        }
+      },
+    )
+
+    reorderItineraryItemsMutation.mutate(
+      { dayId: tripDayId, data: { itemIds: reorderedIds } },
+      {
+        onError: () => {
+          void queryClient.invalidateQueries({
+            queryKey: getFindTripQueryKey(tripIdNumber),
+          })
+        },
+      },
+    )
   }
 
   const handleDeleteTrip = async () => {
@@ -309,35 +444,53 @@ function TripHomePage() {
             </div>
           )}
 
-          {hasItems &&
-            day?.items.map((item) =>
-              isEditing ? (
-                <EditRow
-                  key={item.id}
-                  title={item.title}
-                  category={item.category}
-                  meta={item.voteMeta}
-                  status={item.status}
-                  onDelete={() => setDeleteItemId(item.id)}
-                />
-              ) : (
-                <ItemCard
-                  key={item.id}
-                  title={item.title}
-                  category={item.category}
-                  meta={item.voteMeta}
-                  status={item.status}
-                  onClick={() =>
-                    navigate({
-                      to: '/trips/$tripId/items/$itemId',
-                      params: { tripId, itemId: String(item.id) },
-                    })
-                  }
-                />
-              ),
-            )}
+          {hasItems && isEditing && (
+            <DndContext
+              sensors={dragSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={day?.items.map((item) => item.id) ?? []}
+                strategy={verticalListSortingStrategy}
+              >
+                {day?.items.map((item) => (
+                  <EditRow
+                    key={item.id}
+                    id={item.id}
+                    title={item.title}
+                    category={item.category}
+                    meta={item.voteMeta}
+                    status={item.status}
+                    onDelete={() => setDeleteItemId(item.id)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
 
-          {!isEditing && (
+          {hasItems &&
+            !isEditing &&
+            day?.items.map((item) => (
+              <ItemCard
+                key={item.id}
+                title={item.title}
+                category={item.category}
+                meta={item.voteMeta}
+                status={item.status}
+                onClick={() =>
+                  navigate({
+                    to: '/trips/$tripId/items/$itemId',
+                    params: { tripId, itemId: String(item.id) },
+                  })
+                }
+              />
+            ))}
+
+          {/* 편집 중에 마지막 일정을 지우면 hasItems가 false가 되면서 편집/완료
+              토글 버튼 자체가 사라져 isEditing을 끌 방법이 없어진다 — 그 상태에서도
+              일정 추가는 항상 보여야 한다. */}
+          {(!isEditing || !hasItems) && (
             <AddItemRow onClick={() => setIsCreateItemOpen(true)} />
           )}
         </div>
@@ -358,10 +511,7 @@ function TripHomePage() {
         }
         onInviteLink={() => {
           setIsMoreSheetOpen(false)
-          void navigate({
-            to: '/trips/$tripId/invite',
-            params: { tripId },
-          })
+          setIsInviteDialogOpen(true)
         }}
         onDeleteTrip={() => {
           setIsMoreSheetOpen(false)
@@ -403,6 +553,32 @@ function TripHomePage() {
         danger
         onConfirm={handleDeleteTrip}
       />
+
+      <InviteLinkDialog
+        open={isInviteDialogOpen}
+        onOpenChange={setIsInviteDialogOpen}
+        tripTitle={detail.title ?? ''}
+        tripPeriod={
+          detail.startDate && detail.endDate
+            ? formatTripPeriod(
+                detail.startDate,
+                detail.endDate,
+                detail.companionCount ?? 0,
+              )
+            : ''
+        }
+        onCopyLink={handleCopyInviteLink}
+      />
+
+      {isCopyToastVisible && (
+        <div
+          className="pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-chip bg-foreground px-4 py-2 text-caption text-background"
+          role="status"
+          aria-live="polite"
+        >
+          복사되었습니다
+        </div>
+      )}
     </MobileScreen>
   )
 }

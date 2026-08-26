@@ -32,6 +32,10 @@ import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { MobileScreen } from '@/components/layout/mobile-screen'
+import {
+  defaultOptionImageSquare,
+  defaultOptionImageWide,
+} from '@/lib/default-option-image'
 import { uploadImage } from '@/lib/upload-image'
 
 export const Route = createFileRoute('/trips/$tripId/items/$itemId/')({
@@ -57,6 +61,18 @@ const MIN_VOTE_OPTION_COUNT = 2
 
 // 투표 중일 때만 폴링한다 — 확정되면 더 이상 집계가 바뀌지 않으므로 멈춘다.
 const VOTE_STATUS_POLLING_INTERVAL_MS = 3000
+
+// 자녀 화면에서만 쓰는 안내용 문구다 — 실제 설명 데이터가 아니라 화면에만 보여주는
+// placeholder라, 서버에 저장되지 않고 부모님 화면에도 나가지 않는다.
+const DESCRIPTION_PLACEHOLDER = '상세 설명을 입력해주세요'
+
+// 설명을 수정 안 하고 그냥 저장하면 서버에는 null이 아니라 빈 문자열이 저장되므로,
+// null/undefined뿐 아니라 공백뿐인 값도 "설명 없음"으로 본다.
+function withDescriptionPlaceholder(description: string | null | undefined) {
+  return description && description.trim().length > 0
+    ? description
+    : DESCRIPTION_PLACEHOLDER
+}
 
 function ItemDetailPage() {
   const { tripId, itemId } = Route.useParams()
@@ -223,10 +239,19 @@ function ItemDetailPage() {
     if (optionId === undefined) return
 
     const imageKey = image ? await uploadImage(image) : undefined
+    // 설명을 안 쓰고 저장하면 빈 문자열이 아니라 필드 자체를 생략해서, 서버가
+    // "설명 없음"을 null로 유지하게 한다(빈 문자열은 있는 값으로 취급되기 쉽다).
+    const trimmedDescription = description.trim()
+
     updateVoteOptionMutation.mutate(
       {
         voteOptionId: optionId,
-        data: { name, description, imageKey },
+        data: {
+          name,
+          description:
+            trimmedDescription.length > 0 ? trimmedDescription : undefined,
+          imageKey,
+        },
       },
       {
         onSuccess: (updated) => {
@@ -391,8 +416,8 @@ function ItemDetailPage() {
                 <OptionCard
                   key={option.id}
                   title={option.name ?? ''}
-                  description={option.description}
-                  descriptionSource={option.descriptionSource}
+                  description={withDescriptionPlaceholder(option.description)}
+                  descriptionSource={option.descriptionSource ?? 'HOST'}
                   editable={isEditingOptions}
                   imageSrc={option.imageUrl}
                   onClick={() => setEditingOption(option)}
@@ -429,10 +454,22 @@ function ItemDetailPage() {
             <div className="flex flex-col gap-3">
               {options.map((option) => {
                 const optionVotes = voteStatusByOptionId.get(option.id)
+                // 투표가 시작되면 설명을 더는 수정할 수 없으니, 자녀 화면이어도
+                // 여기서는 안내용 placeholder를 보여주지 않는다 — 실제 설명이 있을 때만 보여준다.
+                const hasDescription =
+                  (option.description?.trim().length ?? 0) > 0
                 return (
                   <OptionCard
                     key={option.id}
                     title={option.name ?? ''}
+                    description={
+                      hasDescription ? option.description : undefined
+                    }
+                    descriptionSource={
+                      hasDescription
+                        ? (option.descriptionSource ?? 'HOST')
+                        : undefined
+                    }
                     voteCount={optionVotes?.voteCount ?? 0}
                     voters={(optionVotes?.voters ?? []).map(
                       (voter) => voter.roleName?.charAt(0) ?? '?',
@@ -456,15 +493,11 @@ function ItemDetailPage() {
         {isVote && isConfirmed && (
           <>
             <div className="flex flex-col gap-2 overflow-hidden rounded-[18px] border border-border">
-              {confirmedOption?.imageUrl ? (
-                <img
-                  src={confirmedOption.imageUrl}
-                  alt=""
-                  className="h-[233px] w-full object-cover"
-                />
-              ) : (
-                <div className="h-[233px] w-full bg-muted" />
-              )}
+              <img
+                src={confirmedOption?.imageUrl ?? defaultOptionImageWide}
+                alt=""
+                className="h-[233px] w-full object-cover"
+              />
               <div className="flex flex-col gap-2.5 p-4">
                 <p className="text-title-2 text-foreground">
                   {confirmedOption?.name}
@@ -541,34 +574,35 @@ function ItemDetailPage() {
 
         {!isVote && (
           <div className="flex flex-col gap-2.5">
-            <div className="flex flex-col gap-2.5 rounded-card border border-border p-3">
+            <button
+              type="button"
+              disabled={!options[0] || status !== 'PENDING'}
+              onClick={() => options[0] && setEditingOption(options[0])}
+              className="flex flex-col gap-2.5 rounded-card border border-border p-3 text-left"
+            >
               <div className="flex w-full items-center gap-3">
-                {options[0]?.imageUrl ? (
-                  <img
-                    src={options[0].imageUrl}
-                    alt=""
-                    className="size-11 shrink-0 rounded-card object-cover"
-                  />
-                ) : (
-                  <div className="size-11 shrink-0 rounded-card border-[1.5px] border-dashed border-border bg-muted" />
-                )}
+                <img
+                  src={options[0]?.imageUrl ?? defaultOptionImageSquare}
+                  alt=""
+                  className="size-11 shrink-0 rounded-card object-cover"
+                />
                 <p className="flex-1 text-card-title text-foreground">
                   {options[0]?.name ?? '아직 선택지가 없어요'}
                 </p>
               </div>
-              {options[0]?.description && options[0]?.descriptionSource && (
+              {options[0] && (
                 <div className="flex items-center gap-1.5">
                   <p className="flex-1 text-[12.5px] text-muted-foreground">
-                    {options[0].description}
+                    {withDescriptionPlaceholder(options[0].description)}
                   </p>
                   <span className="shrink-0 rounded-chip bg-primary-tint px-2 py-[3px] text-[11px] leading-none font-medium text-primary-deep">
-                    {options[0].descriptionSource === 'AI'
+                    {(options[0].descriptionSource ?? 'HOST') === 'AI'
                       ? '✨ AI 작성'
                       : '✏️ 직접 작성'}
                   </span>
                 </div>
               )}
-            </div>
+            </button>
           </div>
         )}
       </div>

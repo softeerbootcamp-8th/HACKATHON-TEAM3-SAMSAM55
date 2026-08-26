@@ -4,6 +4,7 @@ import * as React from 'react'
 import { Button } from '@/components/ui/button'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { TextInput } from '@/components/ui/text-input'
+import { defaultOptionImageSquare } from '@/lib/default-option-image'
 
 type EditOptionSheetProps = {
   open: boolean
@@ -52,13 +53,11 @@ function EditOptionSheet({
           onClick={() => fileInputRef.current?.click()}
           className="relative flex size-[74px] shrink-0 items-center justify-center overflow-hidden rounded-card bg-muted"
         >
-          {previewUrl && (
-            <img
-              src={previewUrl}
-              alt=""
-              className="absolute inset-0 size-full object-cover"
-            />
-          )}
+          <img
+            src={previewUrl ?? defaultOptionImageSquare}
+            alt=""
+            className="absolute inset-0 size-full object-cover"
+          />
           <span className="absolute -right-1.5 -bottom-1.5 flex size-[30px] items-center justify-center rounded-full bg-background shadow-[0px_0px_3.5px_rgba(0,0,0,0.1)]">
             <Camera className="size-4 text-muted-foreground" />
           </span>

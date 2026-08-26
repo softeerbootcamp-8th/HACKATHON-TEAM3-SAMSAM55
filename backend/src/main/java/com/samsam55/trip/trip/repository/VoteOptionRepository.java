@@ -22,6 +22,22 @@ public interface VoteOptionRepository extends JpaRepository<VoteOption, Long> {
     List<VoteOption> findAllByItineraryItemIdOrderByIdAsc(Long itineraryItemId);
 
     @Query("""
+            select option.itineraryItem.id as itemId,
+                   count(option) as optionCount
+            from VoteOption option
+            where option.itineraryItem.tripDay.trip.id = :tripId
+            group by option.itineraryItem.id
+            """)
+    List<ItineraryItemOptionCount> countByTripId(@Param("tripId") Long tripId);
+
+    interface ItineraryItemOptionCount {
+
+        Long getItemId();
+
+        long getOptionCount();
+    }
+
+    @Query("""
             select option
             from VoteOption option
             join fetch option.itineraryItem item

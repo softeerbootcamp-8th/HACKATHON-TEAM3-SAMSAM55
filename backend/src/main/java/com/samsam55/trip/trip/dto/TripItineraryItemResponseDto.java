@@ -7,16 +7,20 @@ public record TripItineraryItemResponseDto(
         String name,
         String category,
         String status,
-        String decisionType
+        String decisionType,
+        int optionCount,
+        String confirmedOptionName
 ) {
 
-    public static TripItineraryItemResponseDto from(ItineraryItem itineraryItem) {
+    public static TripItineraryItemResponseDto from(ItineraryItem itineraryItem, int optionCount) {
         return new TripItineraryItemResponseDto(
                 itineraryItem.getId(),
                 itineraryItem.getName(),
                 itineraryItem.getCategory(),
                 itineraryItem.getStatus().name(),
-                itineraryItem.getDecisionType().name()
+                itineraryItem.getDecisionType().name(),
+                optionCount,
+                itineraryItem.getConfirmedOption() != null ? itineraryItem.getConfirmedOption().getName() : null
         );
     }
 }

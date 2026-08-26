@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -91,7 +92,12 @@ public class TripService {
         List<TripDay> tripDays = tripDayRepository.findAllByTripIdOrderByDayNumberAsc(tripId);
         List<ItineraryItem> itineraryItems = itineraryItemRepository
                 .findAllByTripIdOrderByDayAndSortOrder(tripId);
-        return TripDetailResponseDto.from(trip, tripDays, itineraryItems);
+        Map<Long, Integer> optionCountsByItemId = voteOptionRepository.countByTripId(tripId).stream()
+                .collect(Collectors.toMap(
+                        VoteOptionRepository.ItineraryItemOptionCount::getItemId,
+                        count -> Math.toIntExact(count.getOptionCount())
+                ));
+        return TripDetailResponseDto.from(trip, tripDays, itineraryItems, optionCountsByItemId);
     }
 
     /**

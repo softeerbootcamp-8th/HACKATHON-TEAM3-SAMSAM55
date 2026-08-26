@@ -5,6 +5,7 @@ import com.samsam55.trip.global.common.CommonResponse;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
+import com.samsam55.trip.trip.dto.ItineraryItemReorderRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemUpdateRequestDto;
 import com.samsam55.trip.trip.dto.VoteOptionCreateRequestDto;
 import com.samsam55.trip.trip.dto.VoteOptionCreateResponseDto;
@@ -96,6 +97,24 @@ public class ItineraryItemController {
             @Valid @RequestBody ItineraryItemUpdateRequestDto updateRequest
     ) {
         return CommonResponse.success(itineraryItemService.updateItineraryItem(loginUserId, itemId, updateRequest));
+    }
+
+    /**
+     * 같은 일차 안에서 일정 항목의 순서를 바꾼다. 여행 방장만 호출할 수 있다.
+     *
+     * @param loginUserId 로그인한 회원의 식별자
+     * @param dayId 순서를 바꿀 일차의 식별자
+     * @param request 새 순서대로 나열한 일정 항목 식별자 목록
+     * @return 데이터가 없는 200 응답
+     */
+    @PutMapping("/api/trip-days/{dayId}/itinerary-items/order")
+    public CommonResponse<Void> reorderItineraryItems(
+            @Login Long loginUserId,
+            @PathVariable Long dayId,
+            @Valid @RequestBody ItineraryItemReorderRequestDto request
+    ) {
+        itineraryItemService.reorderItineraryItems(loginUserId, dayId, request.itemIds());
+        return CommonResponse.empty();
     }
 
     /**

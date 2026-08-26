@@ -1,5 +1,6 @@
-import { Camera, Check } from 'lucide-react'
+import { Check } from 'lucide-react'
 
+import { defaultOptionImageWide } from '@/lib/default-option-image'
 import { cn } from '@/lib/utils'
 
 type VoteOptionCardProps = {
@@ -7,7 +8,7 @@ type VoteOptionCardProps = {
   description: string
   selected?: boolean
   voteCount?: number
-  // 있으면 카메라 아이콘 대신 이 주소의 이미지를 채운다 (세션 쿠키로 인증되는 GET 엔드포인트).
+  // 없으면 기본 이미지를 채운다.
   imageSrc?: string
   onClick?: () => void
   className?: string
@@ -32,13 +33,11 @@ function VoteOptionCard({
         className,
       )}
     >
-      {imageSrc ? (
-        <img src={imageSrc} alt="" className="h-[180px] w-full object-cover" />
-      ) : (
-        <div className="flex h-[180px] w-full items-center justify-center bg-muted">
-          <Camera className="size-8 text-text-disabled" />
-        </div>
-      )}
+      <img
+        src={imageSrc ?? defaultOptionImageWide}
+        alt=""
+        className="h-[180px] w-full object-cover"
+      />
       {selected && (
         <span className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center rounded-full bg-primary">
           <Check className="size-4 text-foreground" />

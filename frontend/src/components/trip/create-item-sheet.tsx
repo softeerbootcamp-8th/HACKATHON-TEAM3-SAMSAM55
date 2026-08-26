@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Camera, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import type { TripDayResponseDto } from '@/api/generated/model'
@@ -8,12 +8,13 @@ import {
   useCreateVoteOption,
 } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
 import { getFindTripQueryKey } from '@/api/generated/trip-controller/trip-controller'
+import { useConfirm } from '@/api/generated/vote-controller/vote-controller'
 import { AppBar } from '@/components/ui/app-bar'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Button } from '@/components/ui/button'
 import { TextInput } from '@/components/ui/text-input'
-import { DayTab } from '@/components/trip/day-tab'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { defaultOptionImageSquare } from '@/lib/default-option-image'
 import { uploadImage } from '@/lib/upload-image'
 import { cn } from '@/lib/utils'
 
@@ -59,11 +60,11 @@ function OptionRow({
         onClick={() => fileInputRef.current?.click()}
         className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-card border-[1.5px] border-dashed border-border bg-muted"
       >
-        {previewUrl ? (
-          <img src={previewUrl} alt="" className="size-full object-cover" />
-        ) : (
-          <Camera className="size-4 text-muted-foreground" />
-        )}
+        <img
+          src={previewUrl ?? defaultOptionImageSquare}
+          alt=""
+          className="size-full object-cover"
+        />
       </button>
       <input
         ref={fileInputRef}
@@ -105,7 +106,6 @@ function CreateItemSheet({
   const queryClient = useQueryClient()
   const tripIdNumber = Number(tripId)
 
-  const [selectedDayNumber, setSelectedDayNumber] = useState(initialDayNumber)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<(typeof CATEGORIES)[number] | null>(
     null,
@@ -134,10 +134,9 @@ function CreateItemSheet({
     return () => URL.revokeObjectURL(url)
   }, [decidedPlaceImage])
 
-  // 시트를 열 때마다 여행 홈에서 고르고 있던 일차로 다시 맞추고, 입력값은 초기화한다.
+  // 시트를 열 때마다 입력값을 초기화한다. 며칠차는 여행 홈에서 고르고 있던 일차로 고정된다.
   useEffect(() => {
     if (!open) return
-    setSelectedDayNumber(initialDayNumber)
     setTitle('')
     setCategory(null)
     setDecisionMethod('투표')
@@ -147,22 +146,28 @@ function CreateItemSheet({
     ])
     setDecidedPlace('')
     setDecidedPlaceImage(null)
-  }, [open, initialDayNumber])
+  }, [open])
 
   const currentDayId = days.find(
-    (day) => day.dayNumber === selectedDayNumber,
+    (day) => day.dayNumber === initialDayNumber,
   )?.id
 
   const createItineraryItemMutation = useCreateItineraryItem()
   const createVoteOptionMutation = useCreateVoteOption()
+  const confirmMutation = useConfirm()
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+
+  const decisionType = decisionMethod === '투표' ? 'VOTE' : 'HOST_PICK'
+  // HOST_PICK은 정한 곳이 곧 유일한 선택지라, 없으면 선택지 없는 일정이 그대로 만들어진다.
+  const isMissingDecidedPlace =
+    decisionType === 'HOST_PICK' && decidedPlace.trim().length === 0
 
   const handleCreate = async () => {
     if (currentDayId === undefined) return
     if (category === null) return
+    if (isMissingDecidedPlace) return
 
-    const decisionType = decisionMethod === '투표' ? 'VOTE' : 'HOST_PICK'
     const filledOptions = options.filter(
       (option) => option.name.trim().length > 0,
     )
@@ -213,7 +218,8 @@ function CreateItemSheet({
           const finish = () => onCreated(created.id!)
 
           // HOST_PICK은 생성 시점엔 선택지가 없으므로, 입력한 장소를 바로
-          // 선택지로 추가한다.
+          // 선택지로 추가하고 그 자리에서 확정까지 시킨다. 확정을 안 하면
+          // 상세 화면이 PENDING 상태로 남아 수정 화면처럼 보인다.
           if (decisionType === 'HOST_PICK' && decidedPlace.trim().length > 0) {
             createVoteOptionMutation.mutate(
               {
@@ -223,7 +229,23 @@ function CreateItemSheet({
                   imageKey: decidedPlaceImageKey,
                 },
               },
-              { onSuccess: finish, onError: finish },
+              {
+                onSuccess: (optionResponse) => {
+                  const optionId = optionResponse.data?.id
+                  if (optionId === undefined) {
+                    finish()
+                    return
+                  }
+                  confirmMutation.mutate(
+                    {
+                      itemId: created.id!,
+                      data: { voteOptionId: optionId },
+                    },
+                    { onSuccess: finish, onError: finish },
+                  )
+                },
+                onError: finish,
+              },
             )
             return
           }
@@ -237,7 +259,8 @@ function CreateItemSheet({
   const isSubmitting =
     isUploading ||
     createItineraryItemMutation.isPending ||
-    createVoteOptionMutation.isPending
+    createVoteOptionMutation.isPending ||
+    confirmMutation.isPending
 
   return (
     <BottomSheet
@@ -252,24 +275,6 @@ function CreateItemSheet({
       />
 
       <div className="flex flex-1 flex-col gap-7 overflow-y-auto px-5 py-6">
-        {days.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <p className="text-caption text-muted-foreground">며칠차</p>
-            <div className="flex gap-2 overflow-x-auto">
-              {days.map((day) =>
-                day.dayNumber === undefined ? null : (
-                  <DayTab
-                    key={day.id}
-                    label={`${day.dayNumber}일차`}
-                    selected={day.dayNumber === selectedDayNumber}
-                    onClick={() => setSelectedDayNumber(day.dayNumber!)}
-                  />
-                ),
-              )}
-            </div>
-          </div>
-        )}
-
         <TextInput
           label="일정 이름"
           placeholder="예: 점심 식사"
@@ -383,15 +388,11 @@ function CreateItemSheet({
                 onClick={() => decidedPlaceFileInputRef.current?.click()}
                 className="flex size-[75px] items-center justify-center overflow-hidden rounded-card border-[1.5px] border-dashed border-border bg-muted"
               >
-                {decidedPlacePreviewUrl ? (
-                  <img
-                    src={decidedPlacePreviewUrl}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <Camera className="size-4 text-muted-foreground" />
-                )}
+                <img
+                  src={decidedPlacePreviewUrl ?? defaultOptionImageSquare}
+                  alt=""
+                  className="size-full object-cover"
+                />
               </button>
               <input
                 ref={decidedPlaceFileInputRef}
@@ -414,7 +415,11 @@ function CreateItemSheet({
         <Button
           size="cta"
           disabled={
-            !title || !category || currentDayId === undefined || isSubmitting
+            !title ||
+            !category ||
+            currentDayId === undefined ||
+            isMissingDecidedPlace ||
+            isSubmitting
           }
           onClick={handleCreate}
         >

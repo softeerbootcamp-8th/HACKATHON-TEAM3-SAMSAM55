@@ -15,6 +15,7 @@ public record TripCreateRequestDto(
         @NotNull(message = "여행 종료일은 필수입니다.")
         LocalDate endDate,
         @NotNull(message = "동행자 목록은 필수입니다.")
+        @Size(min = 1, message = "동행자는 최소 1명 이상이어야 합니다.")
         List<@NotBlank(message = "동행자 역할은 필수입니다.")
                 @Size(max = 50, message = "동행자 역할은 50자 이하여야 합니다.") String> companions
 ) {

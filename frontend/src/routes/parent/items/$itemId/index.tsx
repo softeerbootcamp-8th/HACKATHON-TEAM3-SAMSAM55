@@ -8,6 +8,7 @@ import { VoteStatusRow } from '@/components/trip/vote-status-row'
 import { AppBar } from '@/components/ui/app-bar'
 import { MobileScreen } from '@/components/layout/mobile-screen'
 import { getApiError } from '@/features/auth/auth'
+import { defaultOptionImageWide } from '@/lib/default-option-image'
 
 export const Route = createFileRoute('/parent/items/$itemId/')({
   component: ParentItemDetailPage,
@@ -152,15 +153,11 @@ function ParentItemDetailPage() {
       ) : (
         <div className="flex flex-col gap-4 px-5 pt-4">
           <div className="flex flex-col overflow-hidden rounded-[18px] border border-border">
-            {confirmedOption?.imageUrl ? (
-              <img
-                src={confirmedOption.imageUrl}
-                alt=""
-                className="h-[233px] w-full object-cover"
-              />
-            ) : (
-              <div className="h-[233px] w-full bg-muted" />
-            )}
+            <img
+              src={confirmedOption?.imageUrl ?? defaultOptionImageWide}
+              alt=""
+              className="h-[233px] w-full object-cover"
+            />
             <div className="flex flex-col gap-2.5 p-4">
               <p className="text-title-2 text-foreground">
                 {confirmedOption?.name}
