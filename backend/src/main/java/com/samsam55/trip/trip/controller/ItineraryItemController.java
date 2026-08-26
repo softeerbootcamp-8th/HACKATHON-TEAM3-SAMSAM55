@@ -101,22 +101,30 @@ public class ItineraryItemController {
         return CommonResponse.success(itineraryItemService.getItineraryItem(loginUserId, itemId));
     }
 
+    // NOTE: 이 엔드포인트 자체는 멀티파트가 아니라 순수 JSON body라 아래 불안정성과 무관하다.
+    // 다만 이 컨트롤러에 새 핸들러 메서드가 하나 늘어나는 것만으로도(내용과 무관하게),
+    // createItineraryItem()의 request 파라미터가 springdoc 문서상 멀티파트 body 대신
+    // 쿼리 파라미터로 잘못 분류되는 기존 버그 때문에, Orval이 생성하는
+    // CreateItineraryItemBody 모양이 바뀔 수 있다 — 이 PR이 머지된 뒤 pnpm build가
+    // frontend/src/routes/trips/$tripId/items/new.tsx에서 깨지면 이게 원인일 가능성이 높다.
+    // 근본 원인(springdoc이 @RequestParam String을 멀티파트 엔드포인트에서 오분류하는 문제)은
+    // 일정 만들기 담당자가 별도로 고치기로 했다.
     /**
      * 일정 항목의 이름·카테고리·결정 방식을 수정한다. 여행 방장만 호출할 수 있고,
      * 투표가 시작되기 전(PENDING)에만 수정할 수 있다.
      *
      * @param loginUserId 로그인한 회원의 식별자
      * @param itemId 수정할 일정 항목의 식별자
-     * @param request 이름·카테고리·결정 방식이 담긴 수정 요청
+     * @param updateRequest 이름·카테고리·결정 방식이 담긴 수정 요청
      * @return 수정된 일정 항목 상세가 담긴 200 응답
      */
     @PutMapping("/api/itinerary-items/{itemId}")
     public CommonResponse<ItineraryItemDetailResponseDto> updateItineraryItem(
             @Login Long loginUserId,
             @PathVariable Long itemId,
-            @Valid @RequestBody ItineraryItemUpdateRequestDto request
+            @Valid @RequestBody ItineraryItemUpdateRequestDto updateRequest
     ) {
-        return CommonResponse.success(itineraryItemService.updateItineraryItem(loginUserId, itemId, request));
+        return CommonResponse.success(itineraryItemService.updateItineraryItem(loginUserId, itemId, updateRequest));
     }
 
     /**
