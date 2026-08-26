@@ -141,7 +141,7 @@ function ParentHomePage() {
               <DayTab
                 key={d.id}
                 label={`${d.dayNumber}일차`}
-                pending={d.items?.some((item) => item.status === 'VOTING')}
+                pending={d.items?.some((item) => item.needsVote)}
                 selected={d.id === day?.id}
                 onClick={() => void navigate({ search: { day: d.id } })}
               />

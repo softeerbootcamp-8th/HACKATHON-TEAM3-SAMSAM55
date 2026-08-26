@@ -61,6 +61,7 @@ class ScheduleControllerTest {
                 .andExpect(jsonPath("$.data.votingCount").value(1))
                 .andExpect(jsonPath("$.data.days[0].items[0].votedCount").value(2))
                 .andExpect(jsonPath("$.data.days[0].items[0].totalParticipants").value(3))
+                .andExpect(jsonPath("$.data.days[0].items[0].needsVote").value(true))
                 .andExpect(jsonPath("$.error").isEmpty());
 
         verify(scheduleService).findSchedule(participant, 1L);
@@ -100,6 +101,7 @@ class ScheduleControllerTest {
                                 1,
                                 2,
                                 3,
+                                true,
                                 null
                         ))
                 ))
