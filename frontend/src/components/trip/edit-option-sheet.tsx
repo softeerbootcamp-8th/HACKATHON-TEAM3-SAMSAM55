@@ -78,12 +78,7 @@ function EditOptionSheet({
       </div>
 
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <p className="text-caption text-muted-foreground">설명</p>
-          <span className="rounded-chip bg-primary-tint px-2 py-[3px] text-[11px] leading-none font-medium text-primary-deep">
-            {isAiGenerated ? '✨ AI 작성' : '✏️ 직접 작성'}
-          </span>
-        </div>
+        <p className="text-caption text-muted-foreground">설명</p>
         <textarea
           value={description}
           onChange={(event) => setDescription(event.target.value)}

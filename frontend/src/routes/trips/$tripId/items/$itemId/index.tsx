@@ -417,7 +417,6 @@ function ItemDetailPage() {
                   key={option.id}
                   title={option.name ?? ''}
                   description={withDescriptionPlaceholder(option.description)}
-                  descriptionSource={option.descriptionSource ?? 'HOST'}
                   editable={isEditingOptions}
                   imageSrc={option.imageUrl}
                   onClick={() => setEditingOption(option)}
@@ -464,11 +463,6 @@ function ItemDetailPage() {
                     title={option.name ?? ''}
                     description={
                       hasDescription ? option.description : undefined
-                    }
-                    descriptionSource={
-                      hasDescription
-                        ? (option.descriptionSource ?? 'HOST')
-                        : undefined
                     }
                     voteCount={optionVotes?.voteCount ?? 0}
                     voters={(optionVotes?.voters ?? []).map(
@@ -591,16 +585,9 @@ function ItemDetailPage() {
                 </p>
               </div>
               {options[0] && (
-                <div className="flex items-center gap-1.5">
-                  <p className="flex-1 text-[12.5px] text-muted-foreground">
-                    {withDescriptionPlaceholder(options[0].description)}
-                  </p>
-                  <span className="shrink-0 rounded-chip bg-primary-tint px-2 py-[3px] text-[11px] leading-none font-medium text-primary-deep">
-                    {(options[0].descriptionSource ?? 'HOST') === 'AI'
-                      ? '✨ AI 작성'
-                      : '✏️ 직접 작성'}
-                  </span>
-                </div>
+                <p className="text-[12.5px] text-muted-foreground">
+                  {withDescriptionPlaceholder(options[0].description)}
+                </p>
               )}
             </button>
           </div>
