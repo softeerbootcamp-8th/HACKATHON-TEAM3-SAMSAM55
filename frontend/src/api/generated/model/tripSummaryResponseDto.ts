@@ -11,4 +11,7 @@ export interface TripSummaryResponseDto {
   startDate?: string;
   endDate?: string;
   companionCount?: number;
+  totalItems?: number;
+  confirmedItems?: number;
+  progressPercent?: number;
 }
