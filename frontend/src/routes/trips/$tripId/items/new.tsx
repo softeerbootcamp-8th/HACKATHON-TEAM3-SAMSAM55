@@ -106,7 +106,7 @@ function CreateItemPage() {
     '투표',
   )
   const [options, setOptions] = useState<OptionDraft[]>([
-    { name: '스시 오마카세 긴자점', image: null },
+    { name: '', image: null },
     { name: '', image: null },
   ])
   const [decidedPlace, setDecidedPlace] = useState('')
