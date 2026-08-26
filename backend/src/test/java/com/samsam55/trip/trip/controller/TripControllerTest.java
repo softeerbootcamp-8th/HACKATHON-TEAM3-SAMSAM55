@@ -63,7 +63,10 @@ class TripControllerTest {
                         "제주 가족 여행",
                         LocalDate.of(2026, 9, 1),
                         LocalDate.of(2026, 9, 3),
-                        2
+                        2,
+                        8L,
+                        5L,
+                        62
                 )
         )));
         MockHttpSession session = new MockHttpSession();
@@ -77,6 +80,9 @@ class TripControllerTest {
                 .andExpect(jsonPath("$.data.items[0].startDate").value("2026-09-01"))
                 .andExpect(jsonPath("$.data.items[0].endDate").value("2026-09-03"))
                 .andExpect(jsonPath("$.data.items[0].companionCount").value(2))
+                .andExpect(jsonPath("$.data.items[0].totalItems").value(8))
+                .andExpect(jsonPath("$.data.items[0].confirmedItems").value(5))
+                .andExpect(jsonPath("$.data.items[0].progressPercent").value(62))
                 .andExpect(jsonPath("$.error").isEmpty());
 
         verify(tripService).findTrips(1L);
