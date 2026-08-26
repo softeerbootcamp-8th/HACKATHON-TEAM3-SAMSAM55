@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,8 +15,10 @@ import com.samsam55.trip.auth.argumentresolver.LoginUserArgumentResolver;
 import com.samsam55.trip.auth.dto.AuthMeResponseDto;
 import com.samsam55.trip.auth.service.AuthService;
 import com.samsam55.trip.global.exception.ApplicationException;
+import com.samsam55.trip.global.exception.GlobalErrorType;
 import com.samsam55.trip.global.exception.GlobalExceptionHandler;
 import com.samsam55.trip.trip.dto.VoteOptionImageDto;
+import com.samsam55.trip.trip.dto.VoteOptionSummaryDto;
 import com.samsam55.trip.trip.exception.TripErrorType;
 import com.samsam55.trip.trip.service.VoteOptionService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -107,6 +111,49 @@ class VoteOptionControllerTest {
                 .when(voteOptionService).deleteVoteOption(1L, 1L);
 
         mockMvc.perform(delete("/api/vote-options/1")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("VOTE_ALREADY_STARTED"));
+    }
+
+    @Test
+    @DisplayName("선택지 수정 요청은 200과 공통 응답 형식으로 반환한다")
+    void 선택지_수정_요청은_200과_공통_응답_형식으로_반환한다() throws Exception {
+        when(voteOptionService.updateVoteOption(1L, 1L, "라멘", "설명", null))
+                .thenReturn(new VoteOptionSummaryDto(1L, "라멘", "설명", "HOST", false));
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/vote-options/1")
+                        .param("name", "라멘")
+                        .param("description", "설명")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.name").value("라멘"))
+                .andExpect(jsonPath("$.data.descriptionSource").value("HOST"));
+    }
+
+    @Test
+    @DisplayName("이름 없이 선택지 수정 요청을 보내면 400 공통 에러 응답으로 반환한다")
+    void 이름_없이_선택지_수정_요청을_보내면_400_공통_에러_응답으로_반환한다() throws Exception {
+        when(voteOptionService.updateVoteOption(1L, 1L, "  ", null, null))
+                .thenThrow(new ApplicationException(GlobalErrorType.INVALID_INPUT_VALUE));
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/vote-options/1")
+                        .param("name", "  ")
+                        .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT_VALUE"));
+    }
+
+    @Test
+    @DisplayName("투표가 시작된 선택지 수정 요청은 409 공통 에러 응답으로 반환한다")
+    void 투표가_시작된_선택지_수정_요청은_409_공통_에러_응답으로_반환한다() throws Exception {
+        when(voteOptionService.updateVoteOption(1L, 1L, "라멘", "설명", null))
+                .thenThrow(new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED));
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/vote-options/1")
+                        .param("name", "라멘")
+                        .param("description", "설명")
                         .sessionAttr(AuthService.LOGIN_USER_ID_SESSION_ATTRIBUTE, 1L))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("VOTE_ALREADY_STARTED"));
