@@ -57,6 +57,7 @@ public class InviteService {
      * @param servletRequest 세션을 생성할 현재 HTTP 요청
      * @param servletResponse 복구용 쿠키를 내려줄 현재 HTTP 응답
      * @return 선점한 참여자 정보
+     * @throws ApplicationException 현재 세션에 이미 참여자 정보가 있을 때(ALREADY_PARTICIPANT),
      * @throws ApplicationException 초대 코드에 해당하는 여행이 없을 때(INVITE_CODE_NOT_FOUND),
      *         participantId가 그 여행 소속이 아닐 때(PARTICIPANT_NOT_FOUND),
      *         이미 다른 사람이 선점한 슬롯일 때(PARTICIPANT_ALREADY_JOINED)
@@ -68,6 +69,11 @@ public class InviteService {
             HttpServletRequest servletRequest,
             HttpServletResponse servletResponse
     ) {
+        HttpSession session = servletRequest.getSession(false);
+        if (session != null && session.getAttribute(PARTICIPANT_ID_SESSION_ATTRIBUTE) != null) {
+            throw new ApplicationException(TripErrorType.ALREADY_PARTICIPANT);
+        }
+
         Trip trip = tripRepository.findByInviteCode(inviteCode)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.INVITE_CODE_NOT_FOUND));
 

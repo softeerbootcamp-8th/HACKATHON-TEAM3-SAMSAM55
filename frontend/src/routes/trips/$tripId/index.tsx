@@ -14,6 +14,7 @@ import { AppBar } from '@/components/ui/app-bar'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { AddItemRow } from '@/components/trip/add-item-row'
+import { CreateItemSheet } from '@/components/trip/create-item-sheet'
 import { DayTab } from '@/components/trip/day-tab'
 import { EditRow } from '@/components/trip/edit-row'
 import { ItemCard } from '@/components/trip/item-card'
@@ -26,7 +27,18 @@ import { toItemStatus } from '@/lib/itinerary-item-status'
 import { cn } from '@/lib/utils'
 import { useHorizontalDragScroll } from '@/hooks/use-horizontal-drag-scroll'
 
+type TripSearch = {
+  day?: number
+}
+
 export const Route = createFileRoute('/trips/$tripId/')({
+  validateSearch: (search: Record<string, unknown>): TripSearch => {
+    const day = Number(search.day)
+
+    return {
+      day: Number.isInteger(day) && day > 0 ? day : undefined,
+    }
+  },
   component: TripHomePage,
 })
 
@@ -35,6 +47,7 @@ type TripItem = {
   title: string
   category: string
   status: 'draft' | 'voting' | 'confirmed' | 'voteDone'
+  decisionType?: string
   voteMeta?: string
 }
 
@@ -47,7 +60,8 @@ type TripDay = {
 
 function TripHomePage() {
   const { tripId } = Route.useParams()
-  const navigate = useNavigate()
+  const { day: selectedDayParam } = Route.useSearch()
+  const navigate = useNavigate({ from: '/trips/$tripId/' })
   const queryClient = useQueryClient()
   const tripIdNumber = Number(tripId)
   const isValidTripId = Number.isInteger(tripIdNumber) && tripIdNumber > 0
@@ -79,6 +93,7 @@ function TripHomePage() {
               title: item.name ?? '이름 없는 일정',
               category: item.category ?? '기타',
               status,
+              decisionType: item.decisionType,
             },
           ]
         }),
@@ -86,9 +101,9 @@ function TripHomePage() {
     ]
   })
 
-  const [selectedDay, setSelectedDay] = useState(1)
   const [isEditing, setIsEditing] = useState(false)
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false)
+  const [isCreateItemOpen, setIsCreateItemOpen] = useState(false)
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null)
   const [isDeleteTripOpen, setIsDeleteTripOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string>()
@@ -113,11 +128,15 @@ function TripHomePage() {
     },
   })
 
-  const day = days.find((d) => d.id === selectedDay) ?? days[0]
+  const selectedDay =
+    days.find((d) => d.id === selectedDayParam)?.id ?? days[0]?.id
+  const day = days.find((d) => d.id === selectedDay)
   const dayScrollHandlers = useHorizontalDragScroll()
-  const draftItems = days
-    .flatMap((d) => d.items)
-    .filter((item) => item.status === 'draft')
+  // HOST_PICK(내가 결정) 항목은 방장이 직접 확정하는 방식이라 투표에 올릴 수 없다 —
+  // 서버(startVote)가 VOTE가 아닌 항목이 하나라도 섞여 있으면 배치 전체를 거부한다.
+  const isDraftItem = (item: TripItem) =>
+    item.status === 'draft' && item.decisionType === 'VOTE'
+  const draftItems = days.flatMap((d) => d.items).filter(isDraftItem)
   const draftCount = draftItems.length
   const hasItems = (day?.items.length ?? 0) > 0
 
@@ -131,11 +150,8 @@ function TripHomePage() {
   }
 
   const draftSummary = days
-    .filter((d) => d.items.some((item) => item.status === 'draft'))
-    .map(
-      (d) =>
-        `${d.label} ${d.items.filter((item) => item.status === 'draft').length}개`,
-    )
+    .filter((d) => d.items.some(isDraftItem))
+    .map((d) => `${d.label} ${d.items.filter(isDraftItem).length}개`)
     .join(' · ')
 
   const handleDeleteItem = async () => {
@@ -259,7 +275,7 @@ function TripHomePage() {
               label={d.label}
               pending={d.pending}
               selected={d.id === selectedDay}
-              onClick={() => setSelectedDay(d.id)}
+              onClick={() => void navigate({ search: { day: d.id } })}
             />
           ))}
         </div>
@@ -322,11 +338,7 @@ function TripHomePage() {
             )}
 
           {!isEditing && (
-            <AddItemRow
-              onClick={() =>
-                navigate({ to: '/trips/$tripId/items/new', params: { tripId } })
-              }
-            />
+            <AddItemRow onClick={() => setIsCreateItemOpen(true)} />
           )}
         </div>
       </div>
@@ -354,6 +366,21 @@ function TripHomePage() {
         onDeleteTrip={() => {
           setIsMoreSheetOpen(false)
           setIsDeleteTripOpen(true)
+        }}
+      />
+
+      <CreateItemSheet
+        tripId={tripId}
+        open={isCreateItemOpen}
+        onOpenChange={setIsCreateItemOpen}
+        days={detail.days ?? []}
+        initialDayNumber={selectedDay}
+        onCreated={(itemId) => {
+          setIsCreateItemOpen(false)
+          void navigate({
+            to: '/trips/$tripId/items/$itemId',
+            params: { tripId, itemId: String(itemId) },
+          })
         }}
       />
 

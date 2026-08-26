@@ -1,27 +1,20 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Camera, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import type { TripDayResponseDto } from '@/api/generated/model'
 import {
   useCreateItineraryItem,
   useCreateVoteOption,
 } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
-import {
-  getFindTripQueryKey,
-  useFindTrip,
-} from '@/api/generated/trip-controller/trip-controller'
+import { getFindTripQueryKey } from '@/api/generated/trip-controller/trip-controller'
 import { AppBar } from '@/components/ui/app-bar'
+import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Button } from '@/components/ui/button'
 import { TextInput } from '@/components/ui/text-input'
 import { DayTab } from '@/components/trip/day-tab'
-import { MobileScreen } from '@/components/layout/mobile-screen'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { cn } from '@/lib/utils'
-
-export const Route = createFileRoute('/trips/$tripId/items/new')({
-  component: CreateItemPage,
-})
 
 const CATEGORIES = ['숙소', '식사', '관광', '이동', '기타'] as const
 const MAX_VOTE_OPTION_COUNT = 4
@@ -91,16 +84,27 @@ function OptionRow({
   )
 }
 
-function CreateItemPage() {
-  const { tripId } = Route.useParams()
-  const navigate = useNavigate()
+type CreateItemSheetProps = {
+  tripId: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  days: TripDayResponseDto[]
+  initialDayNumber: number
+  onCreated: (itemId: number) => void
+}
+
+function CreateItemSheet({
+  tripId,
+  open,
+  onOpenChange,
+  days,
+  initialDayNumber,
+  onCreated,
+}: CreateItemSheetProps) {
   const queryClient = useQueryClient()
   const tripIdNumber = Number(tripId)
 
-  const tripQuery = useFindTrip(tripIdNumber)
-  const days = tripQuery.data?.data?.days ?? []
-
-  const [selectedDayId, setSelectedDayId] = useState<number | null>(null)
+  const [selectedDayNumber, setSelectedDayNumber] = useState(initialDayNumber)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<(typeof CATEGORIES)[number] | null>(
     null,
@@ -129,15 +133,30 @@ function CreateItemPage() {
     return () => URL.revokeObjectURL(url)
   }, [decidedPlaceImage])
 
-  const currentDayId = selectedDayId ?? days[0]?.id ?? null
+  // 시트를 열 때마다 여행 홈에서 고르고 있던 일차로 다시 맞추고, 입력값은 초기화한다.
+  useEffect(() => {
+    if (!open) return
+    setSelectedDayNumber(initialDayNumber)
+    setTitle('')
+    setCategory(null)
+    setDecisionMethod('투표')
+    setOptions([
+      { name: '', image: null },
+      { name: '', image: null },
+    ])
+    setDecidedPlace('')
+    setDecidedPlaceImage(null)
+  }, [open, initialDayNumber])
+
+  const currentDayId = days.find(
+    (day) => day.dayNumber === selectedDayNumber,
+  )?.id
 
   const createItineraryItemMutation = useCreateItineraryItem()
   const createVoteOptionMutation = useCreateVoteOption()
 
-  const goBack = () => navigate({ to: '/trips/$tripId', params: { tripId } })
-
   const handleCreate = () => {
-    if (currentDayId === undefined || currentDayId === null) return
+    if (currentDayId === undefined) return
     if (category === null) return
 
     const decisionType = decisionMethod === '투표' ? 'VOTE' : 'HOST_PICK'
@@ -157,7 +176,7 @@ function CreateItemPage() {
           // request는 멀티파트 폼 필드(문자열)로 보내야 해서 JSON으로 직접 직렬화한다.
           request: JSON.stringify({
             name: title,
-            category,
+            category: category ?? undefined,
             decisionType,
             options: decisionType === 'VOTE' ? optionNames : undefined,
           }),
@@ -173,14 +192,10 @@ function CreateItemPage() {
             queryKey: getFindTripQueryKey(tripIdNumber),
           })
 
-          const goToItem = () =>
-            navigate({
-              to: '/trips/$tripId/items/$itemId',
-              params: { tripId, itemId: String(created.id) },
-            })
+          const finish = () => onCreated(created.id!)
 
           // HOST_PICK은 생성 시점엔 선택지가 없으므로, 입력한 장소를 바로
-          // 선택지로 추가한다 — 서버가 HOST_PICK 선택지 추가 시 즉시 확정한다.
+          // 선택지로 추가한다.
           if (decisionType === 'HOST_PICK' && decidedPlace.trim().length > 0) {
             createVoteOptionMutation.mutate(
               {
@@ -188,12 +203,12 @@ function CreateItemPage() {
                 params: { name: decidedPlace.trim() },
                 data: { image: decidedPlaceImage ?? undefined },
               },
-              { onSuccess: goToItem, onError: goToItem },
+              { onSuccess: finish, onError: finish },
             )
             return
           }
 
-          goToItem()
+          finish()
         },
       },
     )
@@ -203,8 +218,16 @@ function CreateItemPage() {
     createItineraryItemMutation.isPending || createVoteOptionMutation.isPending
 
   return (
-    <MobileScreen>
-      <AppBar type="close" title="일정 만들기" onClose={goBack} />
+    <BottomSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      className="flex max-h-[92svh] flex-col gap-3 px-0"
+    >
+      <AppBar
+        type="close"
+        title="일정 만들기"
+        onClose={() => onOpenChange(false)}
+      />
 
       <div className="flex flex-1 flex-col gap-7 overflow-y-auto px-5 py-6">
         {days.length > 0 && (
@@ -212,12 +235,12 @@ function CreateItemPage() {
             <p className="text-caption text-muted-foreground">며칠차</p>
             <div className="flex gap-2 overflow-x-auto">
               {days.map((day) =>
-                day.id === undefined ? null : (
+                day.dayNumber === undefined ? null : (
                   <DayTab
                     key={day.id}
                     label={`${day.dayNumber}일차`}
-                    selected={day.id === currentDayId}
-                    onClick={() => setSelectedDayId(day.id ?? null)}
+                    selected={day.dayNumber === selectedDayNumber}
+                    onClick={() => setSelectedDayNumber(day.dayNumber!)}
                   />
                 ),
               )}
@@ -369,7 +392,7 @@ function CreateItemPage() {
         <Button
           size="cta"
           disabled={
-            !title || !category || currentDayId === null || isSubmitting
+            !title || !category || currentDayId === undefined || isSubmitting
           }
           onClick={handleCreate}
         >
@@ -381,6 +404,8 @@ function CreateItemPage() {
             : '만들면 목록에 담겨요. 부모님께는 아직 안 보내요'}
         </p>
       </div>
-    </MobileScreen>
+    </BottomSheet>
   )
 }
+
+export { CreateItemSheet }

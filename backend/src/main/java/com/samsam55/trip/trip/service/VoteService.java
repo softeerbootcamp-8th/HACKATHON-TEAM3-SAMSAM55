@@ -147,6 +147,8 @@ public class VoteService {
     /**
      * 여행 방장이 선택지를 직접 골라 일정 항목을 확정한다. 최다 득표 선택지가 아니어도
      * 방장이 임의로 고를 수 있고, 전원 투표가 끝나지 않은 VOTING 상태에서도 확정할 수 있다.
+     * decisionType이 HOST_PICK인 일정 항목은 투표를 거치지 않으므로, PENDING 상태에서도
+     * (선택지를 추가한 뒤) 바로 확정할 수 있다.
      *
      * @param loginUserId 요청한 회원의 식별자
      * @param itemId 확정할 일정 항목의 식별자
@@ -154,7 +156,8 @@ public class VoteService {
      * @return 확정된 일정 항목의 상태
      * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
      * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
-     * @throws ApplicationException 투표 중이거나 투표가 끝난 상태가 아닐 때(ITINERARY_ITEM_NOT_VOTABLE)
+     * @throws ApplicationException 확정할 수 없는 상태일 때(ITINERARY_ITEM_NOT_VOTABLE) —
+     *         VOTE 타입은 VOTING/VOTED 상태여야 하고, HOST_PICK 타입은 PENDING 상태여야 한다
      * @throws ApplicationException 옵션이 해당 일정 항목의 선택지가 아닐 때(VOTE_OPTION_NOT_FOUND)
      */
     @Transactional
@@ -165,8 +168,11 @@ public class VoteService {
         if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
-        if (itineraryItem.getStatus() != ItineraryItemStatus.VOTING
-                && itineraryItem.getStatus() != ItineraryItemStatus.VOTED) {
+        boolean votable = itineraryItem.getStatus() == ItineraryItemStatus.VOTING
+                || itineraryItem.getStatus() == ItineraryItemStatus.VOTED
+                || (itineraryItem.getStatus() == ItineraryItemStatus.PENDING
+                        && itineraryItem.getDecisionType() == ItineraryItemDecisionType.HOST_PICK);
+        if (!votable) {
             throw new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_VOTABLE);
         }
 
@@ -180,9 +186,9 @@ public class VoteService {
 
     /**
      * 확정된 일정 항목의 확정을 해제한다. VOTE 항목은 다시 투표를 받을 수 있도록
-     * VOTING 상태로 되돌리고 기존에 쌓인 투표를 지운다. HOST_PICK 항목은 선택지 추가
-     * 즉시 확정되는 방식이라 투표를 거친 적이 없으므로, 처음 만들었을 때와 같은 PENDING
-     * 상태로 되돌리고 확정돼 있던 선택지("정한 곳")도 함께 지운다.
+     * VOTING 상태로 되돌리고 기존에 쌓인 투표를 지운다. HOST_PICK 항목은 방장이
+     * 확정하기를 눌러야만 확정되는 방식이라 투표를 거친 적이 없으므로, 처음 만들었을
+     * 때와 같은 PENDING 상태로 되돌리고 확정돼 있던 선택지("정한 곳")도 함께 지운다.
      *
      * @param loginUserId 요청한 회원의 식별자
      * @param itemId 확정을 해제할 일정 항목의 식별자

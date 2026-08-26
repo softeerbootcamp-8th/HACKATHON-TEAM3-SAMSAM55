@@ -12,6 +12,7 @@ export interface VoteResultResponseDto {
   name?: string;
   category?: string;
   status?: string;
+  decisionType?: string;
   dayNumber?: number;
   date?: string;
   totalParticipants?: number;
