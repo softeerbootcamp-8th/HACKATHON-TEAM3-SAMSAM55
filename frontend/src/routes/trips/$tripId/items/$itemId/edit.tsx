@@ -7,6 +7,7 @@ import {
   useCreateVoteOption,
   useGetItineraryItem,
   useUpdateItineraryItem,
+  useUpdateItineraryItemBasicInfo,
 } from '@/api/generated/itinerary-item-controller/itinerary-item-controller'
 import { SelectOptionDialog } from '@/components/trip/select-option-dialog'
 import { AppBar } from '@/components/ui/app-bar'
@@ -74,6 +75,7 @@ function ItemEditPage() {
 
   const updateItineraryItemMutation = useUpdateItineraryItem()
   const createVoteOptionMutation = useCreateVoteOption()
+  const updateBasicInfoMutation = useUpdateItineraryItemBasicInfo()
 
   // 투표였던 선택지가 2개 이상인 일정을 내가 결정으로 바꾸려는 시도면, 먼저 하나를
   // 골라달라는 모달을 띄운다 — 고르기 전까진 결정 방식을 실제로 바꾸지 않는다.
@@ -171,16 +173,67 @@ function ItemEditPage() {
   }
 
   if (detail.status !== 'PENDING') {
+    const handleSaveBasicInfo = () => {
+      updateBasicInfoMutation.mutate(
+        { itemId: itemIdNumber, data: { name: title, category } },
+        {
+          onSuccess: () => {
+            void queryClient.invalidateQueries({
+              queryKey: getGetItineraryItemQueryKey(itemIdNumber),
+            })
+            goBack()
+          },
+        },
+      )
+    }
+
     return (
       <MobileScreen>
         <AppBar type="close" title="일정 수정" onClose={goBack} />
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-          <p className="text-[16px] font-bold text-foreground">
-            수정할 수 없는 일정이에요
+        <div className="flex flex-1 flex-col gap-7 px-5 pt-5">
+          <p className="text-caption text-muted-foreground">
+            투표가 시작된 일정은 이름·카테고리만 수정할 수 있어요
           </p>
-          <p className="text-[14px] text-muted-foreground">
-            투표가 시작된 일정은 수정할 수 없어요
-          </p>
+          <TextInput
+            label="일정 이름"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+          <div className="flex flex-col gap-2">
+            <p className="text-caption text-muted-foreground">카테고리</p>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setCategory(value)}
+                  className={cn(
+                    'rounded-chip border px-4 py-2 text-label',
+                    value === category
+                      ? 'border-transparent bg-primary-tint text-primary-deep'
+                      : 'border-border bg-background text-muted-foreground',
+                  )}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 px-5 pt-3 pb-7">
+          <Button
+            size="cta"
+            disabled={!title || updateBasicInfoMutation.isPending}
+            onClick={handleSaveBasicInfo}
+          >
+            {updateBasicInfoMutation.isPending ? '저장하는 중...' : '저장하기'}
+          </Button>
+          {updateBasicInfoMutation.isError && (
+            <p className="text-center text-caption-sm text-destructive">
+              {getApiErrorMessage(updateBasicInfoMutation.error)}
+            </p>
+          )}
         </div>
       </MobileScreen>
     )

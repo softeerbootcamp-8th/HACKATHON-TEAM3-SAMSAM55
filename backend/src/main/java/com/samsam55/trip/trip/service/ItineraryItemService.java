@@ -2,6 +2,7 @@ package com.samsam55.trip.trip.service;
 
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.trip.ai.VoteOptionDescriptionGenerator;
+import com.samsam55.trip.trip.dto.ItineraryItemBasicInfoUpdateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
@@ -167,6 +168,44 @@ public class ItineraryItemService {
                         voteOption, s3PresignService.toPublicUrl(voteOption.getImageKey())))
                 .toList();
         return ItineraryItemDetailResponseDto.from(itineraryItem, voteOptions);
+    }
+
+    /**
+     * 일정 항목의 이름·카테고리만 수정한다. 결정 방식·선택지와는 무관해 상태와
+     * 관계없이(PENDING 이후에도) 허용한다. 결정 방식을 바꾸려면 {@link #updateItineraryItem}을
+     * 쓴다.
+     *
+     * <p>엔티티를 로드해 필드를 바꾼 뒤 저장하지 않고 name/category만 부분 UPDATE로
+     * 반영한다 — 이 일정이 VOTING/VOTED인 동안 다른 트랜잭션이 status·confirmedOption을
+     * 바꿀 수 있는데(전원 투표 완료, 방장 확정), 엔티티 저장 방식은 그 변경을 로드해 둔
+     * 옛 값으로 덮어써버린다.
+     *
+     * @param loginUserId 요청한 회원의 식별자
+     * @param itemId 수정할 일정 항목의 식별자
+     * @param request 이름·카테고리가 담긴 수정 요청
+     * @return 수정된 일정 항목과 선택지 목록
+     * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
+     * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
+     */
+    @Transactional
+    public ItineraryItemDetailResponseDto updateBasicInfo(
+            Long loginUserId, Long itemId, ItineraryItemBasicInfoUpdateRequestDto request) {
+        ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+
+        if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
+            throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
+        }
+
+        itineraryItemRepository.updateBasicInfo(itemId, request.name(), request.category());
+
+        ItineraryItem updated = itineraryItemRepository.findById(itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+        List<VoteOptionSummaryDto> voteOptions = voteOptionRepository.findByItineraryItem(updated).stream()
+                .map(voteOption -> VoteOptionSummaryDto.from(
+                        voteOption, s3PresignService.toPublicUrl(voteOption.getImageKey())))
+                .toList();
+        return ItineraryItemDetailResponseDto.from(updated, voteOptions);
     }
 
     /**

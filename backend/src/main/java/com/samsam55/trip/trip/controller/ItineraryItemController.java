@@ -2,6 +2,7 @@ package com.samsam55.trip.trip.controller;
 
 import com.samsam55.trip.auth.annotation.Login;
 import com.samsam55.trip.global.common.CommonResponse;
+import com.samsam55.trip.trip.dto.ItineraryItemBasicInfoUpdateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateRequestDto;
 import com.samsam55.trip.trip.dto.ItineraryItemCreateResponseDto;
 import com.samsam55.trip.trip.dto.ItineraryItemDetailResponseDto;
@@ -100,6 +101,24 @@ public class ItineraryItemController {
     }
 
     /**
+     * 일정 항목의 이름·카테고리만 수정한다. 여행 방장만 호출할 수 있고, 결정
+     * 방식·선택지와는 무관해 일정 항목의 상태와 관계없이(올린 뒤에도) 수정할 수 있다.
+     *
+     * @param loginUserId 로그인한 회원의 식별자
+     * @param itemId 수정할 일정 항목의 식별자
+     * @param request 이름·카테고리가 담긴 수정 요청
+     * @return 수정된 일정 항목 상세가 담긴 200 응답
+     */
+    @PutMapping("/api/itinerary-items/{itemId}/basic-info")
+    public CommonResponse<ItineraryItemDetailResponseDto> updateItineraryItemBasicInfo(
+            @Login Long loginUserId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody ItineraryItemBasicInfoUpdateRequestDto request
+    ) {
+        return CommonResponse.success(itineraryItemService.updateBasicInfo(loginUserId, itemId, request));
+    }
+
+    /**
      * 같은 일차 안에서 일정 항목의 순서를 바꾼다. 여행 방장만 호출할 수 있다.
      *
      * @param loginUserId 로그인한 회원의 식별자
@@ -134,7 +153,6 @@ public class ItineraryItemController {
 
     /**
      * 일정 항목에 투표 선택지를 추가한다. 여행 방장만 호출할 수 있다.
-     * decisionType이 HOST_PICK이면 추가된 선택지가 즉시 확정된다.
      *
      * @param loginUserId 로그인한 회원의 식별자
      * @param itemId 선택지를 추가할 일정 항목의 식별자
