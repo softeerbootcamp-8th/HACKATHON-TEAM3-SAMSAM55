@@ -61,11 +61,15 @@ public class AuthController {
      * 현재 세션을 무효화하여 로그아웃한다.
      *
      * @param servletRequest 현재 HTTP 요청
+     * @param servletResponse 참여자 복구용 쿠키를 만료시킬 현재 HTTP 응답
      * @return 데이터가 없는 200 응답
      */
     @PostMapping("/logout")
-    public CommonResponse<Void> logout(HttpServletRequest servletRequest) {
-        authService.logout(servletRequest);
+    public CommonResponse<Void> logout(
+            HttpServletRequest servletRequest,
+            HttpServletResponse servletResponse
+    ) {
+        authService.logout(servletRequest, servletResponse);
         return CommonResponse.empty();
     }
 

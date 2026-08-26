@@ -29,10 +29,9 @@ import type {
   CommonResponseVoid,
   CommonResponseVoteOptionCreateResponseDto,
   CommonResponseVoteStatusResponseDto,
-  CreateVoteOptionBody,
-  CreateVoteOptionParams,
-  ItineraryItemCreateForm,
-  ItineraryItemUpdateRequestDto
+  ItineraryItemCreateRequestDto,
+  ItineraryItemUpdateRequestDto,
+  VoteOptionCreateRequestDto
 } from '../model';
 
 import { customInstance } from '../../mutator/custom-instance';
@@ -260,22 +259,15 @@ const {mutation: mutationOptions} = options ?
     }
     export const createItineraryItem = (
     dayId: number,
-    itineraryItemCreateForm?: ItineraryItemCreateForm,
+    itineraryItemCreateRequestDto: ItineraryItemCreateRequestDto,
  signal?: AbortSignal
 ) => {
 
-      const formData = new FormData();
-if(itineraryItemCreateForm?.request !== undefined) {
- formData.append(`request`, itineraryItemCreateForm.request);
- }
-if(itineraryItemCreateForm?.optionImages !== undefined) {
- itineraryItemCreateForm?.optionImages.forEach(value => formData.append(`optionImages`, value));
- }
 
       return customInstance<CommonResponseItineraryItemCreateResponseDto>(
       {url: `/api/trip-days/${dayId}/itinerary-items`, method: 'POST',
-      headers: {'Content-Type': 'multipart/form-data', },
-       data: formData, signal
+      headers: {'Content-Type': 'application/json', },
+      data: itineraryItemCreateRequestDto, signal
     },
       );
     }
@@ -311,9 +303,9 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateItineraryItemMutationResult = NonNullable<Awaited<ReturnType<typeof createItineraryItem>>>
-    export type CreateItineraryItemMutationBody = ItineraryItemCreateForm | undefined
+    export type CreateItineraryItemMutationBody = ItineraryItemCreateRequestDto
     export type CreateItineraryItemMutationError = unknown
-    export type CreateItineraryItemMutationVariables = {dayId: number;data?: ItineraryItemCreateForm}
+    export type CreateItineraryItemMutationVariables = {dayId: number;data: ItineraryItemCreateRequestDto}
 
     export const useCreateItineraryItem = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createItineraryItem>>, TError,CreateItineraryItemMutationVariables, TContext>, }
@@ -327,21 +319,15 @@ const {mutation: mutationOptions} = options ?
     }
     export const createVoteOption = (
     itemId: number,
-    params: CreateVoteOptionParams,
-    createVoteOptionBody?: CreateVoteOptionBody,
+    voteOptionCreateRequestDto: VoteOptionCreateRequestDto,
  signal?: AbortSignal
 ) => {
 
-      const formData = new FormData();
-if(createVoteOptionBody?.image !== undefined) {
- formData.append(`image`, createVoteOptionBody.image);
- }
 
       return customInstance<CommonResponseVoteOptionCreateResponseDto>(
       {url: `/api/itinerary-items/${itemId}/vote-options`, method: 'POST',
-      headers: {'Content-Type': 'multipart/form-data', },
-       data: formData,
-        params, signal
+      headers: {'Content-Type': 'application/json', },
+      data: voteOptionCreateRequestDto, signal
     },
       );
     }
@@ -364,9 +350,9 @@ const {mutation: mutationOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof createVoteOption>>, CreateVoteOptionMutationVariables> = (props) => {
-          const {itemId,params,data} = props ?? {};
+          const {itemId,data} = props ?? {};
 
-          return  createVoteOption(itemId,params,data,)
+          return  createVoteOption(itemId,data,)
         }
 
 
@@ -377,9 +363,9 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateVoteOptionMutationResult = NonNullable<Awaited<ReturnType<typeof createVoteOption>>>
-    export type CreateVoteOptionMutationBody = CreateVoteOptionBody | undefined
+    export type CreateVoteOptionMutationBody = VoteOptionCreateRequestDto
     export type CreateVoteOptionMutationError = unknown
-    export type CreateVoteOptionMutationVariables = {itemId: number;params: CreateVoteOptionParams;data?: CreateVoteOptionBody}
+    export type CreateVoteOptionMutationVariables = {itemId: number;data: VoteOptionCreateRequestDto}
 
     export const useCreateVoteOption = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createVoteOption>>, TError,CreateVoteOptionMutationVariables, TContext>, }

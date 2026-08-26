@@ -18,6 +18,6 @@ public record ItineraryItemCreateRequestDto(
         String decisionType,
 
         // 개수 제한(최대 4개)은 decisionType에 따라 달라지는 비즈니스 규칙이라 Service에서 검증한다.
-        List<@NotBlank(message = "선택지 이름은 비어 있을 수 없습니다.") String> options
+        List<VoteOptionCreateItemDto> options
 ) {
 }

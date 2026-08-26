@@ -11,5 +11,5 @@ export interface VoteOptionCreateResponseDto {
   name?: string;
   description?: string;
   descriptionSource?: string;
-  hasImage?: boolean;
+  imageUrl?: string;
 }

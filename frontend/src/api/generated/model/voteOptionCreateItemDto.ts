@@ -5,6 +5,8 @@
  * OpenAPI spec version: v0
  */
 
-export type CreateVoteOptionParams = {
-name: string;
-};
+export interface VoteOptionCreateItemDto {
+  /** @minLength 1 */
+  name: string;
+  imageKey?: string;
+}

@@ -10,7 +10,7 @@ export interface VoteResultOptionResponseDto {
   optionId?: number;
   name?: string;
   description?: string;
-  hasImage?: boolean;
+  imageUrl?: string;
   voteCount?: number;
   isConfirmed?: boolean;
   voters?: VoteResultParticipantResponseDto[];

@@ -3,6 +3,7 @@ package com.samsam55.trip.global.exception;
 import com.samsam55.trip.global.common.CommonResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -48,6 +49,19 @@ public class GlobalExceptionHandler {
         log.error("MethodArgumentNotValidException: {}", message, e);
         return ResponseEntity.status(GlobalErrorType.INVALID_INPUT_VALUE.getHttpStatus())
                 .body(CommonResponse.error(GlobalErrorType.INVALID_INPUT_VALUE, message));
+    }
+
+    /**
+     * 요청 본문이 올바른 JSON이 아니거나 타입이 맞지 않아 역직렬화에 실패하면 400(INVALID_INPUT_VALUE)으로 변환한다.
+     *
+     * @param e 요청 본문 파싱 실패 정보
+     * @return INVALID_INPUT_VALUE 공통 응답
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<CommonResponse<Void>> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+        log.error("HttpMessageNotReadableException", e);
+        return ResponseEntity.status(GlobalErrorType.INVALID_INPUT_VALUE.getHttpStatus())
+                .body(CommonResponse.error(GlobalErrorType.INVALID_INPUT_VALUE));
     }
 
     /**

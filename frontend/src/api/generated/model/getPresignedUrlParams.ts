@@ -5,6 +5,6 @@
  * OpenAPI spec version: v0
  */
 
-export type CreateVoteOptionBody = {
-  image?: Blob;
+export type GetPresignedUrlParams = {
+fileName: string;
 };

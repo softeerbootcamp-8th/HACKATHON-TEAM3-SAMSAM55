@@ -8,7 +8,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.samsam55.trip.auth.dto.ParticipantPrincipal;
 import com.samsam55.trip.auth.service.AuthService;
+import com.samsam55.trip.auth.service.ParticipantSessionResolver;
 import com.samsam55.trip.global.exception.ApplicationException;
 import com.samsam55.trip.trip.dto.InviteJoinRequestDto;
 import com.samsam55.trip.trip.dto.InviteJoinResponseDto;
@@ -45,6 +47,9 @@ class InviteServiceTest {
     private ParticipantCookieSigner cookieSigner;
 
     @Mock
+    private ParticipantSessionResolver participantSessionResolver;
+
+    @Mock
     private HttpServletRequest servletRequest;
 
     @Mock
@@ -62,7 +67,11 @@ class InviteServiceTest {
     private InviteService inviteService;
 
     private InviteService newInviteService() {
-        return new InviteService(tripRepository, participantRepository, cookieSigner);
+        return new InviteService(tripRepository, participantRepository, cookieSigner, participantSessionResolver);
+    }
+
+    private InviteService newInviteService(ParticipantSessionResolver sessionResolver) {
+        return new InviteService(tripRepository, participantRepository, cookieSigner, sessionResolver);
     }
 
     @Test
@@ -129,8 +138,31 @@ class InviteServiceTest {
     @DisplayName("이미 참여한 세션으로 입장하면 ALREADY_PARTICIPANT를 던진다")
     void 이미_참여한_세션으로_입장하면_에러를_던진다() {
         inviteService = newInviteService();
-        when(servletRequest.getSession(false)).thenReturn(session);
-        when(session.getAttribute(InviteService.PARTICIPANT_ID_SESSION_ATTRIBUTE)).thenReturn(12L);
+        when(participantSessionResolver.resolve(servletRequest))
+                .thenReturn(Optional.of(new ParticipantPrincipal(12L, 1L)));
+
+        assertThatThrownBy(() -> inviteService.join(
+                "valid", new InviteJoinRequestDto(99L), servletRequest, servletResponse
+        ))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ALREADY_PARTICIPANT));
+
+        verify(tripRepository, never()).findByInviteCode(any());
+    }
+
+    @Test
+    @DisplayName("세션이 없어도 복구 쿠키로 이미 참여한 상태면 ALREADY_PARTICIPANT를 던진다")
+    void 세션이_없어도_복구_쿠키로_이미_참여한_상태면_에러를_던진다() {
+        inviteService = newInviteService(new ParticipantSessionResolver(cookieSigner, participantRepository));
+        when(servletRequest.getSession(false)).thenReturn(null);
+        when(servletRequest.getCookies())
+                .thenReturn(new Cookie[]{new Cookie(InviteService.RECOVERY_COOKIE_NAME, "12.signature")});
+        when(cookieSigner.verify("12.signature")).thenReturn(Optional.of(12L));
+        when(participantRepository.findById(12L)).thenReturn(Optional.of(participant));
+        when(participant.getId()).thenReturn(12L);
+        when(participant.getTrip()).thenReturn(trip);
+        when(trip.getId()).thenReturn(1L);
+        when(servletRequest.getSession(true)).thenReturn(session);
 
         assertThatThrownBy(() -> inviteService.join(
                 "valid", new InviteJoinRequestDto(99L), servletRequest, servletResponse
@@ -169,7 +201,6 @@ class InviteServiceTest {
         when(participant.getTrip()).thenReturn(trip);
         when(participant.getRoleName()).thenReturn("외할머니");
         when(trip.getId()).thenReturn(1L);
-        when(servletRequest.getSession(false)).thenReturn(null);
         when(servletRequest.getSession(true)).thenReturn(session);
         when(cookieSigner.sign(12L)).thenReturn("12.signature");
 

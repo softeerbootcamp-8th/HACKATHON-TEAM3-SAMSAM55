@@ -9,5 +9,5 @@ export interface ScheduleConfirmedOptionResponseDto {
   id?: number;
   name?: string;
   description?: string;
-  hasImage?: boolean;
+  imageUrl?: string;
 }
