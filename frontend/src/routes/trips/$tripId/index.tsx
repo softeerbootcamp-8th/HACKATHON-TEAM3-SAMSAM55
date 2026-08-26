@@ -212,13 +212,15 @@ function TripHomePage() {
     days.find((d) => d.id === selectedDayParam)?.id ?? days[0]?.id
   const day = days.find((d) => d.id === selectedDay)
   const dayScrollHandlers = useHorizontalDragScroll()
-  // HOST_PICK(내가 결정) 항목은 방장이 직접 확정하는 방식이라 투표에 올릴 수 없고,
-  // 선택지가 2개 미만인 VOTE 항목도 투표를 시작할 수 없다 — 서버(startVote)가 이 조건을
-  // 하나라도 못 채우는 항목이 섞여 있으면 배치 전체를 거부한다.
+  // 서버(startVote)가 요구하는 것과 같은 규칙 — VOTE 항목은 선택지 2개 이상,
+  // HOST_PICK(내가 결정) 항목은 장소(선택지) 1개가 있어야 올릴 수 있다. HOST_PICK은
+  // 올리는 즉시 그 장소로 확정되고, VOTE는 부모 투표가 시작된다. 하나라도 조건을
+  // 못 채운 항목이 섞여 있으면 서버가 배치 전체를 거부한다.
   const isDraftItem = (item: TripItem) =>
     item.status === 'draft' &&
-    item.decisionType === 'VOTE' &&
-    (item.optionCount ?? 0) >= MIN_VOTE_OPTION_COUNT
+    (item.decisionType === 'VOTE'
+      ? (item.optionCount ?? 0) >= MIN_VOTE_OPTION_COUNT
+      : (item.optionCount ?? 0) >= 1)
   const draftItems = days.flatMap((d) => d.items).filter(isDraftItem)
   const draftCount = draftItems.length
   const hasItems = (day?.items.length ?? 0) > 0

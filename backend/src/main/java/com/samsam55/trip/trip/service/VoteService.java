@@ -37,17 +37,19 @@ public class VoteService {
     private final ParticipantRepository participantRepository;
 
     /**
-     * 준비 중인 일정 항목들을 한 번에 부모 투표로 올린다.
-     * 목록에 담긴 일정 항목 중 하나라도 조건을 만족하지 못하면 전체가 롤백된다.
+     * 준비 중인 일정 항목들을 한 번에 부모에게 올린다. 목록에 담긴 일정 항목 중
+     * 하나라도 조건을 만족하지 못하면 전체가 롤백된다. 결정 방식에 따라 처리가
+     * 다르다 — VOTE는 부모 투표를 받을 수 있도록 VOTING으로 전이하고, HOST_PICK은
+     * 투표 단계를 거치지 않으므로 보유한 선택지 하나로 즉시 CONFIRMED까지 전이한다.
      *
      * @param loginUserId 요청한 회원의 식별자
-     * @param itemIds 투표를 시작할 일정 항목 식별자 목록
+     * @param itemIds 올릴 일정 항목 식별자 목록
      * @return 변경된 일정 항목들의 상태 목록
      * @throws ApplicationException 일정 항목을 찾을 수 없을 때(ITINERARY_ITEM_NOT_FOUND)
      * @throws ApplicationException 요청자가 여행 방장이 아닐 때(NOT_TRIP_HOST)
-     * @throws ApplicationException 결정 방식이 투표가 아닐 때(ITINERARY_ITEM_NOT_VOTE_TYPE)
      * @throws ApplicationException 이미 투표가 시작됐거나 확정된 일정일 때(ITINERARY_ITEM_ALREADY_OPENED)
-     * @throws ApplicationException 선택지가 2개 미만일 때(VOTE_OPTION_COUNT_INSUFFICIENT)
+     * @throws ApplicationException VOTE 항목의 선택지가 2개 미만일 때(VOTE_OPTION_COUNT_INSUFFICIENT)
+     * @throws ApplicationException HOST_PICK 항목에 등록된 선택지(장소)가 없을 때(HOST_PICK_OPTION_REQUIRED)
      */
     @Transactional
     public VoteStartResponseDto startVote(Long loginUserId, List<Long> itemIds) {
@@ -59,17 +61,22 @@ public class VoteService {
             if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
                 throw withItemId(TripErrorType.NOT_TRIP_HOST, itemId);
             }
-            if (itineraryItem.getDecisionType() != ItineraryItemDecisionType.VOTE) {
-                throw withItemId(TripErrorType.ITINERARY_ITEM_NOT_VOTE_TYPE, itemId);
-            }
             if (itineraryItem.getStatus() != ItineraryItemStatus.PENDING) {
                 throw withItemId(TripErrorType.ITINERARY_ITEM_ALREADY_OPENED, itemId);
             }
-            if (voteOptionRepository.countByItineraryItemId(itemId) < MIN_VOTE_OPTION_COUNT) {
-                throw withItemId(TripErrorType.VOTE_OPTION_COUNT_INSUFFICIENT, itemId);
+
+            if (itineraryItem.getDecisionType() == ItineraryItemDecisionType.HOST_PICK) {
+                VoteOption option = voteOptionRepository.findByItineraryItem(itineraryItem).stream()
+                        .findFirst()
+                        .orElseThrow(() -> withItemId(TripErrorType.HOST_PICK_OPTION_REQUIRED, itemId));
+                itineraryItem.confirm(option);
+            } else {
+                if (voteOptionRepository.countByItineraryItemId(itemId) < MIN_VOTE_OPTION_COUNT) {
+                    throw withItemId(TripErrorType.VOTE_OPTION_COUNT_INSUFFICIENT, itemId);
+                }
+                itineraryItem.openVote();
             }
 
-            itineraryItem.openVote();
             results.add(ItineraryItemStatusDto.from(itineraryItem));
         }
         return VoteStartResponseDto.from(results);

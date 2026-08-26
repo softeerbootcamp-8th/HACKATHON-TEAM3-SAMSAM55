@@ -166,6 +166,25 @@ class VoteOptionServiceTest {
     }
 
     @Test
+    @DisplayName("HOST_PICK 항목에 선택지가 이미 있으면 추가할 수 없다")
+    void HOST_PICK_항목에_선택지가_이미_있으면_추가할_수_없다() {
+        User hostUser = new User("host", "hashed-password");
+        ReflectionTestUtils.setField(hostUser, "id", 1L);
+        Trip trip = new Trip(hostUser, "제주 여행",
+                LocalDateTime.of(2026, 9, 1, 9, 0), LocalDateTime.of(2026, 9, 3, 18, 0), 3, "invite-code");
+        TripDay tripDay = new TripDay(trip, 1, LocalDate.of(2026, 9, 1));
+        ItineraryItem hostPickItem = new ItineraryItem(
+                tripDay, "저녁 식사", "식사", ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.PENDING, 1, null);
+        when(itineraryItemRepository.findById(10L)).thenReturn(Optional.of(hostPickItem));
+        when(voteOptionRepository.countByItineraryItem(hostPickItem)).thenReturn(1L);
+
+        assertThatThrownBy(() -> voteOptionService.createVoteOption(1L, 10L, "라멘", null))
+                .isInstanceOfSatisfying(ApplicationException.class, exception ->
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.HOST_PICK_OPTION_ALREADY_EXISTS));
+        verify(voteOptionRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("이름이 비어 있으면 선택지를 추가할 수 없다")
     void 이름이_비어_있으면_선택지를_추가할_수_없다() {
         assertThatThrownBy(() -> voteOptionService.createVoteOption(1L, 10L, "  ", null))

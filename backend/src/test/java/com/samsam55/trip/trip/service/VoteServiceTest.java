@@ -139,14 +139,49 @@ class VoteServiceTest {
     }
 
     @Test
-    @DisplayName("결정 방식이 투표가 아니면 예외가 발생한다")
-    void 투표_시작_결정_방식이_투표가_아니면_예외가_발생한다() {
+    @DisplayName("HOST_PICK 일정은 보유한 선택지 하나로 즉시 확정된다")
+    void 투표_시작_HOST_PICK_일정은_선택지_하나로_즉시_확정된다() {
+        ItineraryItem item = itineraryItem(101L, ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.PENDING);
+        VoteOption option = voteOption(item, 1001L);
+        when(itineraryItemRepository.findById(101L)).thenReturn(Optional.of(item));
+        when(voteOptionRepository.findByItineraryItem(item)).thenReturn(List.of(option));
+
+        VoteStartResponseDto response = voteService.startVote(HOST_USER_ID, List.of(101L));
+
+        assertThat(response.items().get(0).status()).isEqualTo("CONFIRMED");
+        assertThat(item.getStatus()).isEqualTo(ItineraryItemStatus.CONFIRMED);
+        assertThat(item.getConfirmedOption()).isSameAs(option);
+    }
+
+    @Test
+    @DisplayName("HOST_PICK 일정에 등록된 선택지(장소)가 없으면 예외가 발생한다")
+    void 투표_시작_HOST_PICK_일정에_선택지가_없으면_예외가_발생한다() {
         ItineraryItem item = itineraryItem(101L, ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.PENDING);
         when(itineraryItemRepository.findById(101L)).thenReturn(Optional.of(item));
+        when(voteOptionRepository.findByItineraryItem(item)).thenReturn(List.of());
 
         assertThatThrownBy(() -> voteService.startVote(HOST_USER_ID, List.of(101L)))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
-                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_NOT_VOTE_TYPE));
+                        assertThat(exception.getErrorType()).isEqualTo(TripErrorType.HOST_PICK_OPTION_REQUIRED));
+    }
+
+    @Test
+    @DisplayName("VOTE와 HOST_PICK 일정을 함께 올리면 각각 다른 상태로 전이된다")
+    void 투표_시작_VOTE와_HOST_PICK을_함께_올리면_각각_다르게_전이된다() {
+        ItineraryItem voteItem = itineraryItem(101L, ItineraryItemDecisionType.VOTE, ItineraryItemStatus.PENDING);
+        ItineraryItem hostPickItem = itineraryItem(102L, ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.PENDING);
+        VoteOption option = voteOption(hostPickItem, 1002L);
+        when(itineraryItemRepository.findById(101L)).thenReturn(Optional.of(voteItem));
+        when(itineraryItemRepository.findById(102L)).thenReturn(Optional.of(hostPickItem));
+        when(voteOptionRepository.countByItineraryItemId(101L)).thenReturn(2);
+        when(voteOptionRepository.findByItineraryItem(hostPickItem)).thenReturn(List.of(option));
+
+        VoteStartResponseDto response = voteService.startVote(HOST_USER_ID, List.of(101L, 102L));
+
+        assertThat(response.items().get(0).status()).isEqualTo("VOTING");
+        assertThat(response.items().get(1).status()).isEqualTo("CONFIRMED");
+        assertThat(voteItem.getStatus()).isEqualTo(ItineraryItemStatus.VOTING);
+        assertThat(hostPickItem.getStatus()).isEqualTo(ItineraryItemStatus.CONFIRMED);
     }
 
     @Test
