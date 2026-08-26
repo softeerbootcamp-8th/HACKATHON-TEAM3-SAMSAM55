@@ -222,38 +222,49 @@ class ItineraryItemServiceTest {
     @Test
     @DisplayName("VOTING 상태 일정 항목도 이름·카테고리만 수정할 수 있다")
     void VOTING_상태_일정_항목도_이름_카테고리만_수정할_수_있다() {
-        ItineraryItem itineraryItem = new ItineraryItem(
+        ItineraryItem beforeUpdate = new ItineraryItem(
                 tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
-        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
-        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
-        when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of());
+        ReflectionTestUtils.setField(beforeUpdate, "id", 100L);
+        ItineraryItem afterUpdate = new ItineraryItem(
+                tripDay, "저녁 메뉴", "관광", ItineraryItemDecisionType.VOTE, ItineraryItemStatus.VOTING, 1, null);
+        ReflectionTestUtils.setField(afterUpdate, "id", 100L);
+        when(itineraryItemRepository.findById(100L))
+                .thenReturn(Optional.of(beforeUpdate), Optional.of(afterUpdate));
+        when(voteOptionRepository.findByItineraryItem(afterUpdate)).thenReturn(List.of());
 
         ItineraryItemDetailResponseDto response = itineraryItemService.updateBasicInfo(
                 1L, 100L, new ItineraryItemBasicInfoUpdateRequestDto("저녁 메뉴", "관광"));
 
         assertThat(response.name()).isEqualTo("저녁 메뉴");
         assertThat(response.category()).isEqualTo("관광");
-        assertThat(itineraryItem.getName()).isEqualTo("저녁 메뉴");
-        assertThat(itineraryItem.getCategory()).isEqualTo("관광");
-        assertThat(itineraryItem.getDecisionType()).isEqualTo(ItineraryItemDecisionType.VOTE);
-        assertThat(itineraryItem.getStatus()).isEqualTo(ItineraryItemStatus.VOTING);
+        assertThat(response.status()).isEqualTo("VOTING");
+        verify(itineraryItemRepository).updateBasicInfo(100L, "저녁 메뉴", "관광");
     }
 
     @Test
-    @DisplayName("CONFIRMED 상태 일정 항목도 이름·카테고리만 수정할 수 있다")
-    void CONFIRMED_상태_일정_항목도_이름_카테고리만_수정할_수_있다() {
-        ItineraryItem itineraryItem = new ItineraryItem(
+    @DisplayName("CONFIRMED 상태 일정 항목도 이름·카테고리만 수정하고 확정 결과를 유지한다")
+    void CONFIRMED_상태_일정_항목도_이름_카테고리만_수정하고_확정_결과를_유지한다() {
+        ItineraryItem beforeUpdate = new ItineraryItem(
                 tripDay, "점심 메뉴", "식사", ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.CONFIRMED, 1, null);
-        ReflectionTestUtils.setField(itineraryItem, "id", 100L);
-        when(itineraryItemRepository.findById(100L)).thenReturn(Optional.of(itineraryItem));
-        when(voteOptionRepository.findByItineraryItem(itineraryItem)).thenReturn(List.of());
+        ReflectionTestUtils.setField(beforeUpdate, "id", 100L);
+        VoteOption confirmedOption = new VoteOption(beforeUpdate, "스시", "설명", "AI", null);
+        ReflectionTestUtils.setField(confirmedOption, "id", 1001L);
+        ItineraryItem afterUpdate = new ItineraryItem(
+                tripDay, "저녁 메뉴", "관광", ItineraryItemDecisionType.HOST_PICK,
+                ItineraryItemStatus.CONFIRMED, 1, confirmedOption);
+        ReflectionTestUtils.setField(afterUpdate, "id", 100L);
+        when(itineraryItemRepository.findById(100L))
+                .thenReturn(Optional.of(beforeUpdate), Optional.of(afterUpdate));
+        when(voteOptionRepository.findByItineraryItem(afterUpdate)).thenReturn(List.of());
 
         ItineraryItemDetailResponseDto response = itineraryItemService.updateBasicInfo(
                 1L, 100L, new ItineraryItemBasicInfoUpdateRequestDto("저녁 메뉴", "관광"));
 
         assertThat(response.name()).isEqualTo("저녁 메뉴");
         assertThat(response.category()).isEqualTo("관광");
-        assertThat(itineraryItem.getStatus()).isEqualTo(ItineraryItemStatus.CONFIRMED);
+        assertThat(response.status()).isEqualTo("CONFIRMED");
+        assertThat(response.confirmedOptionId()).isEqualTo(1001L);
+        verify(itineraryItemRepository).updateBasicInfo(100L, "저녁 메뉴", "관광");
     }
 
     @Test

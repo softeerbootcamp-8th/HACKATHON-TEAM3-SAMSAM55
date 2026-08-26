@@ -175,6 +175,11 @@ public class ItineraryItemService {
      * 관계없이(PENDING 이후에도) 허용한다. 결정 방식을 바꾸려면 {@link #updateItineraryItem}을
      * 쓴다.
      *
+     * <p>엔티티를 로드해 필드를 바꾼 뒤 저장하지 않고 name/category만 부분 UPDATE로
+     * 반영한다 — 이 일정이 VOTING/VOTED인 동안 다른 트랜잭션이 status·confirmedOption을
+     * 바꿀 수 있는데(전원 투표 완료, 방장 확정), 엔티티 저장 방식은 그 변경을 로드해 둔
+     * 옛 값으로 덮어써버린다.
+     *
      * @param loginUserId 요청한 회원의 식별자
      * @param itemId 수정할 일정 항목의 식별자
      * @param request 이름·카테고리가 담긴 수정 요청
@@ -192,13 +197,15 @@ public class ItineraryItemService {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
 
-        itineraryItem.updateBasicInfo(request.name(), request.category());
+        itineraryItemRepository.updateBasicInfo(itemId, request.name(), request.category());
 
-        List<VoteOptionSummaryDto> voteOptions = voteOptionRepository.findByItineraryItem(itineraryItem).stream()
+        ItineraryItem updated = itineraryItemRepository.findById(itemId)
+                .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+        List<VoteOptionSummaryDto> voteOptions = voteOptionRepository.findByItineraryItem(updated).stream()
                 .map(voteOption -> VoteOptionSummaryDto.from(
                         voteOption, s3PresignService.toPublicUrl(voteOption.getImageKey())))
                 .toList();
-        return ItineraryItemDetailResponseDto.from(itineraryItem, voteOptions);
+        return ItineraryItemDetailResponseDto.from(updated, voteOptions);
     }
 
     /**

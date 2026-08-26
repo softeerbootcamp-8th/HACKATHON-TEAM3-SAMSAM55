@@ -81,6 +81,14 @@ public interface ItineraryItemRepository extends JpaRepository<ItineraryItem, Lo
             """)
     int clearConfirmedOptionByItemId(@Param("itemId") Long itemId);
 
+    // 엔티티를 로드해 name/category만 바꾸고 그대로 저장하면, ItineraryItem에 @Version이나
+    // @DynamicUpdate가 없어 Hibernate가 매핑된 컬럼을 전부 다시 쓴다. 그 사이 다른 트랜잭션이
+    // status·confirmedOption을 바꿨다면(예: 전원 투표 완료, 방장 확정) 이 UPDATE가 로드해 둔
+    // 옛 값으로 그 변경을 덮어써버린다. name/category만 부분 UPDATE로 반영해 상태 전이를 건드리지 않는다.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update ItineraryItem item set item.name = :name, item.category = :category where item.id = :itemId")
+    int updateBasicInfo(@Param("itemId") Long itemId, @Param("name") String name, @Param("category") String category);
+
     // (trip_day_id, sort_order) 유니크 제약이 있어 순서를 재배치할 때 중간에 값이 겹칠 수 있다.
     // 즉시 실행되는 벌크 UPDATE라 호출할 때마다 바로 DB에 반영되므로, 서비스에서 두 단계(임시 음수 값 →
     // 최종 값)로 나눠 호출하면 충돌 없이 안전하게 재배치할 수 있다. 벌크 업데이트는 영속성 컨텍스트를
