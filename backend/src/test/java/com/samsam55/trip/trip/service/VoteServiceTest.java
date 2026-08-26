@@ -377,6 +377,19 @@ class VoteServiceTest {
     }
 
     @Test
+    @DisplayName("HOST_PICK 항목은 투표를 거치지 않고 PENDING 상태에서 바로 확정할 수 있다")
+    void 확정_HOST_PICK_항목은_PENDING_상태에서도_확정할_수_있다() {
+        ItineraryItem item = itineraryItem(101L, ItineraryItemDecisionType.HOST_PICK, ItineraryItemStatus.PENDING);
+        VoteOption option = voteOption(item, 1001L);
+        when(itineraryItemRepository.findById(101L)).thenReturn(Optional.of(item));
+        when(voteOptionRepository.findByIdAndItineraryItemId(1001L, 101L)).thenReturn(Optional.of(option));
+
+        voteService.confirm(HOST_USER_ID, 101L, 1001L);
+
+        assertThat(item.getStatus()).isEqualTo(ItineraryItemStatus.CONFIRMED);
+    }
+
+    @Test
     @DisplayName("일정 항목을 찾을 수 없으면 예외가 발생한다")
     void 확정_일정_항목을_찾을_수_없으면_예외가_발생한다() {
         when(itineraryItemRepository.findById(999L)).thenReturn(Optional.empty());
