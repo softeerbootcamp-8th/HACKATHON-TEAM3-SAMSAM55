@@ -9,6 +9,7 @@ import com.samsam55.trip.trip.dto.TripCreateResponseDto;
 import com.samsam55.trip.trip.dto.TripDetailResponseDto;
 import com.samsam55.trip.trip.dto.TripListResponseDto;
 import com.samsam55.trip.trip.entity.ItineraryItem;
+import com.samsam55.trip.trip.entity.ItineraryItemStatus;
 import com.samsam55.trip.trip.entity.Participant;
 import com.samsam55.trip.trip.entity.Trip;
 import com.samsam55.trip.trip.entity.TripDay;
@@ -23,7 +24,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -56,7 +59,21 @@ public class TripService {
     @Transactional(readOnly = true)
     public TripListResponseDto findTrips(Long userId) {
         List<Trip> trips = tripRepository.findAllByHostUserIdOrderByStartDateAscIdAsc(userId);
-        return TripListResponseDto.from(orderTripsForList(trips));
+        List<Trip> orderedTrips = orderTripsForList(trips);
+        Map<Long, Long> totalItemsByTripId = new HashMap<>();
+        Map<Long, Long> confirmedItemsByTripId = new HashMap<>();
+        for (Trip trip : orderedTrips) {
+            Long tripId = trip.getId();
+            totalItemsByTripId.put(tripId, itineraryItemRepository.countByTripDayTripId(tripId));
+            confirmedItemsByTripId.put(
+                    tripId,
+                    itineraryItemRepository.countByTripDayTripIdAndStatus(
+                            tripId,
+                            ItineraryItemStatus.CONFIRMED
+                    )
+            );
+        }
+        return TripListResponseDto.from(orderedTrips, totalItemsByTripId, confirmedItemsByTripId);
     }
 
     /**

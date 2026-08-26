@@ -152,6 +152,32 @@ function TripListPage() {
                       )}
                     </p>
                   </div>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[14px] leading-[1.5] text-muted-foreground">
+                        일정 {heroTrip.totalItems ?? 0}개 중{' '}
+                        {heroTrip.confirmedItems ?? 0}개 확정
+                      </span>
+                      <span className="text-[16px] leading-[1.5] font-medium text-primary-deep">
+                        {heroTrip.progressPercent ?? 0}%
+                      </span>
+                    </div>
+                    <div
+                      className="h-2.5 w-full overflow-hidden rounded-full bg-border"
+                      role="progressbar"
+                      aria-label="일정 확정 진척률"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={heroTrip.progressPercent ?? 0}
+                    >
+                      <div
+                        className="h-full rounded-full bg-primary transition-[width]"
+                        style={{
+                          width: `${heroTrip.progressPercent ?? 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
                   <Link
                     to="/trips/$tripId"
                     params={{ tripId: String(heroTrip.id) }}
