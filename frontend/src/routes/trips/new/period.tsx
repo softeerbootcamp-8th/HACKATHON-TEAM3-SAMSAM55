@@ -67,14 +67,33 @@ function NewTripPeriodPage() {
   } = Route.useSearch()
   const today = new Date()
   const todayValue = toDateString(today)
+  const normalizedInitialStartDate =
+    initialStartDate && initialStartDate >= todayValue
+      ? initialStartDate
+      : undefined
+  const normalizedInitialEndDate =
+    normalizedInitialStartDate &&
+    initialEndDate &&
+    initialEndDate >= todayValue &&
+    initialEndDate >= normalizedInitialStartDate
+      ? initialEndDate
+      : undefined
   const [month, setMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   )
   const [startDate, setStartDate] = useState<string | undefined>(
-    initialStartDate,
+    normalizedInitialStartDate,
   )
-  const [endDate, setEndDate] = useState<string | undefined>(initialEndDate)
+  const [endDate, setEndDate] = useState<string | undefined>(
+    normalizedInitialEndDate,
+  )
   const calendarDays = getCalendarDays(month)
+  const isValidSelectedPeriod =
+    !!startDate &&
+    !!endDate &&
+    startDate >= todayValue &&
+    endDate >= todayValue &&
+    startDate <= endDate
 
   const handleDateClick = (date: Date) => {
     const value = toDateString(date)
@@ -103,7 +122,7 @@ function NewTripPeriodPage() {
         <div className="px-5 pb-6">
           <Button
             size="cta"
-            disabled={!title || !startDate || !endDate}
+            disabled={!title || !isValidSelectedPeriod}
             onClick={() =>
               navigate({
                 to: '/trips/new/members',
