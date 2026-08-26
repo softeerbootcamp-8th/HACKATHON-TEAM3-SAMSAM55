@@ -299,8 +299,10 @@ public class ItineraryItemService {
 
         voteRepository.deleteAllByItineraryItemId(itemId);
         itineraryItemRepository.clearConfirmedOptionByItemId(itemId);
+        // 위 삭제가 영속성 컨텍스트를 비우면서 itineraryItem은 detached 상태가 되므로,
+        // 그 객체를 그대로 지우지 않고 id로 새로 조회해서 지운다.
         voteOptionRepository.deleteAllByItineraryItemId(itemId);
-        itineraryItemRepository.delete(itineraryItem);
+        itineraryItemRepository.deleteById(itemId);
     }
 
     /**

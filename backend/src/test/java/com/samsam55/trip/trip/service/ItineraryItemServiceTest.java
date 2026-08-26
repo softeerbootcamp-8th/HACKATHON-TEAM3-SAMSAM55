@@ -514,7 +514,7 @@ class ItineraryItemServiceTest {
         verify(voteRepository).deleteAllByItineraryItemId(100L);
         verify(itineraryItemRepository).clearConfirmedOptionByItemId(100L);
         verify(voteOptionRepository).deleteAllByItineraryItemId(100L);
-        verify(itineraryItemRepository).delete(itineraryItem);
+        verify(itineraryItemRepository).deleteById(100L);
     }
 
     @Test
@@ -525,7 +525,7 @@ class ItineraryItemServiceTest {
         assertThatThrownBy(() -> itineraryItemService.deleteItineraryItem(1L, 100L))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
-        verify(itineraryItemRepository, never()).delete(any());
+        verify(itineraryItemRepository, never()).deleteById(any());
     }
 
     @Test
@@ -540,7 +540,7 @@ class ItineraryItemServiceTest {
         assertThatThrownBy(() -> itineraryItemService.deleteItineraryItem(999L, 100L))
                 .isInstanceOfSatisfying(ApplicationException.class, exception ->
                         assertThat(exception.getErrorType()).isEqualTo(TripErrorType.NOT_TRIP_HOST));
-        verify(itineraryItemRepository, never()).delete(any());
+        verify(itineraryItemRepository, never()).deleteById(any());
     }
 
     private ItineraryItem itemWithId(Long id) {
