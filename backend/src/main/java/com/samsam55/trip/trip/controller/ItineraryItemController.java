@@ -159,6 +159,7 @@ public class ItineraryItemController {
      * @param request 선택지 이름과 (미리 업로드한) 사진 S3 key가 담긴 생성 요청
      * @return 생성된 선택지가 담긴 201 응답
      */
+    // 생성은 여기, 수정/삭제는 VoteOptionController(/api/vote-options/{id})에 있음 — 경로가 부모(일정 항목) 기준이냐 자원(선택지) 기준이냐로 나뉨
     @PostMapping("/api/itinerary-items/{itemId}/vote-options")
     public ResponseEntity<CommonResponse<VoteOptionCreateResponseDto>> createVoteOption(
             @Login Long loginUserId,

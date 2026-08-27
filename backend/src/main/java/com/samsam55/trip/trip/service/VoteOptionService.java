@@ -44,9 +44,11 @@ public class VoteOptionService {
                 .orElseThrow(() -> new ApplicationException(TripErrorType.VOTE_OPTION_NOT_FOUND));
 
         ItineraryItem itineraryItem = voteOption.getItineraryItem();
+        // 방장 권한 확인
         if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
+        // 투표 시작 전(PENDING)에만 삭제 허용
         if (itineraryItem.getStatus() != ItineraryItemStatus.PENDING) {
             throw new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED);
         }
@@ -76,6 +78,7 @@ public class VoteOptionService {
     @Transactional
     public VoteOptionCreateResponseDto createVoteOption(
             Long loginUserId, Long itemId, String name, String imageKey) {
+        // 이름 필수값 검증
         if (name == null || name.isBlank()) {
             throw new ApplicationException(GlobalErrorType.INVALID_INPUT_VALUE);
         }
@@ -83,16 +86,20 @@ public class VoteOptionService {
         ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
 
+        // 방장 권한 확인
         if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
+        // 투표 시작 전(PENDING)에만 추가 허용
         if (itineraryItem.getStatus() != ItineraryItemStatus.PENDING) {
             throw new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED);
         }
         long existingOptionCount = voteOptionRepository.countByItineraryItem(itineraryItem);
+        // HOST_PICK은 선택지 1개만 허용
         if (itineraryItem.getDecisionType() == ItineraryItemDecisionType.HOST_PICK && existingOptionCount >= 1) {
             throw new ApplicationException(TripErrorType.HOST_PICK_OPTION_ALREADY_EXISTS);
         }
+        // VOTE는 최대 4개까지
         if (existingOptionCount >= MAX_VOTE_OPTION_COUNT) {
             throw new ApplicationException(TripErrorType.VOTE_OPTION_COUNT_EXCEEDED);
         }
@@ -128,6 +135,7 @@ public class VoteOptionService {
     @Transactional
     public VoteOptionSummaryDto updateVoteOption(
             Long loginUserId, Long voteOptionId, String name, String description, String imageKey) {
+        // 이름 필수값 검증
         if (name == null || name.isBlank()) {
             throw new ApplicationException(GlobalErrorType.INVALID_INPUT_VALUE);
         }
@@ -136,9 +144,11 @@ public class VoteOptionService {
                 .orElseThrow(() -> new ApplicationException(TripErrorType.VOTE_OPTION_NOT_FOUND));
 
         ItineraryItem itineraryItem = voteOption.getItineraryItem();
+        // 방장 권한 확인
         if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
+        // PENDING이거나, HOST_PICK이 확정된 뒤인 경우만 수정 허용
         boolean editable = itineraryItem.getStatus() == ItineraryItemStatus.PENDING
                 || (itineraryItem.getStatus() == ItineraryItemStatus.CONFIRMED
                         && itineraryItem.getDecisionType() == ItineraryItemDecisionType.HOST_PICK);

@@ -71,6 +71,7 @@ public class ItineraryItemService {
         TripDay tripDay = tripDayRepository.findByIdForUpdate(tripDayId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.TRIP_DAY_NOT_FOUND));
 
+        // 방장 권한 확인
         if (!tripDay.getTrip().getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
@@ -133,9 +134,11 @@ public class ItineraryItemService {
         ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
 
+        // 방장 권한 확인
         if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
+        // 투표 시작 전(PENDING)에만 수정 허용
         if (itineraryItem.getStatus() != ItineraryItemStatus.PENDING) {
             throw new ApplicationException(TripErrorType.VOTE_ALREADY_STARTED);
         }
@@ -144,6 +147,7 @@ public class ItineraryItemService {
         ItineraryItemDecisionType newDecisionType = ItineraryItemDecisionType.valueOf(request.decisionType());
         List<VoteOption> existingOptions = voteOptionRepository.findByItineraryItem(itineraryItem);
 
+        // VOTE에서 HOST_PICK으로 바꾸는데 선택지가 2개 이상이면, 남길 선택지 하나만 빼고 나머지 삭제
         if (oldDecisionType == ItineraryItemDecisionType.VOTE
                 && newDecisionType == ItineraryItemDecisionType.HOST_PICK
                 && existingOptions.size() >= 2) {
@@ -161,6 +165,7 @@ public class ItineraryItemService {
             voteOptionRepository.deleteAll(optionsToRemove);
         }
 
+        // 이름·카테고리·결정 방식 반영
         itineraryItem.update(request.name(), request.category(), newDecisionType);
 
         List<VoteOptionSummaryDto> voteOptions = voteOptionRepository.findByItineraryItem(itineraryItem).stream()
@@ -193,10 +198,12 @@ public class ItineraryItemService {
         ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
 
+        // 방장 권한 확인
         if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
 
+        // name/category만 부분 UPDATE (엔티티 저장 방식이면 동시에 바뀐 status 등을 덮어쓸 수 있음)
         itineraryItemRepository.updateBasicInfo(itemId, request.name(), request.category());
 
         ItineraryItem updated = itineraryItemRepository.findById(itemId)
@@ -222,6 +229,7 @@ public class ItineraryItemService {
         ItineraryItem itineraryItem = itineraryItemRepository.findById(itemId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
 
+        // 방장 권한 확인
         if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
@@ -249,20 +257,24 @@ public class ItineraryItemService {
                 .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
 
         Trip trip = itineraryItem.getTripDay().getTrip();
+        // 방장 권한 확인
         if (!trip.getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
 
+        // 전체 참여자 목록과 이 일정의 투표 기록 조회
         List<Participant> participants = participantRepository.findAllByTripOrderById(trip);
         List<Vote> votes = voteRepository.findAllByItineraryItemIdWithOptionAndParticipant(itemId);
         Map<Long, Participant> votedParticipantsById = votes.stream()
                 .collect(Collectors.toMap(vote -> vote.getParticipant().getId(), Vote::getParticipant, (a, b) -> a));
 
+        // 참여자별 투표 완료 여부 계산
         List<VoteStatusParticipantResponseDto> participantStatuses = participants.stream()
                 .map(participant -> VoteStatusParticipantResponseDto.of(
                         participant, votedParticipantsById.containsKey(participant.getId())))
                 .toList();
 
+        // 선택지별 득표자 집계
         List<VoteOption> options = voteOptionRepository.findByItineraryItem(itineraryItem);
         Map<Long, List<VoteResultParticipantResponseDto>> votersByOptionId = votes.stream()
                 .collect(Collectors.groupingBy(
@@ -293,10 +305,12 @@ public class ItineraryItemService {
         ItineraryItem itineraryItem = itineraryItemRepository.findByIdWithTripAndConfirmedOption(itemId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
 
+        // 방장 권한 확인
         if (!itineraryItem.getTripDay().getTrip().getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
 
+        // 투표 기록 -> 확정 선택지 참조 해제 -> 선택지 -> 일정 항목 순서로 삭제
         voteRepository.deleteAllByItineraryItemId(itemId);
         itineraryItemRepository.clearConfirmedOptionByItemId(itemId);
         // 위 삭제가 영속성 컨텍스트를 비우면서 itineraryItem은 detached 상태가 되므로,
@@ -321,10 +335,12 @@ public class ItineraryItemService {
         TripDay tripDay = tripDayRepository.findByIdForUpdate(tripDayId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.TRIP_DAY_NOT_FOUND));
 
+        // 방장 권한 확인
         if (!tripDay.getTrip().getHostUser().getId().equals(loginUserId)) {
             throw new ApplicationException(TripErrorType.NOT_TRIP_HOST);
         }
 
+        // 요청받은 itemIds가 이 일차의 전체 항목과 정확히 일치하는지 검증
         List<ItineraryItem> currentItems = itineraryItemRepository.findByTripDayIdOrderBySortOrderAsc(tripDayId);
         Set<Long> currentItemIds = currentItems.stream().map(ItineraryItem::getId).collect(Collectors.toSet());
         if (currentItemIds.size() != itemIds.size() || !currentItemIds.equals(new HashSet<>(itemIds))) {

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+// 생성(POST)은 ItineraryItemController에 있음 — 여기는 이미 만들어진 선택지 자원에 대한 수정/삭제만 담당
 @RestController
 @RequestMapping("/api/vote-options")
 @RequiredArgsConstructor
