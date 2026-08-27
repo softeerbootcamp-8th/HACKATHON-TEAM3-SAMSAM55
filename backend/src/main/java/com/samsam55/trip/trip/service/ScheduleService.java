@@ -118,9 +118,11 @@ public class ScheduleService {
     public VoteResultResponseDto findVoteResult(ParticipantPrincipal participant, Long itemId) {
         ItineraryItem item = itineraryItemRepository.findByIdWithTripAndConfirmedOption(itemId)
                 .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
+        // 이 참여자가 이 여행/일정에 접근 가능한지 확인
         validateItemAccess(participant, item);
 
         Trip trip = item.getTripDay().getTrip();
+        // 여행 참여자 전체 목록 조회
         List<Participant> participants = participantRepository.findAllByTripOrderById(trip);
         Map<Long, Participant> participantsById = participants.stream()
                 .collect(Collectors.toMap(
@@ -133,18 +135,21 @@ public class ScheduleService {
         Set<Long> optionIds = options.stream()
                 .map(VoteOption::getId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+        // 참여자별 투표 1건만 매핑 (이 여행 소속이 아니거나 이 일정의 선택지가 아닌 투표는 제외)
         Map<Long, Vote> votesByParticipantId = new LinkedHashMap<>();
         voteRepository.findAllByItineraryItemIdWithOptionAndParticipant(itemId).stream()
                 .filter(vote -> participantsById.containsKey(vote.getParticipant().getId()))
                 .filter(vote -> optionIds.contains(vote.getOption().getId()))
                 .forEach(vote -> votesByParticipantId.putIfAbsent(vote.getParticipant().getId(), vote));
 
+        // 아직 투표 안 한 참여자 목록
         List<Participant> pendingParticipants = participants.stream()
                 .filter(tripParticipant -> !votesByParticipantId.containsKey(tripParticipant.getId()))
                 .toList();
         Long confirmedOptionId = item.getConfirmedOption() == null
                 ? null
                 : item.getConfirmedOption().getId();
+        // 선택지별 득표자 목록과 확정 여부 매핑
         List<VoteResultOptionResponseDto> optionResults = options.stream()
                 .map(option -> VoteResultOptionResponseDto.of(
                         option,
@@ -168,6 +173,7 @@ public class ScheduleService {
         return trip;
     }
 
+    // PENDING(아직 안 올라온 일정)이거나 다른 여행 소속이면 접근 차단
     private void validateItemAccess(ParticipantPrincipal participant, ItineraryItem item) {
         Trip trip = item.getTripDay().getTrip();
         if (item.getStatus() == ItineraryItemStatus.PENDING
@@ -178,6 +184,7 @@ public class ScheduleService {
                 .orElseThrow(() -> new ApplicationException(TripErrorType.ITINERARY_ITEM_NOT_FOUND));
     }
 
+    // 이 선택지에 투표한 참여자만 필터링
     private List<Participant> findVoters(
             VoteOption option,
             List<Participant> participants,
